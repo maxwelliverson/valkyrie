@@ -1,0 +1,8 @@
+//
+// Created by Maxwell on 2020-11-16.
+//
+
+#ifndef VALKYRIE_SPIRV_COMPILER_HPP
+#define VALKYRIE_SPIRV_COMPILER_HPP
+
+#endif//VALKYRIE_SPIRV_COMPILER_HPP
