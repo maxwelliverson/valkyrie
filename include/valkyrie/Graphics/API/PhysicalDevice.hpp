@@ -9,6 +9,8 @@
 #include <valkyrie/Core/Utility/Interval.hpp>
 #include <valkyrie/Graphics/API/Queue.hpp>
 
+#include <wayland-client-protocol.hpp>
+
 namespace valkyrie::Graphics::API{
 
 
@@ -23,7 +25,34 @@ namespace valkyrie::Graphics::API{
   class PhysicalDeviceExternalFenceProperties;
   class PhysicalDeviceExternalSemaphoreProperties;*/
 
+  class InstanceObject{
+  protected:
+
+  };
+  class DeviceObject{};
+
+  class QueueFamily{
+  public:
+    struct Handle;
+
+    QueueFamily() = default;
+    QueueFamily(const QueueFamily&) = default;
+
+    u32 getIndex() const noexcept;
+    u32 getQueueCount() const noexcept;
+    QueueFlags getFlags() const noexcept;
+
+    bool supportsPresentation(const Surface& surface) const noexcept;
+
+
+  private:
+    Handle* pData;
+  };
+
   class PhysicalDevice : public VulkanObject{
+
+    friend class PhysicalDeviceObject;
+
     class Impl;
     Impl* pImpl;
 
@@ -42,7 +71,7 @@ namespace valkyrie::Graphics::API{
 
     bool queueFamilySupportsPresentation(u32 familyIndex, const Surface& surface) const noexcept;
 
-    Rectangle<> getPresentRectangle(const Surface& surface) const noexcept;
+    Box2D<> getPresentRectangle(const Surface& surface) const noexcept;
     //void getQueueFamilyProperties(u32& length, QueueFamily* families) noexcept;
 
     friend bool operator==(PhysicalDevice A, PhysicalDevice B) noexcept {
@@ -52,6 +81,10 @@ namespace valkyrie::Graphics::API{
       return A.pImpl <=> B.pImpl;
     }
   };
+
+
+
+
   
   /*class PhysicalDeviceFeatures : public OutputStruct{
     u32 robustBufferAccess = 0;

@@ -439,7 +439,9 @@ namespace valkyrie::Core{
 
 
     template <Detail::SafelyErasableFrom<value_type> ErasedType>
-    constexpr explicit StatusCode(const StatusCode<Erased<ErasedType>>& Other) noexcept(std::is_nothrow_copy_constructible_v<value_type>) requires(std::constructible_from<ThisType, value_type>)
+    constexpr explicit StatusCode(const StatusCode<Erased<ErasedType>>& Other)
+    noexcept(std::is_nothrow_copy_constructible_v<value_type>)
+    requires(ConstantDomain && std::move_constructible<value_type>)
         : StatusCode(erasure_cast<value_type>(Other.value())){
       VK_axiom(this->domain() == Other.domain())
     }
@@ -521,7 +523,7 @@ namespace valkyrie::Core{
 
     inline void _checkIfSuccess() const {
       if(Base::success())
-        std::terminate(); //TODO: Replace with custom termination functions...
+        panic(GenericError(Code::FailedAssertion));
     }
 
   public:
@@ -1050,9 +1052,10 @@ namespace valkyrie{
 }
 
 
-
-#define PP_VK_impl_SYSTEM_ERROR_CODE_HEADER_FILE <valkyrie/Core/Error/System/VK_if(VK_system_windows(Win32)VK_else(Posix)).hpp>
-
-#include PP_VK_impl_SYSTEM_ERROR_CODE_HEADER_FILE
+#if VK_system_windows
+#include <valkyrie/Core/Error/System/Win32.hpp>
+#else
+#include <valkyrie/Core/Error/System/Posix.hpp>
+#endif
 
 #endif//VALKYRIE_STATUS_HPP

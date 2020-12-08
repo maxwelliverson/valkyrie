@@ -5,6 +5,7 @@
 #ifndef VALKYRIE_VULKAN_ENUMS_HPP
 #define VALKYRIE_VULKAN_ENUMS_HPP
 
+#include <valkyrie/Core/Utility/StringView.hpp>
 #include <valkyrie/Core/Utility/BitFlags.hpp>
 
 namespace valkyrie::Graphics::API {

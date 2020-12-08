@@ -4,13 +4,14 @@ project(Valkyrie)
 find_package(Vulkan REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 include_directories(include ${Vulkan_INCLUDE_DIRS})
-add_compile_options(/Zc:preprocessor)
-
+if(MSVC)
+    add_compile_options(/Zc:preprocessor)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(OptiX_INCLUDE_PATH "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0/include")
-include_directories(${OptiX_INCLUDE_PATH})
+#set(OptiX_INCLUDE_PATH "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0/include")
+#include_directories(${OptiX_INCLUDE_PATH})
 
 function(add_dummy_target file)
     string(REGEX REPLACE "\\..+" "" targetName ${file})
@@ -82,14 +83,14 @@ add_object_library(valkyrie.Graphics.API OBJECTS Instance PhysicalDevice Device 
 add_object_library(valkyrie.Graphics.Engine OBJECTS Engine Option)
 add_object_library(valkyrie.GUI OBJECTS Window Monitor)
 
-target_link_libraries(valkyrie.GUI PUBLIC Dxva2)
+target_link_libraries(valkyrie.GUI PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
 
 
 add_library(valkyrie src/valkyrie/valkyrie.cpp)
 target_link_libraries(valkyrie PUBLIC valkyrie.Core valkyrie.Graphics.API)
 
 
-add_executable(valk_main main.cpp vk_object.h vk_util.h vk_object.cpp vk_pp.h vk_features.h)
+add_executable(valk_main main.cpp vk_object.h vk_util.h vk_object.cpp vk_pp.h vk_features.h include/spirv/Enums.hpp)
 
 add_dummy_target(include/valkyrie.hpp include/valkyrie/Graphics.hpp include/valkyrie/Graphics/Image.hpp include/valkyrie/Graphics/Pixel.hpp)
 
@@ -100,9 +101,9 @@ valkyrie_test(valkyrie.GUI.Monitor)
 valkyrie_test(valkyrie.GUI.DXGI)
 valkyrie_test(valkyrie.Core.Log.Messages)
 
-target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core Dxva2 #[[CUDA::cuda_driver Vulkan::Vulkan]])
-target_link_libraries(test.valkyrie.GUI.DXGI PUBLIC valkyrie.Core DXGI)
-target_link_libraries(test.valkyrie.Core.Log.Messages PUBLIC valkyrie.Core DbgHelp Kernel32)
+target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:Dxva2> #[[CUDA::cuda_driver Vulkan::Vulkan]])
+target_link_libraries(test.valkyrie.GUI.DXGI PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
+target_link_libraries(test.valkyrie.Core.Log.Messages PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DbgHelp;Kernel32>)
 
 
 
