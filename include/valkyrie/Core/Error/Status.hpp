@@ -29,20 +29,17 @@ namespace valkyrie::Core{
   class ErrorCode;
   class StatusDomain;
 
-
-  namespace Detail{
-    class GenericDomain;
-    template <typename E>
-    class StatusEnumDomain;
-  }
+  class GenericDomain;
+  template <typename E>
+  class StatusEnumDomain;
 
   template <typename T, typename Base = StatusDomain>
   class UniqueStatusDomain;
 
   using Error         = ErrorCode<Erased<u64>>;
   using Status        = StatusCode<Erased<u64>>;
-  using GenericError  = ErrorCode<Detail::GenericDomain>;
-  using GenericStatus = StatusCode<Detail::GenericDomain>;
+  using GenericError  = ErrorCode<GenericDomain>;
+  using GenericStatus = StatusCode<GenericDomain>;
 
 
 
@@ -105,6 +102,27 @@ namespace valkyrie::Core{
     }
   };
 
+  class GenericDomain final : public StatusDomain{
+  public:
+    using status_type = StatusCode<GenericDomain>;
+    using error_type  = ErrorCode<GenericDomain>;
+    using value_type  = Code;
+    using domain_type = GenericDomain;
+
+    constexpr GenericDomain() = default;
+    ~GenericDomain() = default;
+
+    VK_nodiscard StringView name() const noexcept override;
+    VK_nodiscard StringRef doMessage(const StatusCode<void>& Stat) const noexcept override;
+    VK_nodiscard Code doCode(const StatusCode<void>& ) const noexcept override;
+    VK_nodiscard bool doFailure(const StatusCode<void> &) const noexcept override;
+    VK_nodiscard bool doEquivalent(const StatusCode<void>& , const StatusCode<void>&) const noexcept override;
+    VK_noreturn void doThrowException(const StatusCode<void> &Code) const override;
+
+    VK_nodiscard static constexpr const GenericDomain& get() noexcept;
+    VK_nodiscard const Uuid& id() const noexcept override;
+  };
+
   /*template <typename T, typename Base>
   class UniqueStatusDomain : public Base{
   public:
@@ -119,25 +137,6 @@ namespace valkyrie::Core{
 
 
   namespace Detail{
-
-    class GenericDomain final : public StatusDomain{
-    public:
-      using value_type = Code;
-      using domain_type = GenericDomain;
-
-      constexpr GenericDomain() = default;
-      ~GenericDomain() = default;
-
-      VK_nodiscard StringView name() const noexcept override;
-      VK_nodiscard StringRef doMessage(const StatusCode<void>& Stat) const noexcept override;
-      VK_nodiscard Code doCode(const StatusCode<void>& ) const noexcept override;
-      VK_nodiscard bool doFailure(const StatusCode<void> &) const noexcept override;
-      VK_nodiscard bool doEquivalent(const StatusCode<void>& , const StatusCode<void>&) const noexcept override;
-      VK_noreturn void doThrowException(const StatusCode<void> &Code) const override;
-
-      VK_nodiscard static constexpr const GenericDomain& get() noexcept;
-      VK_nodiscard const Uuid& id() const noexcept override;
-    };
 
     template <typename T>
     struct identity_type{
@@ -392,7 +391,9 @@ namespace valkyrie::Core{
 
   public:
 
+    //using domain_type = typename domain_traits<Dom>::domain_type;
     using domain_type = Dom;
+    //using value_type = typename domain_traits<Dom>::value_type;
     using value_type = typename domain_type::value_type;
     using string_ref = typename domain_type::string_ref;
 
@@ -410,6 +411,11 @@ namespace valkyrie::Core{
     ~StatusCode() = default;
 
     constexpr StatusCode clone() const { return *this; }
+
+    template <NotSameAs<Dom> OtherDom> requires(constructible_from<value_type, typename domain_traits<OtherDom>::value_type>)
+    StatusCode(const StatusCode<OtherDom>& other) noexcept{}
+
+
 
     template <NotSameAsOneOf<StatusCode, std::in_place_t> T, typename ...Args>
     constexpr StatusCode(T&& val, Args&& ...args) noexcept(noexcept(makeStatusCode((T&&)val, (Args&&)args...)))
@@ -681,29 +687,28 @@ namespace valkyrie::Core{
   };
 
 
-  // A value returned with this domain must be explicitly checked or suppressed, otherwise it will panic.
+  // A value returned with this domain must be explicitly checked or suppressed, otherwise it will panic upon destruction.
   template <typename Dom>
-  class StatusValidationDomain : public Dom{
+  class StatusValidationDomain final : public Dom{
     static_assert(std::derived_from<Dom, StatusDomain>);
     static_assert(sizeof(typename Dom::value_type) <= sizeof(u32));
+
+    inline std::u8string getName() const noexcept{
+      StringView domainName{Dom::name()};
+      std::u8string stdDomainName{domainName.data(), domainName.size()};
+      stdDomainName += VK_string(" (Validation)");
+      return std::move(stdDomainName);
+    }
+
   public:
 
-    constexpr StatusValidationDomain() noexcept = default;
+    inline constexpr static Uuid      uuid = Uuid{"b8af8d60-1fa7-4ad8-b032-5cf0aa9728e5"} ^ class_traits<Dom>::uuid;
 
-    template <typename T>
-    struct mixin;
+    using status_type = StatusCode<StatusValidationDomain>;
+    using error_type  = ErrorCode<StatusValidationDomain>;
 
-    void doErasedCopy(StatusCode<void>& To, const StatusCode<void>& From, size_t Bytes) const noexcept override {
-      VK_assert(From.domain() == *this);
-      VK_assert(Bytes == 16);
-      std::memcpy(&To, &From, Bytes);
-      static_cast<const StatusCode<StatusValidationDomain<Dom>>&>(From).suppress();
-    }
-    void doErasedDestroy(StatusCode<void>& Code, size_t Bytes) const noexcept override {
-      auto& code = static_cast<StatusCode<StatusValidationDomain<Dom>>&>(Code);
-      if (!code.checked())
-        panic(code);
-    }
+
+    StatusValidationDomain() noexcept = default;
 
     template <typename T>
     struct mixin : T{
@@ -716,6 +721,7 @@ namespace valkyrie::Core{
           : T{std::move(other)}, isChecked(other.isChecked){
         other.isChecked = true;
       }
+
       template <typename ...Args> requires(std::constructible_from<T, Args...>)
       constexpr mixin(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
           : T{std::forward<Args>(args)...},
@@ -734,37 +740,89 @@ namespace valkyrie::Core{
           panic(*this);
       }
 
-      constexpr value_type& value() & noexcept {
+      value_type& value() & noexcept {
         isChecked = true;
         return T::value();
       }
-      constexpr const value_type& value() const & noexcept {
+      const value_type& value() const & noexcept {
         isChecked = true;
         return T::value();
       }
-      constexpr value_type&& value() && noexcept {
+      value_type&& value() && noexcept {
         isChecked = true;
         return std::move(T::value());
       }
-      constexpr const value_type&& value() const && noexcept {
+      const value_type&& value() const && noexcept {
         isChecked = true;
         return std::move(T::value());
       }
 
-      constexpr void clear() noexcept {
+      void clear() noexcept {
         T::clear();
         suppress();
       }
-      constexpr void suppress() const noexcept {
+      void suppress() const noexcept {
         isChecked = true;
       }
-      constexpr bool checked() const noexcept {
+      bool checked() const noexcept {
         return isChecked;
       }
 
     private:
+      friend class StatusValidationDomain;
       mutable bool isChecked;
     };
+
+    void doErasedCopy(StatusCode<void>& To, const StatusCode<void>& From, size_t Bytes) const noexcept override {
+      VK_assert(From.domain() == *this);
+      VK_assert(Bytes == 16);
+      std::memcpy(&To, &From, Bytes);
+      static_cast<const StatusCode<StatusValidationDomain<Dom>>&>(From).suppress();
+    }
+    void doErasedDestroy(StatusCode<void>& Code, size_t Bytes) const noexcept override {
+      auto& code = static_cast<StatusCode<StatusValidationDomain<Dom>>&>(Code);
+      if (!code.checked())
+        panic(code);
+    }
+
+    VK_nodiscard StringView name() const noexcept override {
+      const static std::u8string domain_name = getName();
+      return StringView(domain_name.data(), (u32)domain_name.size());
+    }
+    VK_nodiscard bool doEquivalent(const StatusCode<void>& statusA, const StatusCode<void>& statusB) const noexcept override {
+      VK_assert(statusA.domain() == *this);
+      if (statusB.domain() == *this)
+        return static_cast<const status_type&>(statusA).value() == static_cast<const status_type&>(statusB).value();
+      if (statusB.domain().id() == class_traits<Dom>::uuid)
+        return static_cast<const status_type&>(statusA).value() ==
+               static_cast<const typename domain_traits<Dom>::status_type&>(statusB).value();
+      return false;
+    }
+    VK_nodiscard StringRef doMessage(const StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain().id() == uuid);
+      static_cast<const mixin<Detail::StatusStorage<StatusValidationDomain>>&>(status).isChecked = true;
+      return Dom::doMessage(status);
+    }
+    VK_nodiscard Code doCode(const StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain().id() == uuid);
+      static_cast<const mixin<Detail::StatusStorage<StatusValidationDomain>>&>(status).isChecked = true;
+      return Dom::doCode(status);
+    }
+    VK_nodiscard bool doFailure(const StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain().id() == uuid);
+      static_cast<const mixin<Detail::StatusStorage<StatusValidationDomain>>&>(status).isChecked = true;
+      return Dom::doFailure(status);
+    }
+
+    VK_nodiscard static const StatusValidationDomain& get() noexcept{
+      const static StatusValidationDomain instance{};
+      return instance;
+    }
+    VK_nodiscard const Uuid& id() const noexcept override {
+      return uuid;
+    }
+
+
   };
 
 
@@ -909,6 +967,9 @@ namespace valkyrie::Core{
     StringView name() const noexcept override{
       return _domain.path();
     }
+    const Uuid & id() const noexcept override{
+      return uuid;
+    }
   protected:
     bool doFailure(const StatusCode<void>& code) const noexcept override{
       VK_assert(code.domain() == *this);
@@ -948,80 +1009,80 @@ namespace valkyrie::Core{
     inline constexpr static const IndirectDomain& get() noexcept;
   };
 
+  template <typename E>
+  class StatusEnumDomain : public StatusDomain {
+    template <typename> friend class Core::StatusCode;
+    //using status_traits = Core::status_traits<typename traits::status_type>;
+    using status_type = StatusCode<StatusEnumDomain>;
+
+    using self = StatusEnumDomain;
+
+
+    inline static status_type& cast(StatusCode<void>& status) noexcept { return static_cast<status_type&>(status); }
+    inline static const status_type& cast(const StatusCode<void>& status) noexcept { return static_cast<const status_type&>(status); }
+
+    inline static const auto& info(const StatusCode<void>& status) noexcept {
+      return enum_traits<E>::status_info[self::cast(status).value()];
+    }
+    inline static std::span<const Code> codeMappings(const StatusCode<void>& status) noexcept {
+      return info(status).generic;
+    }
+
+  public:
+    using value_type = E;
+    using domain_type = StatusEnumDomain;
+
+    constexpr StatusEnumDomain() = default;
+    ~StatusEnumDomain() = default;
+
+    VK_nodiscard StringRef doMessage(const StatusCode<void>& status) const noexcept override {
+      return StringRef(self::info(status).message);
+    }
+    VK_nodiscard Code doCode(const StatusCode<void>& status) const noexcept override {
+      VK_axiom(status.domain() == *this);
+      if (auto mappings = codeMappings(status); mappings.empty())
+        return Code::Unknown;
+      else
+        return mappings.front();
+    }
+    VK_nodiscard bool doFailure(const StatusCode<void>& status) const noexcept override {
+      for (Code code : codeMappings(status))
+        if (code == Code::Success)
+          return false;
+      return true;
+    }
+    VK_nodiscard bool doEquivalent(const StatusCode<void>& A, const StatusCode<void>& B) const noexcept override {
+      VK_axiom(A.domain() == *this);
+      if (B.domain() == *this)
+        return cast(A).value() == cast(B).value();
+      if (B.domain() == GenericDomain::get()) {
+        const GenericStatus& genB = static_cast<const GenericStatus&>(B);
+        for (Code ec : codeMappings(A))
+          if (ec == genB.value())
+            return true;
+      }
+      return false;
+    }
+    //VK_if(VK_exceptions_enabled(VK_noreturn void doThrowException(const StatusCode<void> &Code) const override {  }))
+
+    VK_nodiscard inline static constexpr const StatusEnumDomain<E>& get() noexcept;
+    VK_nodiscard const Uuid& id() const noexcept override { return enum_traits<E>::domain_uuid; }
+    VK_nodiscard StringView name() const noexcept override { return enum_traits<E>::domain_name; }
+  };
+
   namespace Detail{
-    template <typename E>
-    class StatusEnumDomain : public StatusDomain {
-      template <typename> friend class Core::StatusCode;
-      using traits = enum_traits<E>;
-      //using status_traits = Core::status_traits<typename traits::status_type>;
-      using status_type = StatusCode<StatusEnumDomain>;
-
-      using self = StatusEnumDomain;
-
-
-      inline static status_type& cast(StatusCode<void>& status) noexcept { return static_cast<status_type&>(status); }
-      inline static const status_type& cast(const StatusCode<void>& status) noexcept { return static_cast<const status_type&>(status); }
-
-      inline static const auto& info(const StatusCode<void>& status) noexcept {
-        return traits::info[self::cast(status).value()];
-      }
-      inline static std::span<const Code> codeMappings(const StatusCode<void>& status) noexcept {
-        return info(status).generic;
-      }
-
-    public:
-      using value_type = E;
-      using domain_type = StatusEnumDomain;
-
-      constexpr StatusEnumDomain() = default;
-      ~StatusEnumDomain() = default;
-
-      VK_nodiscard StringRef doMessage(const StatusCode<void>& status) const noexcept override {
-        return StringRef(self::info(status).message);
-      }
-      VK_nodiscard Code doCode(const StatusCode<void>& status) const noexcept override {
-        VK_axiom(status.domain() == *this);
-        if (auto mappings = codeMappings(status); mappings.empty())
-          return Code::Unknown;
-        else
-          return mappings.front();
-      }
-      VK_nodiscard bool doFailure(const StatusCode<void>& status) const noexcept override {
-        for (Code code : codeMappings(status))
-          if (code == Code::Success)
-            return false;
-        return true;
-      }
-      VK_nodiscard bool doEquivalent(const StatusCode<void>& A, const StatusCode<void>& B) const noexcept override {
-        VK_axiom(A.domain() == *this);
-        if (B.domain() == *this)
-          return cast(A).value() == cast(B).value();
-        if (B.domain() == GenericDomain::get()) {
-          const auto& genB = static_cast<const GenericStatus&>(B);
-          for (Code ec : codeMappings(A))
-            if (ec == genB)
-              return true;
-        }
-        return false;
-      }
-      //VK_if(VK_exceptions_enabled(VK_noreturn void doThrowException(const StatusCode<void> &Code) const override {  }))
-
-      VK_nodiscard inline static constexpr const StatusEnumDomain<E>& get() noexcept;
-      VK_nodiscard const Uuid& id() const noexcept override { return traits::domain_uuid; }
-      VK_nodiscard StringView name() const noexcept override { return traits::domain_name; }
-    };
-
     template <typename StatusCode_>
     inline constexpr static IndirectDomain<StatusCode_> indirectDomainInstance{};
 
     template <typename E>
     inline constexpr static StatusEnumDomain<E> statusEnumDomainInstance{};
-    template <typename E>
-    inline constexpr const StatusEnumDomain<E>& StatusEnumDomain<E>::get() noexcept {
-      return statusEnumDomainInstance<E>;
-    }
+
   }
 
+  template <typename E>
+  inline constexpr const StatusEnumDomain<E>& StatusEnumDomain<E>::get() noexcept {
+    return Detail::statusEnumDomainInstance<E>;
+  }
   template <typename StatusCode_>
   inline constexpr const IndirectDomain<StatusCode_>& IndirectDomain<StatusCode_>::get() noexcept {
     return Detail::indirectDomainInstance<StatusCode_>;
@@ -1029,25 +1090,74 @@ namespace valkyrie::Core{
 }
 
 namespace valkyrie{
+
+  template <typename ErasedType>
+  struct Traits::Domain<Core::Erased<ErasedType>>{
+    using domain_type = Core::StatusDomain;
+    using value_type  = ErasedType;
+    using status_type = Core::StatusCode<Core::Erased<ErasedType>>;
+    using error_type  = Core::ErrorCode<Core::Erased<ErasedType>>;
+  };
+  template <>
+  struct Traits::Domain<Core::StatusDomain> : Meta::TemplateNoDefault{};
+  template <>
+  struct Traits::Domain<Core::GenericDomain>{
+    using domain_type = Core::GenericDomain;
+    using value_type  = Core::Code;
+    using status_type = Core::StatusCode<domain_type>;
+    using error_type  = Core::ErrorCode<domain_type>;
+  };
+  template <StatusEnum E>
+  struct Traits::Domain<Core::StatusEnumDomain<E>>{
+    using domain_type = Core::StatusEnumDomain<E>;
+    using value_type  = E;
+    using status_type = Core::StatusCode<domain_type>;
+    using error_type  = Core::ErrorCode<domain_type>;
+  };
+  template <typename Dom>
+  struct Traits::Domain<Core::IndirectDomain<Dom>>{
+    using domain_type = Core::IndirectDomain<Dom>;
+    using value_type  = typename domain_traits<Dom>::value_type*;
+  };
+  template <typename Dom>
+  struct Traits::Domain<Core::StatusValidationDomain<Dom>>{
+    using domain_type = Core::StatusValidationDomain<Dom>;
+    using value_type  = typename domain_traits<Dom>::value_type;
+  };
+
+
+
+
   template <typename Dom>
   struct Traits::Status<Core::StatusCode<Dom>>{
-    using domain_type = Dom;
-    //using value_type = typename domain_type::value_type;
+  private:
+    using traits = domain_traits<Dom>;
+  public:
+
+    using domain_type = typename traits::domain_type;
+    using value_type  = typename traits::value_type;
+    using error_type  = typename traits::error_type;
   };
   template <typename Dom>
-  struct Traits::Status<Core::StatusCode<Core::Erased<Dom>>>{
-    using domain_type = Core::StatusDomain;
-    using value_type = Dom;
+  struct Traits::Error<Core::ErrorCode<Dom>>{
+  private:
+    using traits = domain_traits<Dom>;
+  public:
+
+    using domain_type = typename traits::domain_type;
+    using value_type  = typename traits::value_type;
+    using status_type  = typename traits::status_type;
   };
+
   template <>
   struct Traits::Status<Core::StatusCode<void>>{
     using domain_type = Core::StatusDomain;
   };
   template <>
-  struct Traits::Singleton<Core::Detail::GenericDomain>{
+  struct Traits::Singleton<Core::GenericDomain>{
     inline constexpr static Core::StringView name{VK_raw_string(GenericDomain)};
     inline constexpr static Core::Uuid       uuid{"4be5eed5-f1c2-4495-8630-0c5d8107d4a1"};
-    inline constexpr static const Core::Detail::GenericDomain& get() noexcept;
+    inline constexpr static const Core::GenericDomain& get() noexcept;
   };
 }
 

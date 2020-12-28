@@ -7,7 +7,6 @@
 
 #include <valkyrie/Core/Utility/Version.hpp>
 #include <valkyrie/Graphics/Engine/Option.hpp>
-#include <valkyrie/Graphics/Engine/Setting.hpp>
 
 namespace valkyrie::Graphics::Engine{
   class Engine{

@@ -14,6 +14,17 @@
 #include <iostream>
 
 
+
+
+
+
+int main(){
+
+}
+
+
+
+/*
 int main(){
 
   using byte = valkyrie::byte;
@@ -117,6 +128,7 @@ int main(){
 
   return 0;
 }
+*/
 
 
 /*

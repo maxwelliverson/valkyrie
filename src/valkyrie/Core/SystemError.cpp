@@ -4,6 +4,100 @@
 
 #include <valkyrie/Core/Config.hpp>
 
+#include <valkyrie/Core/Error/GenericCode.hpp>
+
+#include <cerrno>
+
+
+namespace {
+  using namespace valkyrie;
+
+  using Code = Core::Code;
+
+  inline Code translatePosixCodeToGeneric(const int posixError) noexcept {
+    switch(posixError) {
+      case EACCES: return Code::PermissionDenied;
+      case EADDRINUSE:
+      case EADDRNOTAVAIL: return Code::AddressNotAvailable;
+      case EAGAIN:  return Code::ResourceUnavailable;
+      case EALREADY: return Code::InProgress;
+      case EBADF: return Code::ResourceNotFound;
+      case EBADMSG: return Code::InvalidResource;
+      case EBUSY: return Code::Busy;
+      case ECANCELED: return Code::Cancelled;
+      case ECHILD: return Code::ResourceNotFound;
+      case ECONNABORTED: return Code::ConnectionAborted;
+      case ECONNREFUSED: return Code::ConnectionRefused;
+      case ECONNRESET:   return Code::ConnectionReset;
+      case EDEADLK:      return Code::Deadlock;
+        //**EDESTADDRREQ    Destination address required (POSIX.1-2001).
+      case EDOM: return Code::OutOfDomain;
+      case EEXIST: return Code::ResourceAlreadyExists;
+      case EFAULT: return Code::BadAddress;
+
+        //**EHOSTUNREACH    Host is unreachable (POSIX.1-2001)
+        //**EIDRM           Identifier removed (POSIX.1-2001)
+      case EILSEQ: return Code::InvalidFormat;
+      case EINPROGRESS: return Code::InProgress;
+      case EINTR:  return Code::Interrupted;
+      case EINVAL: return Code::InvalidArgument;
+      case EIO:    return Code::IOError;
+      case EISCONN: return Code::AlreadyConnected;
+      case EISDIR: return Code::ResourceUnexpectedType;
+      case ELOOP:  return Code::RecursionDepth;
+      case EMFILE:
+      case EMLINK: return Code::ResourceLimitReached;
+      case EFBIG:
+      case EMSGSIZE:
+      case ENAMETOOLONG: return Code::ResourceTooLarge;
+      case ENETDOWN:
+      case ENETRESET:
+      case ENETUNREACH: return Code::NetworkUnavailable;
+      case ENFILE: return Code::ResourceLimitReached;
+      case ENOBUFS: return Code::InsufficientSize;
+        //*case ENODATA: return Code::NoMessages;
+      case ENODEV: return Code::DeviceNotFound;
+      case ENOENT: return Code::ResourceNotFound;
+        //*case ENOEXEC: return Code::ResourceNotExecutable;
+        //**ENOLCK          No locks available (POSIX.1-2001).
+        //**ENOLINK         Link has been severed (POSIX.1-2001).
+      case ENOMEM: return Code::OutOfMemory;
+        //*case ENOMSG: return Code::NoMessages;
+        //**ENOPROTOOPT     Protocol not available (POSIX.1-2001).
+      case ENOSPC: return Code::DeviceOutOfMemory;
+        //**ENOSR           No STREAM resources (POSIX.1 (XSI STREAMS option)).
+      case ENOSTR: return Code::ResourceUnexpectedType;
+      case ENOSYS: return Code::NotImplemented;
+      case ENOTCONN: return Code::NotConnected;
+      case ENOTDIR: return Code::ResourceUnexpectedType;
+        //**ENOTEMPTY       Directory not empty (POSIX.1-2001).
+      case ENOTRECOVERABLE: return Code::UnrecoverableState;
+      case ENOTSOCK: return Code::ResourceUnexpectedType;
+      case ENOTSUP: return Code::NotSupported;
+      case ENOTTY: return Code::IOError;
+      case ENXIO: return Code::BadAddress;
+      case EOVERFLOW: return Code::ArithmeticOverflow;
+        //**EOWNERDEAD      Owner died (POSIX.1-2008).
+      case EPERM: return Code::PermissionDenied;
+        //**EPIPE           Broken pipe (POSIX.1-2001).
+        //**EPROTO          Protocol error (POSIX.1-2001).
+        //**EPROTONOSUPPORT Protocol not supported (POSIX.1-2001).
+      case EPROTOTYPE: return Code::ResourceUnexpectedType;
+      case ERANGE: return Code::OutOfRange;
+        //**ESPIPE          Invalid seek (POSIX.1-2001).
+      case ESRCH: return Code::ResourceNotFound;
+      case ETIME:
+      case ETIMEDOUT: return Code::TimedOut;
+      case ETXTBSY: return Code::Busy;
+        //**EWOULDBLOCK     Operation would block (may be same value as EAGAIN)
+        //**EXDEV           Improper link (POSIX.1-2001).
+      default:
+        return Code::Unknown;
+    }
+  }
+}
+
+
 #if VK_compiler_msvc
 
 #include <valkyrie/Core/Error/System/Windows.hpp>
@@ -11,8 +105,6 @@
 #include <atomic>
 
 namespace {
-  using Code = valkyrie::Core::Code;
-
   inline Code translateWin32CodeToGeneric(const uint32_t dwordValue) noexcept {
     switch (dwordValue) {
       case 0x1: return Code::NotImplemented;
@@ -227,88 +319,6 @@ namespace {
         return -1;
     }
   }
-  inline valkyrie::Core::Code translatePosixCodeToGeneric(const int posixError) noexcept {
-    switch(posixError) {
-      case EACCES: return Code::PermissionDenied;
-      case EADDRINUSE:
-      case EADDRNOTAVAIL: return Code::AddressNotAvailable;
-      case EAGAIN:  return Code::ResourceUnavailable;
-      case EALREADY: return Code::InProgress;
-      case EBADF: return Code::ResourceNotFound;
-      case EBADMSG: return Code::InvalidResource;
-      case EBUSY: return Code::Busy;
-      case ECANCELED: return Code::Cancelled;
-      case ECHILD: return Code::ResourceNotFound;
-      case ECONNABORTED: return Code::ConnectionAborted;
-      case ECONNREFUSED: return Code::ConnectionRefused;
-      case ECONNRESET:   return Code::ConnectionReset;
-      case EDEADLK:      return Code::Deadlock;
-      //**EDESTADDRREQ    Destination address required (POSIX.1-2001).
-      case EDOM: return Code::OutOfDomain;
-      case EEXIST: return Code::ResourceAlreadyExists;
-      case EFAULT: return Code::BadAddress;
-
-      //**EHOSTUNREACH    Host is unreachable (POSIX.1-2001)
-      //**EIDRM           Identifier removed (POSIX.1-2001)
-      case EILSEQ: return Code::InvalidFormat;
-      case EINPROGRESS: return Code::InProgress;
-      case EINTR:  return Code::Interrupted;
-      case EINVAL: return Code::InvalidArgument;
-      case EIO:    return Code::IOError;
-      case EISCONN: return Code::AlreadyConnected;
-      case EISDIR: return Code::ResourceUnexpectedType;
-      case ELOOP:  return Code::RecursionDepth;
-      case EMFILE:
-      case EMLINK: return Code::ResourceLimitReached;
-      case EFBIG:
-      case EMSGSIZE:
-      case ENAMETOOLONG: return Code::ResourceTooLarge;
-      case ENETDOWN:
-      case ENETRESET:
-      case ENETUNREACH: return Code::NetworkUnavailable;
-      case ENFILE: return Code::ResourceLimitReached;
-      case ENOBUFS: return Code::InsufficientSize;
-      //*case ENODATA: return Code::NoMessages;
-      case ENODEV: return Code::DeviceNotFound;
-      case ENOENT: return Code::ResourceNotFound;
-      //*case ENOEXEC: return Code::ResourceNotExecutable;
-      //**ENOLCK          No locks available (POSIX.1-2001).
-      //**ENOLINK         Link has been severed (POSIX.1-2001).
-      case ENOMEM: return Code::OutOfMemory;
-      //*case ENOMSG: return Code::NoMessages;
-      //**ENOPROTOOPT     Protocol not available (POSIX.1-2001).
-      case ENOSPC: return Code::DeviceOutOfMemory;
-      //**ENOSR           No STREAM resources (POSIX.1 (XSI STREAMS option)).
-      case ENOSTR: return Code::ResourceUnexpectedType;
-      case ENOSYS: return Code::NotImplemented;
-      case ENOTCONN: return Code::NotConnected;
-      case ENOTDIR: return Code::ResourceUnexpectedType;
-      //**ENOTEMPTY       Directory not empty (POSIX.1-2001).
-      case ENOTRECOVERABLE: return Code::UnrecoverableState;
-      case ENOTSOCK: return Code::ResourceUnexpectedType;
-      case ENOTSUP: return Code::NotSupported;
-      case ENOTTY: return Code::IOError;
-      case ENXIO: return Code::BadAddress;
-      case EOPNOTSUPP: return Code::NotSupported;
-      case EOVERFLOW: return Code::ArithmeticOverflow;
-      //**EOWNERDEAD      Owner died (POSIX.1-2008).
-      case EPERM: return Code::PermissionDenied;
-      //**EPIPE           Broken pipe (POSIX.1-2001).
-      //**EPROTO          Protocol error (POSIX.1-2001).
-      //**EPROTONOSUPPORT Protocol not supported (POSIX.1-2001).
-      case EPROTOTYPE: return Code::ResourceUnexpectedType;
-      case ERANGE: return Code::OutOfRange;
-        //**ESPIPE          Invalid seek (POSIX.1-2001).
-      case ESRCH: return Code::ResourceNotFound;
-      case ETIME:
-      case ETIMEDOUT: return Code::TimedOut;
-      case ETXTBSY: return Code::Busy;
-      //**EWOULDBLOCK     Operation would block (may be same value as EAGAIN)
-      //**EXDEV           Improper link (POSIX.1-2001).
-      default:
-        return Code::Unknown;
-    }
-  }
 }
 
 struct valkyrie::Core::System::Win32StatusDomain::RefCountedWin32String::payload{
@@ -403,9 +413,9 @@ bool valkyrie::Core::System::Win32StatusDomain::doEquivalent(const StatusCode<vo
   return translateWin32CodeToGeneric(static_cast<const status_type&>(A).value()) == B.generic();
 }
 const valkyrie::Core::Uuid & valkyrie::Core::System::Win32StatusDomain::id() const noexcept {
+  return class_traits<Win32StatusDomain>::uuid;
   //return class_traits<Win32StatusDomain>::uuid;
-  //return class_traits<Win32StatusDomain>::uuid;
-  return Traits::Singleton<Win32StatusDomain>::uuid;
+  //return Traits::Singleton<Win32StatusDomain>::uuid;
 }
 
 valkyrie::Core::System::Win32::Status valkyrie::Core::System::Win32::getLastError() noexcept {
@@ -414,7 +424,6 @@ valkyrie::Core::System::Win32::Status valkyrie::Core::System::Win32::getLastErro
 
 #endif
 
-#include <valkyrie/Core/Error/GenericCode.hpp>
 #include <valkyrie/Core/Error/System/Posix.hpp>
 #include <valkyrie/Core/Utility/FlatMap.hpp>
 
@@ -422,93 +431,7 @@ valkyrie::Core::System::Win32::Status valkyrie::Core::System::Win32::getLastErro
 
 namespace {
 
-  using namespace valkyrie;
   namespace system = valkyrie::Core::System;
-
-  using Code = Core::Code;
-
-  inline Code translatePosixCodeToGeneric(const int posixError) noexcept {
-    switch(posixError) {
-      case EACCES: return Code::PermissionDenied;
-      case EADDRINUSE:
-      case EADDRNOTAVAIL: return Code::AddressNotAvailable;
-      case EAGAIN:  return Code::ResourceUnavailable;
-      case EALREADY: return Code::InProgress;
-      case EBADF: return Code::ResourceNotFound;
-      case EBADMSG: return Code::InvalidResource;
-      case EBUSY: return Code::Busy;
-      case ECANCELED: return Code::Cancelled;
-      case ECHILD: return Code::ResourceNotFound;
-      case ECONNABORTED: return Code::ConnectionAborted;
-      case ECONNREFUSED: return Code::ConnectionRefused;
-      case ECONNRESET:   return Code::ConnectionReset;
-      case EDEADLK:      return Code::Deadlock;
-        //**EDESTADDRREQ    Destination address required (POSIX.1-2001).
-      case EDOM: return Code::OutOfDomain;
-      case EEXIST: return Code::ResourceAlreadyExists;
-      case EFAULT: return Code::BadAddress;
-
-        //**EHOSTUNREACH    Host is unreachable (POSIX.1-2001)
-        //**EIDRM           Identifier removed (POSIX.1-2001)
-      case EILSEQ: return Code::InvalidFormat;
-      case EINPROGRESS: return Code::InProgress;
-      case EINTR:  return Code::Interrupted;
-      case EINVAL: return Code::InvalidArgument;
-      case EIO:    return Code::IOError;
-      case EISCONN: return Code::AlreadyConnected;
-      case EISDIR: return Code::ResourceUnexpectedType;
-      case ELOOP:  return Code::RecursionDepth;
-      case EMFILE:
-      case EMLINK: return Code::ResourceLimitReached;
-      case EFBIG:
-      case EMSGSIZE:
-      case ENAMETOOLONG: return Code::ResourceTooLarge;
-      case ENETDOWN:
-      case ENETRESET:
-      case ENETUNREACH: return Code::NetworkUnavailable;
-      case ENFILE: return Code::ResourceLimitReached;
-      case ENOBUFS: return Code::InsufficientSize;
-        //*case ENODATA: return Code::NoMessages;
-      case ENODEV: return Code::DeviceNotFound;
-      case ENOENT: return Code::ResourceNotFound;
-        //*case ENOEXEC: return Code::ResourceNotExecutable;
-        //**ENOLCK          No locks available (POSIX.1-2001).
-        //**ENOLINK         Link has been severed (POSIX.1-2001).
-      case ENOMEM: return Code::OutOfMemory;
-        //*case ENOMSG: return Code::NoMessages;
-        //**ENOPROTOOPT     Protocol not available (POSIX.1-2001).
-      case ENOSPC: return Code::DeviceOutOfMemory;
-        //**ENOSR           No STREAM resources (POSIX.1 (XSI STREAMS option)).
-      case ENOSTR: return Code::ResourceUnexpectedType;
-      case ENOSYS: return Code::NotImplemented;
-      case ENOTCONN: return Code::NotConnected;
-      case ENOTDIR: return Code::ResourceUnexpectedType;
-        //**ENOTEMPTY       Directory not empty (POSIX.1-2001).
-      case ENOTRECOVERABLE: return Code::UnrecoverableState;
-      case ENOTSOCK: return Code::ResourceUnexpectedType;
-      case ENOTSUP: return Code::NotSupported;
-      case ENOTTY: return Code::IOError;
-      case ENXIO: return Code::BadAddress;
-      case EOVERFLOW: return Code::ArithmeticOverflow;
-        //**EOWNERDEAD      Owner died (POSIX.1-2008).
-      case EPERM: return Code::PermissionDenied;
-        //**EPIPE           Broken pipe (POSIX.1-2001).
-        //**EPROTO          Protocol error (POSIX.1-2001).
-        //**EPROTONOSUPPORT Protocol not supported (POSIX.1-2001).
-      case EPROTOTYPE: return Code::ResourceUnexpectedType;
-      case ERANGE: return Code::OutOfRange;
-        //**ESPIPE          Invalid seek (POSIX.1-2001).
-      case ESRCH: return Code::ResourceNotFound;
-      case ETIME:
-      case ETIMEDOUT: return Code::TimedOut;
-      case ETXTBSY: return Code::Busy;
-        //**EWOULDBLOCK     Operation would block (may be same value as EAGAIN)
-        //**EXDEV           Improper link (POSIX.1-2001).
-      default:
-        return Code::Unknown;
-    }
-  }
-
 
 
 
@@ -534,7 +457,7 @@ bool system::Detail::PosixStatusDomain::doEquivalent(const StatusCode<void> &sta
 #if VK_system_windows
   else if (statusB.domain() == system::Win32StatusDomain())
     return static_cast<const status_type&>(statusA).value() ==
-           translateWin32StatusToPosixCode(static_cast<const system::Win32Status&>(statusB).value());
+           translateWin32StatusToPosixCode(static_cast<const system::Win32::Status&>(statusB).value());
 #endif
   return false;
 }

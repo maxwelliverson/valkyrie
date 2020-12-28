@@ -6,14 +6,16 @@
 #define VALKYRIE_STRING_TYPES_HPP
 
 #include <valkyrie/Core/Utility/StringView.hpp>
-#include <valkyrie/Core/Memory/Allocator.hpp>
+//#include <valkyrie/Core/Memory/Allocator.hpp>
+
+#include <string>
 
 namespace valkyrie::Core{
 
 
 
 
-  class String{
+  /*class String{
     struct BigStorage{
       u64 isBig : 1;
       u64 capacity : 63;
@@ -49,8 +51,13 @@ namespace valkyrie::Core{
 
 
 
-  };
+  };*/
+
+  using String = std::u8string;
 }
+
+/*template <>
+struct valkyrie::Traits::String<>{};*/
 
 
 #endif//VALKYRIE_STRING_TYPES_HPP

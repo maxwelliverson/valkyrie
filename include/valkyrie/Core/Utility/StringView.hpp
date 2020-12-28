@@ -15,7 +15,7 @@
 
 namespace valkyrie::Core{
 
-  class String;
+  //class String;
   template <size_t N>
   class SmallString;
   template <size_t N>
@@ -133,12 +133,12 @@ namespace valkyrie::Core{
 
     template <typename S>
     struct StringInfo;
-    template <>
+    /*template <>
     struct StringInfo<String>{
       inline constexpr static const utf8* data(const String& str) noexcept;
       inline constexpr static u32 byteLength(const String& str) noexcept;
       inline constexpr static u32 length(const String& str) noexcept;
-    };
+    };*/
     template <>
     struct StringInfo<StringView>{
       inline constexpr static const utf8* data(StringView str) noexcept;
@@ -389,6 +389,11 @@ namespace valkyrie::Core{
           length_(Detail::StringInfo<std::remove_cvref_t<Str>>::length(std::forward<Str>(str))),
           byteLength_(Detail::StringInfo<std::remove_cvref_t<Str>>::byteLength(std::forward<Str>(str))){}
 
+    constexpr StringView(const utf8* pData, u32 stringLength) noexcept
+        : pString(pData),
+          length_(stringLength),
+          byteLength_(stringLength){}
+
 
     [[nodiscard]] cstring_type c_str() const noexcept { return (cstring_type)pString; }
 
@@ -416,6 +421,61 @@ namespace valkyrie::Core{
       if (compResult != std::strong_ordering::equal)
         return compResult;
       return A.byteLength_ <=> B.byteLength_;
+    }
+  };
+
+  class MutableStringView{
+    utf8* pString = nullptr;
+    u32   stringLength = 0;
+  public:
+
+    using value_type = utf8;
+    using size_type = u32;
+    using pointer = utf8*;
+    using cstring_type = char*;
+
+    using reference = utf8&;
+    using const_reference = const utf8&;
+    using iterator = Detail::StringIterator;
+    using const_iterator = Detail::ConstStringIterator;
+    using sentinel = Detail::StringSentinel;
+    using const_sentinel = Detail::ConstStringSentinel;
+
+    constexpr MutableStringView() = default;
+    constexpr MutableStringView(utf8* pString, size_t N) noexcept
+        : pString(pString), stringLength(N){}
+    constexpr explicit MutableStringView(utf8* pString) noexcept
+        : pString(pString), stringLength(std::char_traits<utf8>::length(pString)){}
+
+    VK_nodiscard cstring_type c_str() const noexcept { return (cstring_type)pString; }
+
+    VK_nodiscard constexpr pointer data() const noexcept { return pString; }
+
+    VK_nodiscard constexpr u32 size() const noexcept { return stringLength; }
+    VK_nodiscard constexpr u32 length() const noexcept { return stringLength; }
+
+    VK_nodiscard reference front() const noexcept { return *begin(); }
+    VK_nodiscard reference back() const noexcept { return *(pString + byteLength_ - 1); }
+
+    VK_nodiscard iterator        begin() const noexcept { return iterator(pString); }
+    VK_nodiscard const_iterator cbegin() const noexcept { return const_iterator(pString); }
+
+    VK_nodiscard sentinel        end()   const noexcept { return sentinel(pString + stringLength); }
+    VK_nodiscard const_sentinel cend()   const noexcept { return const_sentinel(pString + stringLength); }
+
+    VK_nodiscard friend bool operator==(MutableStringView A, MutableStringView B) noexcept {
+      return A.stringLength == B.stringLength && std::char_traits<utf8>::compare(A.pString, B.pString, A.stringLength) == 0;
+    }
+    VK_nodiscard friend std::strong_ordering operator<=>(MutableStringView A, MutableStringView B) noexcept {
+
+      /*auto compResult =*/return std::lexicographical_compare_three_way(A.pString, A.pString + A.stringLength, B.pString, B.pString + B.stringLength);
+      /*if (compResult != std::strong_ordering::equal)
+        return compResult;
+      return A.stringLength <=> B.stringLength;*/
+    }
+
+    operator StringView() const noexcept {
+      return {pString, stringLength};
     }
   };
 
@@ -885,6 +945,20 @@ namespace valkyrie::Core{
         return compResult;
       return A.Size <=> B.Size;
     }
+  };
+
+  class Twine{
+    class ErasedValueType{
+
+    };
+    template <typename T>
+    class ToStringPlaceholder{
+      T* pValue;
+    public:
+
+    };
+  public:
+
   };
 
 }

@@ -21,5 +21,5 @@ namespace {
 }
 
 struct Engine::Configuration::InternalState{
-  std::pmr::map<u32, DeviceInfo>
+  //std::pmr::map<u32, DeviceInfo>
 };

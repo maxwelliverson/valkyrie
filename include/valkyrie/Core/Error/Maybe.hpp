@@ -235,7 +235,7 @@ namespace valkyrie::Core{
 
     template <NotSameAsOneOf<Maybe, status_type> V>
     requires(std::is_constructible_v<T, V>)
-    explicit(!std::convertible_to<V, T>)
+    explicit(!std::convertible_to<std::remove_reference_t<V>, T>)
     Maybe(V&& value) noexcept(std::is_nothrow_constructible_v<T, V>){
       this->status_.~status_type();
       this->is_valid_ = true;
@@ -244,7 +244,7 @@ namespace valkyrie::Core{
 
     template <NotSameAsOneOf<Maybe, T> S>
     requires(std::is_constructible_v<status_type, S>)
-    explicit(!std::convertible_to<S, status_type>)
+    explicit(!std::convertible_to<std::remove_reference_t<S>, status_type>)
     Maybe(S&& s) noexcept(std::is_nothrow_constructible_v<status_type, S>)
         : Base{ std::forward<S>(s) }{}
 
@@ -349,6 +349,9 @@ namespace valkyrie::Core{
       return this->is_valid_;
     }
 
+    value_type take() {
+      return std::move(this->value_);
+    }
 
     value_type& value() & VK_throws {
       checkAccess();

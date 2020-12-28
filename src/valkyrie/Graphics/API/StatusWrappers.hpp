@@ -217,6 +217,8 @@ namespace valkyrie::Graphics::API{
   }
 
 
+  static_assert(Domain<Core::StatusEnumDomain<VkResult>>);
+
 
   using VulkanStatus = typename enum_traits<VkResult>::status_type;
   using SpirVStatus  = typename enum_traits<spv_result_t>::status_type;
@@ -227,6 +229,12 @@ namespace valkyrie::Graphics::API{
 
 
 namespace {
+
+
+  //valkyrie::Traits::Detail::DomainInfo<valkyrie::Core::StatusEnumDomain<VkResult>>::
+
+
+
   inline valkyrie::Graphics::API::VulkanStatus makeStatusCode(VkResult result) noexcept {
     return valkyrie::Graphics::API::VulkanStatus(result);
   }

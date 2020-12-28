@@ -605,7 +605,7 @@
 
 #define PP_VK_impl_INVOKE_FOREACH(Macro, dlm, ...) PP_VK_impl_INVOKE_FOREACH_CONCAT(PP_VK_impl_GET_256TH_MEM(, ##__VA_ARGS__, PP_VK_impl_LIST_OF_256))(Macro, dlm, ##__VA_ARGS__)
 
-
+#define PP_VK_impl_GET_COUNT_256(...) PP_VK_impl_GET_256TH_MEM(, ##__VA_ARGS__, PP_VK_impl_LIST_OF_256)
 
 
 
@@ -940,6 +940,7 @@
 
 #define VK_stringify(...) PP_VK_impl_STRINGIFY(__VA_ARGS__)
 
+#define VK_get_arg_count PP_VK_impl_GET_COUNT_256
 #define VK_count_args(...) PP_VK_impl_GET_32ND_MEM_IMPL(, ##__VA_ARGS__, _32, _31, _30, _29, _28, _27, _26, _25, _24, _23, _22, _21, _20, _19, _18, _17, _16, _15, _14, _13, _12, _11, _10, _9, _8, _7, _6, _5, _4, _3, _2, _1, _0)
 //#define VK_pack_is_empty(...) PP_VK_impl_IS_PACK_EMPTY_IMPL(, ##__VA_ARGS__, PP_VK_impl_FALSE_32_TIMES, true)
 #define VK_pack_is_empty(...) PP_VK_impl_PACK_IS_EMPTY(__VA_ARGS__)

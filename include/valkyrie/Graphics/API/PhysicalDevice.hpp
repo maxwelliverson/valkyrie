@@ -9,7 +9,7 @@
 #include <valkyrie/Core/Utility/Interval.hpp>
 #include <valkyrie/Graphics/API/Queue.hpp>
 
-#include <wayland-client-protocol.hpp>
+//#include <wayland-client-protocol.hpp>
 
 namespace valkyrie::Graphics::API{
 

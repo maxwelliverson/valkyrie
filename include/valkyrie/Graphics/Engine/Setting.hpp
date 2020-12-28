@@ -10,7 +10,7 @@
 #include <memory_resource>
 
 namespace valkyrie::Graphics::Engine{
-  class Setting{
+  /*class Setting{
 
   public:
     using allocator_type = std::pmr::polymorphic_allocator<byte>;
@@ -19,7 +19,7 @@ namespace valkyrie::Graphics::Engine{
   private:
     Core::StringView name;
 
-  };
+  };*/
 }
 
 

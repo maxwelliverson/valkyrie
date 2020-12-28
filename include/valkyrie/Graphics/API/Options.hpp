@@ -7,11 +7,45 @@
 
 #include <valkyrie/Core/Utility/Arrays.hpp>
 #include <valkyrie/Core/Utility/StringView.hpp>
+#include <valkyrie/Core/Utility/String.hpp>
+#include <valkyrie/Core/Error/Maybe.hpp>
 
 namespace valkyrie::Graphics::API{
-  class Option{};
-  class Features{};
-  class Properties{};
+  class Option{
+  public:
+
+    virtual Core::ArrayRef<Option> doGetDependencies() const noexcept = 0;
+  };
+  class Feature : public Option{
+    bool enabled_;
+    bool supported_;
+    Core::String name_;
+
+  public:
+    inline Core::StringView name() const noexcept {
+      return {name_.data(), u32(name_.size())};
+    }
+
+  };
+  template <typename>
+  class Property;
+  template <>
+  class Property<void>{
+    Core::String name_;
+    bool supported_;
+  public:
+
+
+    inline Core::StringView name() const noexcept {
+      return {name_.data(), u32(name_.size())};
+    }
+
+    virtual Core::Maybe<utf8*>            writeToString(utf8* pString, u64 bufferLength) const noexcept = 0;
+  };
+  template <typename T>
+  class Property : public Property<void>{
+
+  };
 
   class Extension : public Option{};
   class Layer : public Option{};

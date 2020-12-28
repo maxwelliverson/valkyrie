@@ -11,7 +11,6 @@
 #define WIN32_MEAN_AND_LEAN
 #define NOMINMAX
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_win32.h>
 
 #include <cassert>
 
@@ -84,6 +83,7 @@ public:
 
 
 #define VK_function(func_, field_name_) VulkanFunction<PFN_vk##func_> field_name_{loader.load("vk"#func_)}
+
 
 struct FreeFunctions{
 
@@ -210,8 +210,6 @@ struct CommandBufferFunctions{
   VK_function(ResetCommandBuffer, reset);
 
 
-
-
   VK_function(CmdSetViewport, cmdSetViewport);
   VK_function(CmdSetScissor, cmdSetScissor);
   VK_function(CmdSetLineWidth, cmdSetLineWidth);
@@ -245,6 +243,7 @@ struct CommandBufferFunctions{
   VK_function(CmdSetLineStippleEXT, cmdSetLineStipple);
   VK_function(CmdSetDeviceMask, cmdSetDeviceMask);
   VK_function(CmdSetEvent, cmdSetEvent);
+  VK_function(CmdSetRayTracingPipelineStackSizeKHR, cmdSetRayTracingPipelineStackSizeKHR);
 
 
   VK_function(CmdBindPipeline, cmdBindPipeline);
@@ -268,9 +267,7 @@ struct CommandBufferFunctions{
   VK_function(CmdDrawMeshTasksIndirectNV, cmdDrawMeshTasksIndirect);
   VK_function(CmdDrawMeshTasksIndirectCountNV, cmdDrawMeshTasksIndirectCount);
   VK_function(CmdTraceRaysKHR, cmdTraceRaysKHR);
-  VK_function(CmdTraceRaysNV, cmdTraceRaysNV);
   VK_function(CmdTraceRaysIndirectKHR, cmdTraceRaysIndirectKHR);
-
 
 
   VK_function(CmdCopyBuffer, cmdCopyBuffer);
@@ -281,12 +278,8 @@ struct CommandBufferFunctions{
   VK_function(CmdCopyBufferToImage2KHR, cmdCopyBufferToImage2);
   VK_function(CmdCopyImageToBuffer, cmdCopyImageToBuffer);
   VK_function(CmdCopyImageToBuffer2KHR, cmdCopyImageToBuffer2);
-  VK_function(CmdCopyAccelerationStructureKHR, cmdCopyAccelerationStructureKHR);
-  VK_function(CmdCopyAccelerationStructureToMemoryKHR, cmdCopyAccelerationStructureToMemoryKHR);
-  VK_function(CmdCopyMemoryToAccelerationStructureKHR, cmdCopyMemoryToAccelerationStructureKHR);
   VK_function(CmdCopyAccelerationStructureNV, cmdCopyAccelerationStructureNV);
   VK_function(CmdCopyQueryPoolResults, cmdCopyQueryPoolResults);
-
 
 
   VK_function(CmdBeginQuery, cmdBeginQuery);
@@ -296,8 +289,6 @@ struct CommandBufferFunctions{
   VK_function(CmdBeginQueryIndexedEXT, cmdBeginQueryIndexed);
   VK_function(CmdBeginConditionalRenderingEXT, cmdBeginConditionalRendering);
   VK_function(CmdBeginDebugUtilsLabelEXT, cmdBeginDebugUtilsLabel);
-
-
 
 
   VK_function(CmdEndRenderPass, cmdEndRenderPass);
@@ -322,6 +313,7 @@ struct CommandBufferFunctions{
   VK_function(CmdClearDepthStencilImage, cmdClearDepthStencilImage);
   VK_function(CmdClearAttachments, cmdClearAttachments);
 
+
   VK_function(CmdResolveImage, cmdResolveImage);
   VK_function(CmdResolveImage2KHR, cmdResolveImage2);
 
@@ -334,13 +326,13 @@ struct CommandBufferFunctions{
   VK_function(CmdPushDescriptorSetKHR, cmdPushDescriptorSet);
   VK_function(CmdPushDescriptorSetWithTemplateKHR, cmdPushDescriptorSetWithTemplate);
 
-  VK_function(CmdBuildAccelerationStructureKHR, cmdBuildAccelerationStructureKHR);
-  VK_function(CmdBuildAccelerationStructureNV, cmdBuildAccelerationStructureNV);
-  VK_function(CmdBuildAccelerationStructureIndirectKHR, cmdBuildAccelerationStructureIndirectKHR);
 
-  VK_function(CmdWriteAccelerationStructuresPropertiesNV, cmdWriteAccelerationStructuresPropertiesNV);
+  VK_function(CmdBuildAccelerationStructuresKHR,           cmdBuildAccelerationStructuresKHR);
+  VK_function(CmdBuildAccelerationStructuresIndirectKHR,   cmdBuildAccelerationStructuresIndirectKHR);
   VK_function(CmdWriteAccelerationStructuresPropertiesKHR, cmdWriteAccelerationStructuresPropertiesKHR);
-
+  VK_function(CmdCopyAccelerationStructureKHR,             cmdCopyAccelerationStructureKHR);
+  VK_function(CmdCopyAccelerationStructureToMemoryKHR,     cmdCopyAccelerationStructureToMemoryKHR);
+  VK_function(CmdCopyMemoryToAccelerationStructureKHR,     cmdCopyMemoryToAccelerationStructureKHR);
 
 
   VK_function(CmdNextSubpass, cmdNextSubpass);
@@ -354,8 +346,10 @@ struct CommandBufferFunctions{
   VK_function(CmdPipelineBarrier, cmdPipelineBarrier);
   VK_function(CmdWaitEvents, cmdWaitEvents);
 
+
   VK_function(CmdWriteTimestamp, cmdWriteTimestamp);
   VK_function(CmdInsertDebugUtilsLabelEXT, cmdInsertDebugUtilsLabel);
+
 
   VK_function(CmdUpdateBuffer, cmdUpdateBuffer);
   VK_function(CmdFillBuffer, cmdFillBuffer);
@@ -407,7 +401,6 @@ struct PipelineFunctions{
   VK_function(GetPipelineExecutableInternalRepresentationsKHR, getPipelineExecutableInternalRepresentations);
 
   VK_function(GetRayTracingShaderGroupHandlesKHR, getRayTracingShaderGroupHandlesKHR);
-  VK_function(GetRayTracingShaderGroupHandlesNV, getRayTracingShaderGroupHandlesNV);
   VK_function(GetRayTracingCaptureReplayShaderGroupHandlesKHR, getRayTracingCaptureReplayShaderGroupHandlesKHR);
 
 
@@ -417,11 +410,11 @@ struct PipelineFunctions{
 struct AccelerationStructureFunctions{
   DeviceFunctionLoader loader;
 
-  VK_function(CreateAccelerationStructureKHR,  createKHR);
+  /*VK_function(CreateAccelerationStructureKHR,  createKHR);
   VK_function(DestroyAccelerationStructureKHR, destroyKHR);
   VK_function(GetAccelerationStructureMemoryRequirementsKHR, getMemoryRequirementsKHR);
   VK_function(BindAccelerationStructureMemoryKHR, bindMemoryKHR);
-  VK_function(BuildAccelerationStructureKHR, buildKHR);
+  VK_function(BuildAccelerationStructuresKHR, buildKHR);
   VK_function(CopyAccelerationStructureKHR, copyKHR);
   VK_function(CopyAccelerationStructureToMemoryKHR, copyToMemoryKHR);
   VK_function(CopyMemoryToAccelerationStructureKHR, copyFromMemoryKHR);
@@ -435,6 +428,19 @@ struct AccelerationStructureFunctions{
   VK_function(GetAccelerationStructureMemoryRequirementsNV, getMemoryRequirementsNV);
   VK_function(BindAccelerationStructureMemoryNV, bindMemoryNV);
   VK_function(GetAccelerationStructureHandleNV, getHandleNV);
+*/
+
+  VK_function(CreateAccelerationStructureKHR,                 createKHR);
+  VK_function(DestroyAccelerationStructureKHR,                destroyKHR);
+  VK_function(BuildAccelerationStructuresKHR,                 buildKHR);
+  VK_function(CopyAccelerationStructureKHR,                   copyKHR);
+  VK_function(CopyAccelerationStructureToMemoryKHR,           copyToMemoryKHR);
+  VK_function(CopyMemoryToAccelerationStructureKHR,           copyFromMemoryKHR);
+  VK_function(WriteAccelerationStructuresPropertiesKHR,       writePropertiesKHR);
+  VK_function(GetAccelerationStructureDeviceAddressKHR,       getDeviceAddressKHR);
+  VK_function(GetDeviceAccelerationStructureCompatibilityKHR, getDeviceCompatibilityKHR);
+  VK_function(GetAccelerationStructureBuildSizesKHR,          getBuildSizesKHR);
+
 
 
   AccelerationStructureFunctions(DeviceFunctionLoader loader) noexcept : loader(loader){}
@@ -651,11 +657,6 @@ struct DeviceFunctions{
   VK_function(SetDebugUtilsObjectTagEXT, setDebugUtilsObjectTag);
 
 
-
-
-
-
-
   VK_function(CreateValidationCacheEXT, createValidationCache);
   VK_function(DestroyValidationCacheEXT, destroyValidationCache);
   VK_function(MergeValidationCachesEXT, mergeValidationCaches);
@@ -682,6 +683,7 @@ struct DeviceFunctions{
   VK_function(DestroyPrivateDataSlotEXT, destroyPrivateDataSlot);
   VK_function(SetPrivateDataEXT, setPrivateData);
   VK_function(GetPrivateDataEXT, getPrivateData);
+
 
   VK_function(CreateDeferredOperationKHR, createDeferredOperation);
   VK_function(DestroyDeferredOperationKHR, destroyDeferredOperation);

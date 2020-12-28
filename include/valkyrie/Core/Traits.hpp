@@ -33,11 +33,9 @@ namespace valkyrie{
     template <typename Domain>
     class ErrorCode;
     class StatusDomain;
-    namespace Detail{
-      class GenericDomain;
-      template <typename E>
-      class StatusEnumDomain;
-    }
+    class GenericDomain;
+    template <typename E>
+    class StatusEnumDomain;
   }
 
   inline namespace Concepts{
@@ -164,8 +162,20 @@ namespace valkyrie{
 
     template <typename T>
     struct Numeric : Meta::TemplateNoDefault{};
+
+    template <typename T>
+    struct Domain : Meta::TemplateNoDefault{};
     
     namespace Detail{
+
+      template <typename T>
+      inline constexpr static const T& referenceTo(const T* pVal) noexcept {
+        return *pVal;
+      }
+
+
+
+
       template <typename T, size_t N, typename ...Args>
       struct ProbeInitialCase{
         inline constexpr static size_t value = N - 1;
@@ -224,10 +234,10 @@ namespace valkyrie{
       namespace Status{
         VK_trait(DomainType,
                  alias(domain_type),
-                 given(typename S),
-                 typename( Traits::Status<S>::domain_type ),
-                 typename( Traits::Error<S>::domain_type ),
-                 if (requires(const S& status){ { status.domain() }; }) std::remove_cvref_t<decltype(std::declval<const S&>().domain())>
+                   given(typename S),
+                     typename( Traits::Status<S>::domain_type ),
+                     typename( Traits::Error<S>::domain_type ),
+                     if (requires(const S& status){ { status.domain() }; }) std::remove_cvref_t<decltype(std::declval<const S&>().domain())>
         );
         VK_trait(ValueType,
                  alias(value_type),
@@ -296,7 +306,7 @@ namespace valkyrie{
         );
 
         VK_trait(IsBitFlag,
-                 let(isBitFlag),
+                 let(is_bit_flag),
                    given(typename E),
                      otherwise (VK_instantiable_with(Traits::BitFlagEnum, E))
         );
@@ -306,7 +316,7 @@ namespace valkyrie{
                    given(typename E),
                      member_type(domain_type, Traits::StatusEnum<E>),
                      member_type(status_type::domain_type, Traits::StatusEnum<E>),
-                     if (VK_instantiable_with(Traits::StatusEnum, E)) Core::Detail::StatusEnumDomain<E>
+                     if (VK_instantiable_with(Traits::StatusEnum, E)) Core::StatusEnumDomain<E>
         );
 
         VK_trait(StatusType,
@@ -325,13 +335,13 @@ namespace valkyrie{
                        { Traits::StatusEnum<E>::info[e].message };
                        { Traits::StatusEnum<E>::info[e].generic };
                        { Traits::StatusEnum<E>::info[e].severity } -> Concepts::SameAs<Core::Severity>;
-                     }) Traits::StatusEnum<E>::info
+                     }) referenceTo(&Traits::StatusEnum<E>::info)
         );
 
 
 
         VK_trait(IsStatusEnum,
-                 let(isStatusEnum),
+                 let(is_status_enum),
                    given(typename E),
                      otherwise (SatisfiedBy<StatusType, E> && SatisfiedBy<StatusDomain, E>/* && SatisfiedBy<StatusInfo, E>*/)
         );
@@ -404,7 +414,7 @@ namespace valkyrie{
                      otherwise( alignof(C) )
         );
 
-        VK_trait(Instance,
+        /*VK_trait(Instance,
                  let(instance),
                    given(typename C),
                      if (VK_instantiable_with(Traits::Singleton, C) && requires{ { Traits::Singleton<C>::instance } -> std::convertible_to<const C&>; }) Traits::Singleton<C>::instance,
@@ -412,15 +422,52 @@ namespace valkyrie{
                      if (requires{ { C::instance } -> std::convertible_to<const C&>; } ) C::instance,
                      if (requires{ { C::get() } -> std::convertible_to<const C&>; } ) C::get(),
                      if (VK_instantiable_with(Traits::Singleton, C)) C{}
-        );
+        );*/
 
         VK_trait(IsSingleton,
                  let(isSingleton),
                    given(typename C),
-                     otherwise (VK_instantiable_with(Traits::Singleton, C) && SatisfiedBy<Instance, C>)
+                     if (VK_instantiable_with(Traits::Singleton, C)) true//,
+                     //otherwise(requires{ { std::addressof(C::get()) } -> std::convertible_to<const C*>; }) /* && SatisfiedBy<Instance, C>*/
         );
       }
 
+      namespace Domain{
+        VK_trait(DomainType,
+                 alias(domain_type),
+                   given(typename D),
+                     member_type(domain_type, Traits::Domain<D>),
+                     if (std::convertible_to<const D*, const Core::StatusDomain*>) D,
+                     member_type(domain_type, D),
+                     otherwise(D)
+        );
+        VK_trait(StatusType,
+                 alias(status_type),
+                   given(typename D),
+                     member_type(status_type, Traits::Domain<D>),
+                     member_type(status_type, D),
+                     if (std::convertible_to<const D*, const Core::StatusDomain*>) Core::StatusCode<D>
+        );
+        VK_trait(ErrorType,
+                 alias(error_type),
+                   given(typename D),
+                     member_type(error_type, Traits::Domain<D>),
+                     member_type(error_type, D),
+                     if (std::convertible_to<const D*, const Core::StatusDomain*>) Core::ErrorCode<D>
+        );
+        VK_trait(ValueType,
+                 alias(value_type),
+                   given(typename D),
+                     member_type(value_type, Traits::Domain<D>),
+                     member_type(value_type, D)
+        );
+        VK_trait(IsConstant,
+                 let(is_constant),
+                   given(typename D),
+                     member_value(is_constant, Traits::Domain<D>),
+                     if (Satisfies<D, Class::IsSingleton>) true
+        );
+      }
 
       namespace Numeric{
         VK_trait(IsIntegral,
@@ -464,21 +511,29 @@ namespace valkyrie{
         );
       }
 
-      template <typename P>
-      struct PointerElementTypeBackup{};
-      template <typename P> requires(requires{ typename std::pointer_traits<P>::element_type; })
-      struct PointerElementTypeBackup<P>{
-        using element_type = typename std::pointer_traits<P>::element_type;
-      };
-
-      template <typename P>
-      struct PointerElementType : PointerElementTypeBackup<P>{};
-      template <typename P> requires(requires{
-        typename Traits::Pointer<P>::element_type;
-      })
-      struct PointerElementType<P>{
-        using element_type = typename Traits::Pointer<P>::element_type;
-      };
+      namespace Agent{
+        VK_trait(BaseType,
+                 alias(base_type),
+                   given(typename A),
+                     member_type(base_type, A)
+                 );
+        VK_trait(MessageType,
+                 alias(message_type),
+                   given(typename A),
+                     member_type(message_type, A)
+                 );
+        VK_trait(StatusType,
+                 alias(status_type),
+                   given(typename A),
+                     member_type(status_type, A)
+                 );
+        VK_trait(RootBaseType,
+                 alias(root_base_type),
+                   given(typename A),
+                     if (Satisfies<A, BaseType> && Satisfies<typename Probe<BaseType, A>::base_type, RootBaseType>)(typename Probe<BaseType, A>::base_type),
+                     if (Satisfies<A, MessageType> && Satisfies<A, StatusType>) A
+                 );
+      }
 
       template <typename P>
       struct PointerRebindBackup{};
@@ -494,35 +549,6 @@ namespace valkyrie{
       struct PointerRebind<P>{
         template <typename U>
         using rebind = typename Traits::Pointer<P>::template rebind<U>;
-      };
-
-      template <typename P>
-      struct PointerReferenceBackup{};
-      template <typename P> requires(requires(P&& p){ *std::forward<P>(p); })
-      struct PointerReferenceBackup<P>{
-        using reference = decltype(*std::declval<P>());
-      };
-
-      template <typename P>
-      struct PointerReference : PointerReferenceBackup<P>{};
-      template <typename P> requires(requires{ typename Traits::Pointer<P>::reference; })
-      struct PointerReference<P>{
-        using reference = typename Traits::Pointer<P>::reference;
-      };
-
-
-      template <typename P>
-      struct PointerDifferenceTypeBackup{};
-      template <typename P> requires(requires{ typename std::pointer_traits<P>::difference_type; })
-      struct PointerDifferenceTypeBackup<P>{
-        using difference_type = typename std::pointer_traits<P>::difference_type;
-      };
-
-      template <typename P>
-      struct PointerDifferenceType : PointerDifferenceTypeBackup<P>{};
-      template <typename P> requires(requires{ typename Traits::Pointer<P>::reference; })
-      struct PointerDifferenceType<P>{
-        using difference_type = typename Traits::Pointer<P>::difference_type;
       };
 
 
@@ -553,9 +579,9 @@ namespace valkyrie{
 
       template <typename P>
       struct PointerToPointerBackup{};
-      template <typename P> requires(requires(typename PointerElementType<P>::element_type& t){ { std::pointer_traits<P>::to_pointer(t) } -> std::same_as<P>; })
+      template <typename P> requires(requires(typename Probe<Pointer::ElementType, P>::element_type& t){ { std::pointer_traits<P>::to_pointer(t) } -> std::same_as<P>; })
       struct PointerToPointerBackup<P>{
-        inline constexpr static P toPointer(typename PointerElementType<P>::element_type& t) noexcept {
+        inline constexpr static P toPointer(typename Probe<Pointer::ElementType, P>::element_type& t) noexcept {
           return std::pointer_traits<P>::to_pointer(t);
         }
       };
@@ -568,9 +594,9 @@ namespace valkyrie{
 
       template <typename T>
       struct PointerToPointer : PointerToPointerBackup<T>{};
-      template <typename P> requires(requires(typename PointerElementType<P>::element_type& t){ { Traits::Pointer<P>::toPointer(t) } -> std::same_as<P>; })
+      template <typename P> requires(requires(typename Probe<Pointer::ElementType, P>::element_type& t){ { Traits::Pointer<P>::toPointer(t) } -> std::same_as<P>; })
       struct PointerToPointer<P>{
-        inline constexpr static P toPointer(typename PointerElementType<P>::element_type& t) noexcept {
+        inline constexpr static P toPointer(typename Probe<Pointer::ElementType, P>::element_type& t) noexcept {
           return Traits::Pointer<P>::toPointer(t);
         }
       };
@@ -578,11 +604,11 @@ namespace valkyrie{
 
       template <typename T>
       struct PointerCastBackup{};
-      template <typename P> requires(requires(const P& p){ { static_cast<typename PointerRebind<P>::template rebind<Meta::copy_cv_t<void, typename PointerElementType<P>::element_type>>>(p) }; })
+      template <typename P> requires(requires(const P& p){ { static_cast<typename PointerRebind<P>::template rebind<Meta::copy_cv_t<void, typename Probe<Pointer::ElementType, P>::element_type>>>(p) }; })
       struct PointerCastBackup<P>{
       private:
         template <typename To>
-        using cast_result_t = typename PointerRebind<P>::template rebind<Meta::copy_cv_t<To, typename PointerElementType<P>::element_type>>;
+        using cast_result_t = typename PointerRebind<P>::template rebind<Meta::copy_cv_t<To, typename Probe<Pointer::ElementType, P>::element_type>>;
       public:
         template <typename To>
         inline constexpr static cast_result_t<To> cast(const P& ptr) noexcept {
@@ -596,7 +622,7 @@ namespace valkyrie{
       requires(requires(const P& ptr){
         { Traits::Pointer<P>::template cast<void>(ptr) } ->
         std::same_as<typename PointerRebind<P>::template rebind<
-            Meta::copy_cv_t<void, typename PointerElementType<P>::element_type>>>;
+            Meta::copy_cv_t<void, typename Probe<Pointer::ElementType, P>::element_type>>>;
       })
       struct PointerCast<P>{
         template <typename To>
@@ -695,6 +721,14 @@ namespace valkyrie{
       template <typename E>
       struct ContainerInfo;
 
+      template <typename D>
+      struct DomainInfo
+          : Probe<Domain::DomainType, D>,
+            Probe<Domain::StatusType, D>,
+            Probe<Domain::ErrorType, D>,
+            Probe<Domain::ValueType, D>,
+            Probe<Domain::IsConstant, D>{};
+
       template <typename C>
       struct ClassInfo :
           Probe<Class::Name, C>,
@@ -702,8 +736,8 @@ namespace valkyrie{
           //Probe<Class::Info, C>,
           Probe<Class::Size, C>,
           Probe<Class::Alignment, C>,
-          Probe<Class::IsSingleton, C>,
-          Probe<Class::Instance, C>{};
+          Probe<Class::IsSingleton, C>/*,
+          Probe<Class::Instance, C>*/{};
 
 
       template <typename N>
@@ -714,6 +748,13 @@ namespace valkyrie{
             Probe<Numeric::IsBounded, N>,
             Probe<Numeric::IsExact, N>,
             Probe<Numeric::Bits, N>{};
+
+      template <typename A>
+      struct AgentInfo
+          : Probe<Agent::BaseType, A>,
+            Probe<Agent::RootBaseType, A>,
+            Probe<Agent::MessageType, A>,
+            Probe<Agent::StatusType, A>{};
     }
   }
   
@@ -776,18 +817,17 @@ namespace valkyrie{
 
 
     template <typename T>
-    concept Status = VK_instantiable_with(Traits::Status, T);
+    concept Status = /*VK_instantiable_with(Traits::Status, T)*/true;
 
     template <typename T>
-    concept Error = VK_instantiable_with(Traits::Error, T);
+    concept Error = /*VK_instantiable_with(Traits::Error, T)*/true;
 
     template <typename T>
     concept StatusEnum = VK_instantiable_with(Traits::StatusEnum, T) &&
                          requires(const T& t){
                            typename Traits::Detail::EnumInfo<T>::status_type;
                            typename Traits::Detail::EnumInfo<T>::domain_type;
-                         } && Status<typename Traits::Detail::EnumInfo<T>::status_type>
-                         && ExactSameAs<typename Traits::Detail::EnumInfo<T>::domain_type, typename Traits::Detail::EnumInfo<T>::status_type::domain_type>;
+                         } && Status<typename Traits::Detail::EnumInfo<T>::status_type>;
 
     template <typename C, typename T = void>
     concept Container = requires(C& lv, const C& clv){
@@ -806,10 +846,10 @@ namespace valkyrie{
     concept Range     = VK_instantiable_with(Traits::DynamicArray, R) || VK_instantiable_with(Traits::StaticArray, R);
 
     template <typename S>
-    concept String = VK_instantiable_with(Traits::String, S);
+    concept String    = VK_instantiable_with(Traits::String, S);
 
     template <typename I, typename T = void>
-    concept Iterator = VK_instantiable_with(Traits::Iterator, I) && (ExactSameAs<T, void> || (requires{ typename Traits::Detail::IteratorInfo<I>::reference_type; } && std::convertible_to<typename Traits::Detail::IteratorInfo<I>::reference_type, std::add_lvalue_reference_t<T>>));
+    concept Iterator  = VK_instantiable_with(Traits::Iterator, I) && (ExactSameAs<T, void> || (requires{ typename Traits::Detail::IteratorInfo<I>::reference_type; } && std::convertible_to<typename Traits::Detail::IteratorInfo<I>::reference_type, std::add_lvalue_reference_t<T>>));
 
     template <typename A, typename T = void>
     concept Allocator = requires(A& alloc, size_t n){
@@ -834,6 +874,23 @@ namespace valkyrie{
     } && Traits::Detail::NumericInfo<T>::is_floating_point;
     template <typename T>
     concept Numeric = Integral<T> || FloatingPoint<T> || VK_instantiable_with(Traits::Numeric, T);
+
+    template <typename T>
+    concept Domain = true;/*requires{
+      //typename Traits::Detail::DomainInfo<T>::domain_type;
+      typename Traits::Detail::DomainInfo<T>::status_type;
+      //typename Traits::Detail::DomainInfo<T>::error_type;
+      typename Traits::Detail::DomainInfo<T>::value_type;
+      { Traits::Detail::DomainInfo<T>::is_constant } -> std::convertible_to<bool>;
+    };*/
+
+    template <typename T>
+    concept AgentLike = requires{
+      typename Traits::Detail::AgentInfo<T>::base_type;
+      typename Traits::Detail::AgentInfo<T>::root_base_type;
+      typename Traits::Detail::AgentInfo<T>::message_type;
+      typename Traits::Detail::AgentInfo<T>::status_type;
+    };
   }
   
   template <Container T>
@@ -856,6 +913,10 @@ namespace valkyrie{
   using class_traits     = Traits::Detail::ClassInfo<C>;
   template <Numeric N>
   using numeric_traits   = Traits::Detail::NumericInfo<N>;
+  template <Domain D>
+  using domain_traits    = Traits::Detail::DomainInfo<D>;
+  template <AgentLike A>
+  using agent_traits     = Traits::Detail::AgentInfo<A>;
 
 
   template <typename T>

@@ -2,8 +2,8 @@
 // Created by Maxwell on 2020-11-09.
 //
 
-#ifndef VALKYRIE_ARRAY_HPP
-#define VALKYRIE_ARRAY_HPP
+#ifndef VALKYRIE_CORE_ARRAYS_HPP
+#define VALKYRIE_CORE_ARRAYS_HPP
 
 #include <valkyrie/Core/Utility/Span.hpp>
 #include <valkyrie/Core/Utility/Iterator.hpp>
@@ -1402,9 +1402,6 @@ namespace valkyrie::Core{
 
 
 
-
-
-
   /*static_assert(sizeof(ArrayView<float, 3, 4>) == sizeof(u64));
 
 
@@ -1419,6 +1416,8 @@ namespace valkyrie::Core{
 
 
 }// namespace valkyrie::Core
+
+
 namespace valkyrie {
   // Trait specializations...
 

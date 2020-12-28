@@ -52,8 +52,8 @@ namespace valkyrie{
       class Win32StatusDomain : public StatusDomain{
       public:
 
+        using domain_type = Win32StatusDomain;
         using value_type = u32;
-        using status_type = StatusCode<Win32StatusDomain>;
 
       private:
         class RefCountedWin32String : public StringRef{
@@ -76,9 +76,9 @@ namespace valkyrie{
         constexpr Win32StatusDomain() noexcept = default;
 
         StringView name() const noexcept override { return VK_raw_string(Win32); }
-        StringRef doMessage(const StatusCode<void>& status) const noexcept override {
+        StringRef doMessage(const StatusCode<void>& status) const noexcept override{
           VK_assert(status.domain() == *this);
-          return string_ref(static_cast<const status_type&>(status).value());
+          return string_ref(static_cast<const StatusCode<Win32StatusDomain>&>(status).value());
         }
         Code doCode(const StatusCode<void> &) const noexcept override;
         Severity doSeverity(const StatusCode<void>& status) const noexcept override;
@@ -88,6 +88,7 @@ namespace valkyrie{
 
         constexpr static const Win32StatusDomain& get() noexcept;
       };
+
 
       namespace Detail{
         inline constexpr static Win32StatusDomain win32StatusDomain{};

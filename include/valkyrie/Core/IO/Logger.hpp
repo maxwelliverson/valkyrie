@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_LOGGER_HPP
 #define VALKYRIE_LOGGER_HPP
 
-#include <valkyrie/Core/IO/Messages.hpp>
+#include <valkyrie/Core/Async/Agent.hpp>
 
 namespace valkyrie::Core{
   class Logger{};

@@ -124,6 +124,8 @@ namespace valkyrie::Core{
 
   public:
 
+    static Uuid generate() noexcept;
+
     // Conversion for Windows GUID struct
     constexpr explicit Uuid(unsigned long dataA, u16 dataB, u16 dataC, const u8(&dataD)[8]) noexcept
         : data_{ byte(dataA & 0xFF), byte((dataA >> 8) & 0xFF), byte((dataA >> 16) & 0xFF), byte((dataA >> 24) & 0xFF),
@@ -203,6 +205,16 @@ namespace valkyrie::Core{
     }
   };
   VK_msvc_warning(pop)
+
+
+  /*class UuidGenerator{
+    Uuid state;
+  public:
+    UuidGenerator();
+    explicit UuidGenerator(Uuid seed);
+
+    Uuid next() noexcept;
+  };*/
 
 
 /*#define VK_uuid(uuid) ::valkyrie::Core::Uuid(std::in_place, VK_stringify({uuid}))
