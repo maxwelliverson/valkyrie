@@ -2,11 +2,10 @@
 // Created by Maxwell on 2020-11-09.
 //
 
-#ifndef VALKYRIE_STRING_TYPES_HPP
-#define VALKYRIE_STRING_TYPES_HPP
+#ifndef VALKYRIE_CORE_ADT_STRING_HPP
+#define VALKYRIE_CORE_ADT_STRING_HPP
 
 #include <valkyrie/Core/Utility/StringView.hpp>
-//#include <valkyrie/Core/Memory/Allocator.hpp>
 
 #include <string>
 
@@ -60,4 +59,4 @@ namespace valkyrie::Core{
 struct valkyrie::Traits::String<>{};*/
 
 
-#endif//VALKYRIE_STRING_TYPES_HPP
+#endif //VALKYRIE_CORE_ADT_STRING_HPP

@@ -1177,7 +1177,7 @@
 #define VK_raw_string(...) PP_VK_impl_RAW_STRING(__VA_ARGS__)
 #define VK_string(...) u8##__VA_ARGS__
 #define VK_empty_string VK_string("")
-#define VK_constexpr_error(Msg) VK_if(VK_compiler_msvc(throw Vk::ConstantEvaluationException(Msg))VK_else((void)(Msg, 1 / 0)))
+#define VK_constexpr_error(Msg) VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(throw Vk::ConstantEvaluationException(Msg))VK_else((void)(Msg, 1 / 0)))
 
 
 #define VK_throws VK_if(VK_exceptions_enabled()VK_else(noexcept))

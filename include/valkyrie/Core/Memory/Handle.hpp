@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_HANDLE_HPP
 #define VALKYRIE_HANDLE_HPP
 
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
 
 
 namespace valkyrie::Core{

@@ -24,11 +24,16 @@ class VulkanFunction<Ret(VKAPI_PTR*)(Args...)>{
 public:
   VulkanFunction(F pFunction) noexcept : functionPtr(pFunction){}
   inline Ret operator()(Args... args) const noexcept {
-    if constexpr (std::is_same_v<Ret, void>) {
+    /*if constexpr (std::is_same_v<Ret, void>) {
       functionPtr(args...);
     } else {
       return functionPtr(args...);
-    }
+    }*/
+    return functionPtr(args...);
+  }
+
+  inline explicit operator F() const noexcept {
+    return functionPtr;
   }
 
   inline explicit operator bool() const noexcept {
@@ -48,9 +53,13 @@ public:
 };
 
 class FreeFunctionLoader{
+  void* libraryHandle;
   PFN_vkGetInstanceProcAddr getProcAddr;
 public:
   FreeFunctionLoader(/*PFN_vkGetInstanceProcAddr getProcAddr*/);/* : getProcAddr(getProcAddr){}*/
+  FreeFunctionLoader(const FreeFunctionLoader&) = delete;
+  FreeFunctionLoader(FreeFunctionLoader&& other) noexcept;
+  ~FreeFunctionLoader();
 
   PolymorphicFunction load(const char* pFunc) const noexcept {
     return getProcAddr(nullptr, pFunc);
@@ -89,7 +98,7 @@ struct FreeFunctions{
 
   static FreeFunctions* pInstance;
 
-  FreeFunctionLoader loader{};
+  FreeFunctionLoader loader{  };
 
   VK_function(CreateInstance, createInstance);
   VK_function(EnumerateInstanceExtensionProperties, enumerateInstanceExtensions);
@@ -543,7 +552,7 @@ struct PresentationFunctions{
   VK_function(GetSwapchainCounterEXT, getSwapchainCounter);
 
   VK_function(SetHdrMetadataEXT, setHdrMetadata);
-  VK_function(SetLocalDimmingAMD, setLocalDimming);
+  //VK_function(SetLocalDimmingAMD, setLocalDimming);
 
   PresentationFunctions(DeviceFunctionLoader loader) noexcept : loader(loader){}
 };

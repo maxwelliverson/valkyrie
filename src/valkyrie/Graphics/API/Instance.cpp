@@ -7,8 +7,8 @@
 #include <valkyrie/Graphics/API/Queue.hpp>
 #include <valkyrie/Graphics/API/Surface.hpp>
 
-#include <valkyrie/Core/Utility/Arrays.hpp>
-#include <valkyrie/Core/Utility/FlatSet.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
+#include <valkyrie/Core/ADT/FlatSet.hpp>
 #include <valkyrie/Core/Utility/StringView.hpp>
 #include <valkyrie/Core/Utility/Version.hpp>
 
@@ -26,7 +26,7 @@ class Instance::Impl : public Internal::InstanceImpl{
 
 };
 
-Surface Instance::createSurface(Extent2D<> extents) const noexcept {
+Surface Instance::createSurface(Core::Extent2D<> extents) const noexcept {
   return {*this, extents};
 }
 

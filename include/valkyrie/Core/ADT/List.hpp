@@ -1,9 +1,9 @@
 //
-// Created by Maxwell on 2020-11-09.
+// Created by Maxwell on 2021-01-12.
 //
 
-#ifndef VALKYRIE_LIST_HPP
-#define VALKYRIE_LIST_HPP
+#ifndef VALKYRIE_CORE_ADT_LIST_HPP
+#define VALKYRIE_CORE_ADT_LIST_HPP
 
 #include <plf_list.h>
 
@@ -13,4 +13,4 @@ namespace valkyrie::Core{
   using List = plf::list<T, Alloc>;
 }
 
-#endif//VALKYRIE_LIST_HPP
+#endif //VALKYRIE_CORE_ADT_LIST_HPP

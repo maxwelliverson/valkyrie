@@ -71,7 +71,7 @@ namespace valkyrie::Graphics::API{
 
     bool queueFamilySupportsPresentation(u32 familyIndex, const Surface& surface) const noexcept;
 
-    Box2D<> getPresentRectangle(const Surface& surface) const noexcept;
+    Core::Box2D<> getPresentRectangle(const Surface& surface) const noexcept;
     //void getQueueFamilyProperties(u32& length, QueueFamily* families) noexcept;
 
     friend bool operator==(PhysicalDevice A, PhysicalDevice B) noexcept {

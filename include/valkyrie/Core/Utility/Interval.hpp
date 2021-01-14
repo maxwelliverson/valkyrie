@@ -6,7 +6,6 @@
 #define VALKYRIE_INTERVAL_HPP
 
 #include <valkyrie/Core/Traits.hpp>
-#include <valkyrie/Core/Types.hpp>
 
 namespace valkyrie::Core{
   template <typename T>

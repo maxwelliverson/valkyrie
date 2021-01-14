@@ -5,9 +5,9 @@
 #ifndef VALKYRIE_INSTANCE_HPP
 #define VALKYRIE_INSTANCE_HPP
 
-#include <valkyrie/Graphics/API/Vulkan.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
 #include <valkyrie/Graphics/API/PhysicalDevice.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Graphics/API/Vulkan.hpp>
 
 #include <valkyrie/Core/Utility/StringView.hpp>
 #include <valkyrie/Core/Utility/Version.hpp>
@@ -43,7 +43,7 @@ namespace valkyrie::Graphics::API{
 
 
 
-    Surface createSurface(Extent2D<> extents) const noexcept;
+    Surface createSurface(Core::Extent2D<> extents) const noexcept;
 
 
     Core::Status enable(InstanceExtensionID extensionId) noexcept;

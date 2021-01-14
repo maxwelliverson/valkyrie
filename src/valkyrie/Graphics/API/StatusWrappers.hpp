@@ -5,36 +5,198 @@
 #ifndef VALKYRIE_STATUS_WRAPPERS_HPP
 #define VALKYRIE_STATUS_WRAPPERS_HPP
 
-#include <valkyrie/Core/Error/Status.hpp>
-#include <valkyrie/Core/Utility/Enums.hpp>
+#include <valkyrie/Core/Error/GenericCode.hpp>
+//#include <valkyrie/Core/Utility/Enums.hpp>
 
 #include <vulkan/vulkan_core.h>
-#include <spirv-tools/libspirv.hpp>
-#include <shaderc/shaderc.hpp>
-#include <optix.h>
+//#include <spirv-tools/libspirv.hpp>
+//#include <shaderc/shaderc.hpp>
+//#include <optix.h>
 /*#include <cuda_runtime.h>
 #include <cuda.h>*/
 
-#include <initializer_list>
+//#include "InternalStructures.hpp"
+
+namespace valkyrie::Graphics{
+  class VkResultStatusDomain final : public Core::StatusDomain{
+  public:
+    using value_type = VkResult;
+
+    constexpr VkResultStatusDomain() noexcept : Core::StatusDomain(Core::Uuid("a3138144-1344-43ea-bded-dd0385a12e4c")){}
+
+    string_ref name() const noexcept override {
+      return string_ref("Vulkan");
+    }
+
+    bool doFailure(const Core::StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain() == *this);
+      return static_cast<const Core::StatusCode<VkResultStatusDomain>&>(status).value() < 0;
+    }
+    bool doEquivalent(const Core::StatusCode<void>& statusA, const StatusCode<void>& statusB) const noexcept override {
+      VK_assert(statusA.domain() == *this);
+        return (statusB.domain() == *this)
+             && static_cast<const Core::StatusCode<VkResultStatusDomain>&>(statusA).value() ==
+                static_cast<const Core::StatusCode<VkResultStatusDomain>&>(statusB).value();
+    }
+    Core::Code doCode(const Core::StatusCode<void>& status) const noexcept override {
+
+      using Code = Core::Code;
+
+      VK_assert(status.domain() == *this);
+      switch (static_cast<const Core::StatusCode<VkResultStatusDomain>&>(status).value()) {
+        case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS: return Code::InvalidArgument;
+        case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT: return Code::LostResource;
+        case VK_ERROR_NOT_PERMITTED_EXT: return Code::PermissionDenied;
+        case VK_ERROR_FRAGMENTATION: return Code::TooFragmented;
+        case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return Code::IncompatibleResource;
+        case VK_ERROR_INVALID_EXTERNAL_HANDLE: return Code::InvalidResource;
+        case VK_ERROR_OUT_OF_POOL_MEMORY: return Code::DeviceOutOfMemory;
+        case VK_ERROR_INVALID_SHADER_NV: return Code::InvalidResource;
+        case VK_ERROR_VALIDATION_FAILED_EXT: return Code::FailedAssertion;
+        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return Code::IncompatibleDevice;
+        case VK_ERROR_OUT_OF_DATE_KHR: return Code::ResourceOutOfDate;
+        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return Code::ResourceUnavailable;
+        case VK_ERROR_SURFACE_LOST_KHR: return Code::LostResource;
+        case VK_ERROR_FRAGMENTED_POOL: return Code::TooFragmented;
+        case VK_ERROR_FORMAT_NOT_SUPPORTED: return Code::InvalidFormat;
+        case VK_ERROR_TOO_MANY_OBJECTS: return Code::ResourceLimitReached;
+        case VK_ERROR_INCOMPATIBLE_DRIVER: return Code::BadDriver;
+        case VK_ERROR_FEATURE_NOT_PRESENT: return Code::ResourceUnavailable;
+        case VK_ERROR_EXTENSION_NOT_PRESENT: return Code::ResourceUnavailable;
+        case VK_ERROR_LAYER_NOT_PRESENT: return Code::ResourceUnavailable;
+        case VK_ERROR_MEMORY_MAP_FAILED: return Code::DeviceBadTransfer;
+        case VK_ERROR_DEVICE_LOST: return Code::LostDevice;
+        case VK_ERROR_INITIALIZATION_FAILED: return Code::InitializationFailure;
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY: return Code::DeviceOutOfMemory;
+        case VK_ERROR_OUT_OF_HOST_MEMORY: return Code::OutOfMemory;
+        case VK_SUCCESS: return Code::Success;
+        case VK_NOT_READY: return Code::NotReady;
+        case VK_TIMEOUT: return Code::TimedOut;
+        case VK_EVENT_SET: return Code::Set;
+        case VK_EVENT_RESET: return Code::Unset;
+        case VK_INCOMPLETE: return Code::InProgress;
+        case VK_SUBOPTIMAL_KHR: return Code::InvalidatedState;
+        case VK_THREAD_IDLE_KHR: return Code::Idle;
+        case VK_THREAD_DONE_KHR: return Code::Done;
+        case VK_OPERATION_DEFERRED_KHR: return Code::InProgress;
+        case VK_OPERATION_NOT_DEFERRED_KHR: return Code::Done;
+        case VK_PIPELINE_COMPILE_REQUIRED_EXT: return Code::FurtherActionsRequired;
+        default: return Code::Unknown;
+      }
+    }
+    Core::StringRef doMessage(const Core::StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain() == *this);
+      switch (static_cast<const Core::StatusCode<VkResultStatusDomain>&>(status).value()) {
+          case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS: return "Requested invalid opaque capture address";
+          case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT: return "Lost fullscreen exclusive mode";
+          case VK_ERROR_NOT_PERMITTED_EXT: return "Insufficient permission";
+          case VK_ERROR_FRAGMENTATION: return "Allocation failed due to fragmentation";
+          case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "Plane layout incompatible with DRM format modifier";
+          case VK_ERROR_INVALID_EXTERNAL_HANDLE: return "Invalid handle to external memory";
+          case VK_ERROR_OUT_OF_POOL_MEMORY: return "Pool is out of memory";
+          case VK_ERROR_INVALID_SHADER_NV: return "GLSL syntax error";
+          case VK_ERROR_VALIDATION_FAILED_EXT: return "Validation failure";
+          case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return "Display is incompatible with current GPU";
+          case VK_ERROR_OUT_OF_DATE_KHR: return "Resources are out of date";
+          case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "Requested native window is already in use";
+          case VK_ERROR_SURFACE_LOST_KHR: return "Lost presentation surface";
+          case VK_ERROR_FRAGMENTED_POOL: return "Pool is too fragmented";
+          case VK_ERROR_FORMAT_NOT_SUPPORTED: return "Format not supported by current GPU";
+          case VK_ERROR_TOO_MANY_OBJECTS: return "Too many Vulkan objects";
+          case VK_ERROR_INCOMPATIBLE_DRIVER: return "Incompatible driver";
+          case VK_ERROR_FEATURE_NOT_PRESENT: return "Requested feature not supported";
+          case VK_ERROR_EXTENSION_NOT_PRESENT: return "Requested extension not available";
+          case VK_ERROR_LAYER_NOT_PRESENT: return "Requested layer not found";
+          case VK_ERROR_MEMORY_MAP_FAILED: return "Memory map operation failed";
+          case VK_ERROR_DEVICE_LOST: return "Lost GPU";
+          case VK_ERROR_INITIALIZATION_FAILED: return "Vulkan failed to initialize properly";
+          case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "Out of GPU memory";
+          case VK_ERROR_OUT_OF_HOST_MEMORY: return "Out of system memory";
+          case VK_SUCCESS: return "Success";
+          case VK_NOT_READY: return "Not ready";
+          case VK_TIMEOUT: return "Timed out";
+          case VK_EVENT_SET: return "Event set";
+          case VK_EVENT_RESET: return "Event reset";
+          case VK_INCOMPLETE: return "Property enumeration incomplete";
+          case VK_SUBOPTIMAL_KHR: return "Current swapchain is suboptimal";
+          case VK_THREAD_IDLE_KHR: return "Idle";
+          case VK_THREAD_DONE_KHR: return "Done";
+          case VK_OPERATION_DEFERRED_KHR: return "Operation deferred";
+          case VK_OPERATION_NOT_DEFERRED_KHR: return "Operation completed, not deferred";
+          case VK_PIPELINE_COMPILE_REQUIRED_EXT: return "Pipeline compilation is required";
+          default: return "Unknown error";
+      }
+    }
+
+    Core::Severity  doSeverity(const Core::StatusCode<void>& status) const noexcept override {
+      VK_assert(status.domain() == *this);
+
+      using Severity = Core::Severity;
+
+      switch (static_cast<const Core::StatusCode<VkResultStatusDomain>&>(status).value()) {
+        case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
+        case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+        case VK_ERROR_NOT_PERMITTED_EXT:
+        case VK_ERROR_FRAGMENTATION:
+        case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
+        case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+        case VK_ERROR_OUT_OF_POOL_MEMORY:
+        case VK_ERROR_INVALID_SHADER_NV:
+        case VK_ERROR_VALIDATION_FAILED_EXT:
+        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+        case VK_ERROR_OUT_OF_DATE_KHR:
+        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+        case VK_ERROR_SURFACE_LOST_KHR:
+        case VK_ERROR_FRAGMENTED_POOL:
+        case VK_ERROR_FORMAT_NOT_SUPPORTED:
+        case VK_ERROR_TOO_MANY_OBJECTS:
+        case VK_ERROR_INCOMPATIBLE_DRIVER:
+        case VK_ERROR_FEATURE_NOT_PRESENT:
+        case VK_ERROR_EXTENSION_NOT_PRESENT:
+        case VK_ERROR_LAYER_NOT_PRESENT:
+        case VK_ERROR_MEMORY_MAP_FAILED: return Severity::Error;
 
 
-namespace valkyrie::Graphics::API{
-  //class VulkanStatus;
-  //class SpirvStatus;
-  //class ShaderCStatus;
-  //class CudaRuntimeStatus;
-  //class CudaDriverStatus;
+
+        case VK_NOT_READY:
+        case VK_TIMEOUT:
+        case VK_EVENT_SET:
+        case VK_EVENT_RESET:
+        case VK_INCOMPLETE:
+        case VK_THREAD_IDLE_KHR:
+        case VK_THREAD_DONE_KHR:
+        case VK_OPERATION_DEFERRED_KHR:
+        case VK_OPERATION_NOT_DEFERRED_KHR:
+        case VK_PIPELINE_COMPILE_REQUIRED_EXT: return Severity::Info;
+
+        case VK_SUBOPTIMAL_KHR: return Severity::Performance;
+
+        case VK_SUCCESS: return Severity::Success;
+
+        case VK_ERROR_DEVICE_LOST:
+        case VK_ERROR_INITIALIZATION_FAILED:
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+        case VK_ERROR_OUT_OF_HOST_MEMORY: return Severity::Fatal;
+
+        default: return Severity::InternalError;
+      }
+    }
+
+    static constexpr const VkResultStatusDomain& get() noexcept;
+  };
+
   namespace Detail{
-    class OptiXExceptionDomain;
+    inline constexpr static VkResultStatusDomain vulkanResultDomainInstance{};
   }
-  class OptiXException;
+
+  constexpr const VkResultStatusDomain& VkResultStatusDomain::get() {
+    return Detail::vulkanResultDomainInstance;
+  }
 }
 
 namespace valkyrie{
 
-  using Core::Severity, Core::StringView, Core::Uuid, Core::Code;
-
-  template <>
+  /*template <>
   struct Traits::StatusEnum<VkResult>{
 
     using enum_type = VkResult;
@@ -47,13 +209,12 @@ namespace valkyrie{
 
 
 
-    inline const/*expr*/ static Core::StatusEnumMap<enum_type> info{
+    inline const static Core::StatusEnumMap<enum_type> info{
         {                          VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,               VK_raw_string(Requested invalid opaque capture address),           { Code::InvalidArgument } },
         {                          VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT,          VK_raw_string(Lost fullscreen exclusive mode),                     { Code::LostResource } },
         {                          VK_ERROR_NOT_PERMITTED_EXT,                            VK_raw_string(Insufficient permission),                            { Code::PermissionDenied } },
         {                          VK_ERROR_FRAGMENTATION,                                VK_raw_string(Allocation failed due to fragmentation),             { Code::OutOfMemory } },
         {                          VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT, VK_raw_string(Plane layout incompatible with DRM format modifier), { Code::InsufficientSize, Code::IncompatibleResource } },
-        { Severity::Fatal,         VK_ERROR_INCOMPATIBLE_VERSION_KHR,                     VK_raw_string(Incompatible version),                               { Code::BadVersion, Code::IncompatibleResource } },
         {                          VK_ERROR_INVALID_EXTERNAL_HANDLE,                      VK_raw_string(Invalid handle to external memory),                  { Code::InvalidResource } },
         {                          VK_ERROR_OUT_OF_POOL_MEMORY,                           VK_raw_string(Pool is out of memory),                              { Code::OutOfMemory } },
         {                          VK_ERROR_INVALID_SHADER_NV,                            VK_raw_string(GLSL syntax error),                                  { Code::InvalidResource } },
@@ -89,9 +250,11 @@ namespace valkyrie{
         { Severity::Info,          VK_PIPELINE_COMPILE_REQUIRED_EXT,                      VK_raw_string(Pipeline compilation is required),                   { Code::FurtherActionsRequired } }
     };
 
-  };
+  };*/
 
-  template <>
+
+
+  /*template <>
   struct Traits::StatusEnum<spv_result_t>{
     using enum_type = spv_result_t;
 
@@ -100,7 +263,7 @@ namespace valkyrie{
 
 
 
-    inline const/*expr*/ static Core::StatusEnumMap<enum_type> info{
+    inline const*//*expr*//* static Core::StatusEnumMap<enum_type> info{
         { Severity::Fatal,         SPV_ERROR_WRONG_VERSION,      VK_raw_string(Requested invalid SpirV version),   { Code::BadVersion } },
         {                          SPV_ERROR_MISSING_EXTENSION,  VK_raw_string(Requested extension not available), { Code::ResourceUnavailable, Code::NotImplemented } },
         {                          SPV_ERROR_INVALID_DATA,       VK_raw_string(SpirV code failed data validation), { Code::InvalidResource, Code::FailedAssertion } },
@@ -126,6 +289,8 @@ namespace valkyrie{
     };
   };
 
+  //enum_traits<spv_result_t>::
+
   template <>
   struct Traits::StatusEnum<shaderc_compilation_status>{
     using enum_type = shaderc_compilation_status;
@@ -134,7 +299,7 @@ namespace valkyrie{
     inline constexpr static Uuid       domain_uuid{"65a682d7-ce31-4b80-b606-514814c2cbac"};
 
 
-    inline const/*expr*/ static Core::StatusEnumMap<enum_type> info{
+    inline const*//*expr*//* static Core::StatusEnumMap<enum_type> info{
         { Severity::Info,          shaderc_compilation_status_success,              VK_raw_string(Success),                          { Code::Success } },
         {                          shaderc_compilation_status_invalid_stage,        VK_raw_string(Unable to determine shader stage), { Code::InferenceFailure, Code::InvalidResource } },
         {                          shaderc_compilation_status_compilation_error,    VK_raw_string(Compilation error),                { Code::ExternalError } },
@@ -145,9 +310,9 @@ namespace valkyrie{
         {                          shaderc_compilation_status_transformation_error, VK_raw_string(Bad binary transformation) },
         {                          shaderc_compilation_status_configuration_error,  VK_raw_string(Invalid compiler configuration),   { Code::InvalidConfiguration } }
     };
-  };
+  };*/
 
-  template <>
+  /*template <>
   struct Traits::StatusEnum<OptixResult>{
 
     using enum_type = OptixResult;
@@ -163,7 +328,7 @@ namespace valkyrie{
     );
 
 
-        /*OPTIX_ERROR_INVALID_OPERATION               = 7003,
+        OPTIX_ERROR_INVALID_OPERATION               = 7003,
         OPTIX_ERROR_FILE_IO_ERROR                   = 7004,
         OPTIX_ERROR_INVALID_FILE_FORMAT             = 7005,
         OPTIX_ERROR_DISK_CACHE_INVALID_PATH         = 7010,
@@ -195,7 +360,7 @@ namespace valkyrie{
         OPTIX_ERROR_LIBRARY_UNLOAD_FAILURE          = 7806,
         OPTIX_ERROR_CUDA_ERROR                      = 7900,
         OPTIX_ERROR_INTERNAL_ERROR                  = 7990,
-        OPTIX_ERROR_UNKNOWN                         = 7999,*/
+        OPTIX_ERROR_UNKNOWN                         = 7999,
   };
 
   template <>
@@ -203,39 +368,21 @@ namespace valkyrie{
     inline constexpr static StringView name{u8"OptiXExceptionDomain"};
     inline constexpr static Uuid       uuid{"21a110fc-e91b-4b3e-a210-e01b3d40336d"};
     inline constexpr static const Graphics::API::Detail::OptiXExceptionDomain& get() noexcept;
-  };
+  };*/
 
   //Traits::Probe<Traits::Enum::StatusInfo, VkResult>::
 }
 
-namespace valkyrie::Graphics::API{
+namespace valkyrie::Graphics{
 
-  namespace Detail{
+  /*namespace Detail{
     class OptiXExceptionDomain : Core::StatusDomain{
 
     };
-  }
+  }*/
 
 
-  static_assert(Domain<Core::StatusEnumDomain<VkResult>>);
-
-
-  using VulkanStatus = typename enum_traits<VkResult>::status_type;
-  using SpirVStatus  = typename enum_traits<spv_result_t>::status_type;
-  using ShaderCStatus = typename enum_traits<shaderc_compilation_status>::status_type;
-}
-
-
-
-
-namespace {
-
-
-  //valkyrie::Traits::Detail::DomainInfo<valkyrie::Core::StatusEnumDomain<VkResult>>::
-
-
-
-  inline valkyrie::Graphics::API::VulkanStatus makeStatusCode(VkResult result) noexcept {
+  /*inline valkyrie::Graphics::API::VulkanStatus makeStatusCode(VkResult result) noexcept {
     return valkyrie::Graphics::API::VulkanStatus(result);
   }
   inline valkyrie::Graphics::API::SpirVStatus makeStatusCode(spv_result_t result) noexcept {
@@ -243,7 +390,35 @@ namespace {
   }
   inline valkyrie::Graphics::API::ShaderCStatus makeStatusCode(shaderc_compilation_status result) noexcept {
     return valkyrie::Graphics::API::ShaderCStatus(result);
+  }*/
+
+
+  /*using VulkanStatus = typename enum_traits<VkResult>::status_type;
+  using SpirVStatus  = typename enum_traits<spv_result_t>::status_type;
+  using ShaderCStatus = typename enum_traits<shaderc_compilation_status>::status_type;*/
+  //using VulkanStatus = Core::StatusCode<Core::StatusEnumDomain<VkResult>>;
+  using VulkanStatus = Core::StatusCode<VkResultStatusDomain>;
+  //using SpirVStatus  = Core::StatusCode<Core::StatusEnumDomain<spv_result_t>>;
+  //using ShaderCStatus = Core::StatusCode<Core::StatusEnumDomain<shaderc_compilation_status>>;
+}
+
+
+
+
+namespace {
+
+  inline valkyrie::Graphics::VulkanStatus makeStatusCode(VkResult result) noexcept {
+    return valkyrie::Graphics::VulkanStatus(std::in_place, result);
   }
+  /*inline valkyrie::Graphics::API::SpirVStatus makeStatusCode(spv_result_t result) noexcept {
+    return valkyrie::Graphics::API::SpirVStatus(result);
+  }
+  inline valkyrie::Graphics::API::ShaderCStatus makeStatusCode(shaderc_compilation_status result) noexcept {
+    return valkyrie::Graphics::API::ShaderCStatus(result);
+  }*/
+
+
+  //valkyrie::Traits::Detail::DomainInfo<valkyrie::Core::StatusEnumDomain<VkResult>>::
 }
 
 #endif //VALKYRIE_STATUS_WRAPPERS_HPP

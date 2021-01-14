@@ -1,9 +1,11 @@
 //
-// Created by Maxwell on 2020-11-09.
+// Created by Maxwell on 2021-01-12.
 //
 
-#ifndef VALKYRIE_COLONY_HPP
-#define VALKYRIE_COLONY_HPP
+#ifndef VALKYRIE_CORE_ADT_COLONY_HPP
+#define VALKYRIE_CORE_ADT_COLONY_HPP
+
+#include <valkyrie/Core/Types.hpp>
 
 #include <plf_colony.h>
 
@@ -12,4 +14,4 @@ namespace valkyrie::Core{
   using Colony = plf::colony<T, Alloc, FieldSkipType>;
 }
 
-#endif//VALKYRIE_COLONY_HPP
+#endif //VALKYRIE_CORE_ADT_COLONY_HPP

@@ -5,12 +5,10 @@
 #ifndef VALKYRIE_INTERNAL_DXGI_WRAPPERS_HPP
 #define VALKYRIE_INTERNAL_DXGI_WRAPPERS_HPP
 
-
-#include <valkyrie/Core/Error/Status.hpp>
-#include <valkyrie/Core/Error/Maybe.hpp>
-#include <valkyrie/Core/Utility/FlatMap.hpp>
+#include <valkyrie/Core/ADT/FlatMap.hpp>
 #include <valkyrie/Graphics/API/Vulkan.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/ADT/SmallArray.hpp>
+#include <valkyrie/Core/ADT/StaticArray.hpp>
 
 VK_msvc_warning(push)
 VK_msvc_warning(disable:5104)

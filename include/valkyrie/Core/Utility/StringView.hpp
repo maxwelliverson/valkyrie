@@ -5,13 +5,11 @@
 #ifndef VALKYRIE_STRING_VIEW_HPP
 #define VALKYRIE_STRING_VIEW_HPP
 
-#include <valkyrie/Core/Config.hpp>
 #include <valkyrie/Core/Traits.hpp>
-#include <valkyrie/Core/Types.hpp>
 
-#include <string>
+#include <string_view>
 #include <iterator>
-#include <new>
+/*#include <new>*/
 
 namespace valkyrie::Core{
 
@@ -355,7 +353,6 @@ namespace valkyrie::Core{
 
   class StringView{
     const utf8* pString = u8"";
-    u32 length_ = 0;
     u32 byteLength_ = 0;
   public:
 
@@ -386,12 +383,10 @@ namespace valkyrie::Core{
     })
     constexpr StringView(Str&& str) noexcept
         : pString(Detail::StringInfo<std::remove_cvref_t<Str>>::data(std::forward<Str>(str))),
-          length_(Detail::StringInfo<std::remove_cvref_t<Str>>::length(std::forward<Str>(str))),
           byteLength_(Detail::StringInfo<std::remove_cvref_t<Str>>::byteLength(std::forward<Str>(str))){}
 
     constexpr StringView(const utf8* pData, u32 stringLength) noexcept
         : pString(pData),
-          length_(stringLength),
           byteLength_(stringLength){}
 
 
@@ -399,8 +394,8 @@ namespace valkyrie::Core{
 
     [[nodiscard]] constexpr pointer data() const noexcept { return pString; }
 
-    [[nodiscard]] constexpr u32 size() const noexcept { return length_; }
-    [[nodiscard]] constexpr u32 length() const noexcept { return length_; }
+    [[nodiscard]] constexpr u32 size() const noexcept { return byteLength_; }
+    [[nodiscard]] constexpr u32 length() const noexcept { return byteLength_; }
 
     [[nodiscard]] constexpr u32 byteLength() const noexcept { return byteLength_; }
 
@@ -423,7 +418,6 @@ namespace valkyrie::Core{
       return A.byteLength_ <=> B.byteLength_;
     }
   };
-
   class MutableStringView{
     utf8* pString = nullptr;
     u32   stringLength = 0;
@@ -455,7 +449,7 @@ namespace valkyrie::Core{
     VK_nodiscard constexpr u32 length() const noexcept { return stringLength; }
 
     VK_nodiscard reference front() const noexcept { return *begin(); }
-    VK_nodiscard reference back() const noexcept { return *(pString + byteLength_ - 1); }
+    VK_nodiscard reference back() const noexcept { return *(pString + stringLength - 1); }
 
     VK_nodiscard iterator        begin() const noexcept { return iterator(pString); }
     VK_nodiscard const_iterator cbegin() const noexcept { return const_iterator(pString); }
@@ -468,7 +462,18 @@ namespace valkyrie::Core{
     }
     VK_nodiscard friend std::strong_ordering operator<=>(MutableStringView A, MutableStringView B) noexcept {
 
-      /*auto compResult =*/return std::lexicographical_compare_three_way(A.pString, A.pString + A.stringLength, B.pString, B.pString + B.stringLength);
+      //return std::lexicographical_compare_three_way(A.pString, A.pString + A.stringLength, B.pString, B.pString + B.stringLength);
+
+      //return std::u8string_view{A.pString, A.stringLength} <=> std::u8string_view{B.pString, B.stringLength};
+
+      const u32 minLength = std::min(A.stringLength, B.stringLength);
+      for (u32 i = 0; i < minLength; ++i)
+        if (auto compResult = A.pString[i] <=> B.pString[i]; compResult != std::strong_ordering::equal)
+          return compResult;
+      return A.stringLength <=> B.stringLength;
+
+
+      //auto compResult = std::char_traits<utf8>::compare(A.pString, B.pString, std::min(A.stringLength, B.stringLength));
       /*if (compResult != std::strong_ordering::equal)
         return compResult;
       return A.stringLength <=> B.stringLength;*/
@@ -479,7 +484,7 @@ namespace valkyrie::Core{
     }
   };
 
-  class StringReference{
+  /*class StringReference{
 
     inline static constexpr utf8 EmptyString[1] = u8"";
 
@@ -539,9 +544,9 @@ namespace valkyrie::Core{
             VK_assert(in.pThis);
             new(in.pThis) T{};
             break;
-            /*case ThunkOp::callback:
+            *//*case ThunkOp::callback:
               in.callback.pFunction(pTo, in.callback.pData);
-              break;*/
+              break;*//*
           case ThunkOp::copy_ctor:
             VK_assert(in.pThis && in.pConstOther);
             new(in.pThis) T{*(const T*)in.pConstOther};
@@ -719,7 +724,7 @@ namespace valkyrie::Core{
       return pResult;
     }
     [[nodiscard]] iterator cend() const noexcept { return end(); }
-  };
+  };*/
 
   class StringRef {
   public:
@@ -770,6 +775,8 @@ namespace valkyrie::Core{
     template <size_t N>
     StringRef(const utf8(&cString)[N]) noexcept :
         StringRef(cString, N - 1){}
+
+    StringRef(StringView sv) noexcept : StringRef(sv.data(), sv.length()){}
 
     explicit StringRef(const utf8 *str, size_type len = static_cast<size_type>(-1), void *state0 = nullptr, void *state1 = nullptr, void *state2 = nullptr,
 #ifndef NDEBUG
@@ -874,7 +881,13 @@ namespace valkyrie::Core{
     [[nodiscard]] const_iterator cend() const noexcept { return _end; }
   };
 
-  class StringLiteral{
+  class StringLiteral : public StringView{
+  public:
+    template <size_t N>
+    consteval StringLiteral(const char(&stringLiteral)[N]) : StringView(stringLiteral, N - 1){}
+  };
+
+  /*class StringLiteral{
     const utf8* pString;
     u32 Size;
   public:
@@ -945,9 +958,9 @@ namespace valkyrie::Core{
         return compResult;
       return A.Size <=> B.Size;
     }
-  };
+  };*/
 
-  class Twine{
+  /*class Twine{
     class ErasedValueType{
 
     };
@@ -959,7 +972,7 @@ namespace valkyrie::Core{
     };
   public:
 
-  };
+  };*/
 
 }
 

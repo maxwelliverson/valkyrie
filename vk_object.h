@@ -258,10 +258,10 @@ namespace Vk{
       this->swap(Other);
     }
 
-    template <typename U> requires(std::constructible_from<T*, U*>)
+    template <typename U> requires(ConstructibleFrom<T*, U*>)
     explicit(!std::convertible_to<U*, T*>) Handle(const Handle<U>& Other) noexcept :
         pObject(static_cast<T*>(Other.pObject->retain())){}
-    template <typename U> requires(std::constructible_from<T*, U*>)
+    template <typename U> requires(ConstructibleFrom<T*, U*>)
     explicit(!std::convertible_to<U*, T*>) Handle(Handle<U>&& Other) noexcept :
         pObject(static_cast<T*>(Other.pObject)){
       Other.pObject = Handle<U>::NullHandle;

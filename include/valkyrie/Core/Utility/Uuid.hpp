@@ -203,6 +203,21 @@ namespace valkyrie::Core{
         return std::memcmp(A.data_, B.data_, UuidSize) <=> 0;
       }
     }
+
+    friend constexpr u64 toInteger(const Uuid& uuid) noexcept {
+      VK_consteval_block{
+        u64 result = 0;
+        for (u32 i = 0; i < UuidSize / 2; ++i)
+          result |= (std::to_integer<u64>(uuid.data_[i]) << (i * CHAR_BIT));
+        for (u32 i = 0; i < UuidSize / 2; ++i)
+          result ^= (std::to_integer<u64>(uuid.data_[i + (UuidSize / 2)]) << (i * CHAR_BIT));
+        return result;
+      }
+      VK_runtime_block{
+        const auto& u64data = reinterpret_cast<const u64(&)[2]>(uuid.data_);
+        return u64data[0] ^ u64data[1];
+      }
+    }
   };
   VK_msvc_warning(pop)
 
@@ -224,5 +239,12 @@ namespace valkyrie::Core{
   static_assert(VK_uuid(2390a52c-3180-4129-8552-a506545cf6de) == Uuid{"2390a52c-3180-4129-8552-a506545cf6de"});*/
 
 }
+
+template <>
+struct std::hash<valkyrie::Core::Uuid>{
+  inline valkyrie::u64 operator()(const valkyrie::Core::Uuid& uuid) const noexcept {
+    return toInteger(uuid);
+  }
+};
 
 #endif//VALKYRIE_UUID_HPP

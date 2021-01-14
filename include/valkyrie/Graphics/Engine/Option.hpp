@@ -6,11 +6,12 @@
 #define VALKYRIE_GRAPHICS_OPTION_HPP
 
 
-#include <valkyrie/Core/Utility/Arrays.hpp>
-#include <valkyrie/Core/Utility/FlatMap.hpp>
-#include <valkyrie/Core/Utility/String.hpp>
 #include <valkyrie/Core/Utility/Version.hpp>
-#include <valkyrie/Core/Error/Maybe.hpp>
+#include <valkyrie/Core/ADT/ArrayRef.hpp>
+#include <valkyrie/Core/ADT/FlatMap.hpp>
+#include <valkyrie/Core/Utility/String.hpp>
+
+
 
 namespace valkyrie::Graphics::Engine{
 
@@ -52,23 +53,33 @@ namespace valkyrie::Graphics::Engine{
   template <typename>
   class Field;
   template <>
-  class Field<void>{
+  class Field<void> : public Option{
     Core::StringView name_;
   protected:
+    constexpr Field() = default;
     constexpr explicit Field(Core::StringView name) noexcept : name_(name){}
   public:
     Core::StringView name() const noexcept {
       return {name_.data(), static_cast<u32>(name_.size())};
     }
+    Option* doGetDependencies(u32& arraySize) const noexcept override;
+    bool    doIsSupported()     const noexcept override;
   };
   template <>
-  class Field<Core::String> : public Field<void>{};
+  class Field<Core::String> : public Field<void>{
+  public:
+    Field() = default;
+  };
   template <>
-  class Field<bool> : public Field<void>{};
+  class Field<bool> : public Field<void>{
+  public:
+    Field() = default;
+  };
   template <typename T, typename ...Opt>
   class Field<Core::Interval<T, Opt...>> : public Field<void>{
     Core::Interval<T, Opt...> value_;
   public:
+    constexpr Field() = default;
     constexpr Field(Core::StringView name) noexcept : Field<void>(name), value_(){}
 
     constexpr auto& value() noexcept {
@@ -79,21 +90,31 @@ namespace valkyrie::Graphics::Engine{
     }
   };
 
-  class EnumeratedField : Field<void>{
+  class EnumeratedField : public Field<void>{
     Enumeration enumeration;
 
   protected:
     EnumeratedField();
   };
   template <Enum E>
-  class Field<E> : public EnumeratedField{};
+  class Field<E> : public EnumeratedField{
+  public:
+    Field() = default;
+  };
+
   class BitFlagField : public Field<void>{};
+
   template <BitFlagEnum E>
-  class Field<E> : public BitFlagField{};
+  class Field<E> : public BitFlagField{
+  public:
+    Field() = default;
+  };
   template <>
   class Field<Group> : public Field<void>{
     Core::FlatSet<Field<void>*> enabledFields;
     Core::FlatSet<Field<void>*> disabledFields;
+  public:
+    Field() = default;
   };
 
   class EnabledOption : public Option{
@@ -109,7 +130,7 @@ namespace valkyrie::Graphics::Engine{
     }
     inline Core::Status enable(bool b = true)  noexcept {
 
-      if (!isSupported())
+      if (!doIsSupported())
         return Core::Code::NotSupported;
 
       auto result = this->doSetEnabled(b);
@@ -131,7 +152,7 @@ namespace valkyrie::Graphics::Engine{
     inline void setSupport(bool value) noexcept {
       isSupported_ = value;
     }
-    inline bool isSupported() const noexcept {
+    bool    doIsSupported()     const noexcept override {
       return isSupported_;
     }
   };
@@ -145,6 +166,7 @@ namespace valkyrie::Graphics::Engine{
     constexpr Feature(Core::StringView name) noexcept : EnabledOption(name){}
 
     EnabledOption* doGetDependencies(u32& arraySize) const noexcept override;
+
   };
 
   class Extension : public EnabledOption{
@@ -203,6 +225,7 @@ namespace valkyrie::Graphics::Engine{
     inline Core::Version specVersion() const noexcept {
       return specVersion_;
     }
+
   };
 }
 
@@ -241,14 +264,32 @@ namespace valkyrie::Graphics::Engine::Options{
       template <size_t N>
       class Padding{
         char padding_BUFFER_[N];
+        template <size_t ...I>
+        constexpr explicit Padding(const Padding& other, std::index_sequence<I...>) noexcept : padding_BUFFER_{ other.padding_BUFFER_[I]... }{}
+      public:
+        constexpr Padding() = default;
+        constexpr Padding(const Padding& other) noexcept : Padding(other, std::make_index_sequence<N>{}){}
       };
       template <>
       class Padding<0>{};
+
+      template <size_t N>
+      struct aligned_storage : std::aligned_storage<N>{};
+      template <>
+      struct aligned_storage<0> : std::aligned_storage<1>{};
+
+      template <size_t N>
+      using aligned_storage_t = typename aligned_storage<N>::type;
+
       template <typename T, size_t N>
-      class Padded : public T, public Padding<N - sizeof(T)>{
+      class Padded : public T/*, public Padding<N - sizeof(T)>*/{
+        [[no_unique_address]] aligned_storage_t<N - sizeof(T)> paddingLMAO{};
       public:
         using T::T;
       };
+      class EXTDescriptorIndexing : public DeviceExtension{};
+      class KHRBufferDeviceAddress : public DeviceExtension{};
+      class KHRDeferredHostOperations : public DeviceExtension{};
       class KHRAccelerationStructure : public DeviceExtension{
         VK_expand_features(
             accelerationStructure,
@@ -263,15 +304,18 @@ namespace valkyrie::Graphics::Engine::Options{
         template <typename T>
         using PaddedField = Padded<Field<T>, MaxSize>;
 
+        using MaxU64Field = Padded<Field<Core::MaxU64>, MaxSize>;
+        using MaxU32Field = Padded<Field<Core::MaxU32>, MaxSize>;
+        using MinU32Field = Padded<Field<Core::MinU32>, MaxSize>;
 
-        PaddedField<Core::MaxU64> geometryCount;
-        PaddedField<Core::MaxU64> instanceCount;
-        PaddedField<Core::MaxU64> primitiveCount;
-        PaddedField<Core::MaxU32> perStageDescriptor;
-        PaddedField<Core::MaxU32> perStageDescriptorUpdateAfterBind;
-        PaddedField<Core::MaxU32> descriptorSet;
-        PaddedField<Core::MaxU32> descriptorSetUpdateAfterBind;
-        PaddedField<Core::MinU32> scratchOffsetAlignment;
+        MaxU64Field geometryCount;
+        MaxU64Field instanceCount;
+        MaxU64Field primitiveCount;
+        MaxU32Field perStageDescriptor;
+        MaxU32Field perStageDescriptorUpdateAfterBind;
+        MaxU32Field descriptorSet;
+        MaxU32Field descriptorSetUpdateAfterBind;
+        MinU32Field scratchOffsetAlignment;
 
       public:
         constexpr KHRAccelerationStructure() noexcept : DeviceExtension(VK_raw_string(KHR_acceleration_structure), Core::Version(11)){}
@@ -280,7 +324,15 @@ namespace valkyrie::Graphics::Engine::Options{
           return features_;
         }
         Core::ArrayRef<Field<void>> properties() noexcept override {
-          return Core::ArrayRef<Field<void>, 8, MaxSize>{ &geometryCount };
+          return Core::ArrayRef<Field<void>, 8>(&geometryCount);
+        }
+
+        DeviceExtension* doGetDependencies(u32& arraySize) const noexcept override{
+          //EXTDescriptorIndexing
+          //KHRBufferDeviceAddress
+          //KHRDeferredHostOperations
+          arraySize = 3;
+          return nullptr;
         }
       };
     }
@@ -289,7 +341,7 @@ namespace valkyrie::Graphics::Engine::Options{
   }
 
 
-  inline constexpr static Detail::KHRAccelerationStructure KHR_acceleration_structure;
+  //inline constexpr static Detail::KHRAccelerationStructure KHR_acceleration_structure;
 }
 
 #undef VK_instance_extension

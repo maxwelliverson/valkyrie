@@ -5,13 +5,8 @@
 #ifndef VALKYRIE_ASYNC_AGENT_HPP
 #define VALKYRIE_ASYNC_AGENT_HPP
 
-
-#include <valkyrie/Core/Utility/StringView.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
-#include <valkyrie/Core/Utility/FlatMap.hpp>
-#include <valkyrie/Core/Utility/Enums.hpp>
 #include <valkyrie/Core/Error/Maybe.hpp>
-
+#include <valkyrie/Core/Utility/FunctionRef.hpp>
 #include <valkyrie/Core/Async/Atomic.hpp>
 
 #include <coroutine>
@@ -21,7 +16,7 @@
 
 
 
-namespace valkyrie::Core{
+/*namespace valkyrie::Core{
 
   //class Agent;
   struct Message;
@@ -109,7 +104,7 @@ namespace valkyrie::Traits{
     inline constexpr static Core::StringView domain_name{VK_string("Agent Status")};
     inline constexpr static Core::Uuid       domain_uuid{"1204717e-359a-4b77-9e7f-e0ab787e8e55"};
 
-    inline const/*expr*/ static Core::StatusEnumMap<enum_type> info{
+    inline const*//*expr*//* static Core::StatusEnumMap<enum_type> info{
         { Core::Severity::Success,       Core::AgentStatusCode::Success,                   VK_string("Success"),                                                          { Core::Code::Success } },
         { Core::Severity::Info,          Core::AgentStatusCode::Queued,                    VK_string("Message is queued but has not yet been read"),                      { Core::Code::InProgress, Core::Code::Success } },
         { Core::Severity::InternalError, Core::AgentStatusCode::UnknownError,              VK_string("Unknown Internal Error occurred in the Valkyrie Agents subsystem"), { } },
@@ -128,28 +123,59 @@ namespace valkyrie::Traits{
         {                                Core::AgentStatusCode::FailedToProcessExternal,   VK_string("Core::AgentStatusCode::FailedToProcessExternal"),                   { Core::Code::ExternalError } }
     };
   };
-}
+}*/
 
 namespace valkyrie::Core{
 
-  using AgentStatus = typename enum_traits<AgentStatusCode>::status_type;
+
+
+
+
+  enum class MessageCmd : u32;
 
   namespace Detail{
-    class MessageDomainBase{
+    /*class MessageDomainBase{
 
-    };
+    };*/
   }
 
-
-
-
   enum class MessageState : u32{
-    Invalid,
-    Written,
-    Locked,
-    Read,
-    Completed
+    Dead,
+    Alive,
+    Condemned
   };
+
+  class AgentStatusDomain : public StatusDomain{
+  public:
+    using value_type = u64;
+
+    constexpr AgentStatusDomain(const Uuid& uuid) noexcept : StatusDomain(uuid){}
+  };
+
+  class AgentStatusCodeDomain : public AgentStatusDomain{
+  public:
+    enum class Kind : u32{
+      Success,
+      NotReady
+    };
+    using value_type = Kind;
+    /*struct value_type{
+      Kind kind;
+
+    };*/
+  };
+  class AgentException{};
+  class AgentExceptionDomain : public AgentStatusDomain{
+  public:
+    using value_type = AgentException*;
+
+
+  };
+
+
+  using AgentStatus = StatusCode<AgentStatusDomain>;
+  template <typename T>
+  using AgentResult = Maybe<T, AgentStatusDomain>;
 
   enum class MessageAction : u32{
     Advance  = 0x1,
@@ -196,65 +222,42 @@ namespace valkyrie::Core{
     UserDefined
   };*/
 
+  class AgentMailbox;
 
-  struct Message{
-    Atomic<MessageState> state;
-    Atomic<u32>          nextOffset;
+  class AgentMessage{
+
+    friend class AgentMailbox;
+    class CondemnedMessage;
+
+    Atomic<u32>          nextOffset = 0;
+    Atomic<MessageState> state      = MessageState::Alive;
+
+    inline void condemn() noexcept;
+    inline u32  exile(u32) noexcept;
+
+  public:
+    virtual ~AgentMessage() = default;
   };
 
-
-  class MessageQueue;
-
-  class MessageProducer{
-    MessageQueue* pQueue;
-    u32 producerId;
+  class AgentMessage::CondemnedMessage final : public AgentMessage{
   public:
-    MessageProducer(MessageQueue* pQueue) noexcept;
-    MessageProducer(const MessageProducer& other) = delete;
-    MessageProducer(MessageProducer&& other) noexcept;
-
-    MessageProducer& operator=(const MessageProducer& other) = delete;
-    MessageProducer& operator=(MessageProducer&& other) noexcept;
-
-    ~MessageProducer();
-
-    Maybe<MessageProducer> clone() const noexcept;
-    void setName(Core::StringView name) const noexcept;
-
-
-    friend bool operator==(const MessageProducer& A, const MessageProducer& B) noexcept = default;
-  };
-  class MessageConsumer{
-    MessageQueue* pQueue;
-    u32 nextMessageOffset;
-    u32 consumerId;
-  public:
-    MessageConsumer(MessageQueue* pQueue) noexcept;
-    MessageConsumer(const MessageConsumer& other) = delete;
-    MessageConsumer(MessageConsumer&& other) noexcept;
-
-    MessageConsumer& operator=(const MessageConsumer& other) = delete;
-    MessageConsumer& operator=(MessageConsumer&& other) noexcept;
-
-    ~MessageConsumer();
-
-    Maybe<MessageConsumer> clone() const noexcept;
-    void setName(Core::StringView name) const noexcept;
-
-    friend bool operator==(const MessageConsumer& A, const MessageConsumer& B) noexcept {
-      return std::tie(A.pQueue, A.consumerId) == std::tie(B.pQueue, B.consumerId);
+    CondemnedMessage(u32 nextOffset) noexcept{
+      this->nextOffset = nextOffset;
+      this->state      = MessageState::Condemned;
     }
   };
 
-  class MessageChannel{
-    MessageQueue* pQueue;
-  public:
-    MessageChannel();
-    MessageChannel(u32 initialCapacity);
 
-    MessageProducer makeProducer() noexcept;
-    MessageConsumer makeConsumer() noexcept;
-  };
+  inline void AgentMessage::condemn() noexcept {
+    const u32 cacheNextOffset = this->nextOffset;
+    VK_assert(this->state.load() == MessageState::Alive);
+    this->~AgentMessage();
+    new(this) CondemnedMessage(cacheNextOffset);
+  }
+  inline u32  AgentMessage::exile(const u32 writeOffset) noexcept {
+    MessageState condemnedState = MessageState::Condemned;
+    return state.compare_exchange_strong(condemnedState, MessageState::Dead, std::memory_order_acquire) ? nextOffset.load(std::memory_order_acquire) : writeOffset;
+  }
 
   namespace Detail{
     template <typename T>
@@ -278,79 +281,284 @@ namespace valkyrie::Core{
     };
   }
 
-  template <typename T>
-  concept Polymorphic = requires(T* pValue){
-    { dynamic_cast<const volatile void*>(pValue) };
-  };
-  template <typename T>
-  concept Abstract    = Polymorphic<T> && requires{
-    { sizeof(T) };
-  } && !requires(Detail::AnyType a){
-    { T(a) };
+  enum class AgentConcurrency : u32{
+    MultiProducer = 0x1,
+    MultiConsumer = 0x2,
+    OutOfOrderConsumption = 0x4 | MultiConsumer,
+    Blocking      = 0x8
   };
 
-  template <typename T>
-  concept AgentLike = /*Polymorphic<T> && */requires(T& v, const T& cv, const Detail::HasProtectedMembers<T>& pv){
-      typename T::message_type;
-      typename T::status_type;
-    { pv.writeMessageDefault() } -> SameAs<typename T::status_type>;
-    { pv.writeMessageNonDefault() } -> SameAs<typename T::status_type>;
-  };
+  class AgentMailbox{
 
-  class AgentBase{
+
+    friend class Agent;
+
+
+    inline constexpr static u32              UniqueLock = u32(-1);
+
+    inline constexpr static AgentConcurrency ConcurrencySPSC{ 0 };
+    inline constexpr static AgentConcurrency ConcurrencyMPSC{ AgentConcurrency::MultiProducer };
+    inline constexpr static AgentConcurrency ConcurrencySPMC{ AgentConcurrency::MultiConsumer };
+    inline constexpr static AgentConcurrency ConcurrencyMPMC{ (u32)AgentConcurrency::MultiProducer | (u32)AgentConcurrency::MultiConsumer };
+    inline constexpr static AgentConcurrency ConcurrencySPMCNonCoherent{ AgentConcurrency::OutOfOrderConsumption };
+    inline constexpr static AgentConcurrency ConcurrencyMPMCNonCoherent{ (u32)AgentConcurrency::MultiProducer | (u32)AgentConcurrency::OutOfOrderConsumption };
+
+    using PFN_writeMessage = AgentResult<AgentMessage*>(AgentMailbox::*)(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    using PFN_readMessage  = AgentStatus(AgentMailbox::*)(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+
+
+    AgentResult<AgentMessage*> writeMessageSPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageMPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageSPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageSPMCNonCoherent(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageMPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+
+    AgentStatus                readMessageSC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                readMessageMC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                readMessageNonCoherent (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+
+    struct Interface{
+      PFN_writeMessage pfnWriteMessage;
+      PFN_readMessage  pfnReadMessage;
+    };
+
+    inline static Interface dispatchInterface(AgentConcurrency concurrency) noexcept {
+      switch (concurrency) {
+        case ConcurrencySPSC:
+          return { &AgentMailbox::writeMessageSPSC, &AgentMailbox::readMessageSC };
+        case ConcurrencyMPSC:
+          return { &AgentMailbox::writeMessageMPSC, &AgentMailbox::readMessageSC };
+        case ConcurrencySPMC:
+          return { &AgentMailbox::writeMessageSPMC, &AgentMailbox::readMessageMC };
+        case ConcurrencyMPMC:
+          return { &AgentMailbox::writeMessageMPMC, &AgentMailbox::readMessageMC };
+        case ConcurrencySPMCNonCoherent:
+          return { &AgentMailbox::writeMessageSPMCNonCoherent, &AgentMailbox::readMessageNonCoherent };
+        case ConcurrencyMPMCNonCoherent:
+          return { &AgentMailbox::writeMessageMPMC, &AgentMailbox::readMessageNonCoherent };
+        VK_no_default;
+      }
+    }
+
+  protected:
+    void* pMessageQueue;
+    u32   queueSize;
+
+
+    Atomic<u32> nextReadOffset = 0;
+    Atomic<u32> nextWriteOffset = 0;
+    Atomic<u32> syncMarker = 0;
+
+    Interface dynamicInterface;
+
+
+
+    inline void          waitForMessage(const u32 readOffset) const noexcept {
+      nextWriteOffset.wait(readOffset);
+    }
+    inline AgentMessage* toMessage(const u32 offset) const noexcept {
+      return reinterpret_cast<AgentMessage*>(static_cast<std::byte*>(pMessageQueue) + offset);
+    }
+    inline bool          hasAvailableSpace(const u32 writeOffset, const u32 nextWrite) const noexcept {
+      const u32 readOffset = nextReadOffset.load();
+      return nextWrite < (readOffset + (queueSize * bool(readOffset < writeOffset)));
+    }
+
+    explicit AgentMailbox() noexcept : pMessageQueue(nullptr), queueSize(0), dynamicInterface(){}
+    explicit AgentMailbox(AgentConcurrency concurrency, Status& status) noexcept;
+    explicit AgentMailbox(u32 queueSize, AgentConcurrency concurrency, Status& status) noexcept;
+
   public:
-    using message_type = Message;
-    using status_type = typename enum_traits<AgentStatusCode>::status_type;
+
+    AgentMailbox(const AgentMailbox&) = delete;
+    AgentMailbox(AgentMailbox&&) noexcept;
+    AgentMailbox& operator=(const AgentMailbox&) = delete;
+    AgentMailbox& operator=(AgentMailbox&&) noexcept;
+    ~AgentMailbox();
+
+    inline static Maybe<AgentMailbox> create(AgentConcurrency concurrency) noexcept {
+      Status status;
+      AgentMailbox mailbox{concurrency, status};
+      if (status.failure())
+        return std::move(status);
+      return std::move(mailbox);
+    }
+    inline static Maybe<AgentMailbox> create(u32 queueSize, AgentConcurrency concurrency) noexcept {
+      Status status;
+      AgentMailbox mailbox{queueSize, concurrency, status};
+      if (status.failure())
+        return std::move(status);
+      return std::move(mailbox);
+    }
+
+    inline bool empty() const noexcept {
+      return nextWriteOffset.load() == nextReadOffset.load();
+    }
+
+    inline AgentResult<AgentMessage*> writeMessage(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+      return (this->*dynamicInterface.pfnWriteMessage)(fnCtor, msgSize);
+    }
+    inline AgentStatus                readMessage( FunctionRef<AgentStatus(AgentMessage&)> msgProc)        noexcept {
+      return (this->*dynamicInterface.pfnReadMessage)(msgProc);
+    }
+  };
+  class AgentBackend{
+
+    AgentBackend* pIndirectBackend = nullptr;
+    u32  mailboxCount = 0;
+    bool isRunning = false;
+    bool isIndirect = false;
+
+    virtual Status doRegisterMailbox(AgentMailbox& mailbox) noexcept = 0;
+    virtual Status doUnregisterMailbox(const AgentMailbox& mailbox) noexcept = 0;
+    virtual void   doUnregisterAll() noexcept = 0;
+    virtual void   doDelete() noexcept = 0;
+    virtual void   doRun() noexcept = 0;
+
+
+
   protected:
 
-    status_type writeMessage(void(*pConstructor)(void*) noexcept) noexcept;
-    status_type writeMessage(void(*pConstructor)(void*, void*) noexcept, void* pArgs) noexcept;
-    status_type readMessage() noexcept;
-
   public:
+    Status registerMailbox(AgentMailbox& mailbox) noexcept {
+      ++mailboxCount;
+      if (pIndirectBackend)
+        return pIndirectBackend->registerMailbox(mailbox);
+      else
+        return doRegisterMailbox(mailbox);
+    }
+    Status unregisterMailbox(const AgentMailbox& mailbox) noexcept {
+      VK_assert(mailboxCount > 0);
+      --mailboxCount;
+      if (pIndirectBackend)
+        return pIndirectBackend->unregisterMailbox(mailbox);
+      else
+        return doUnregisterMailbox(mailbox);
+    }
+    void   run() noexcept {
+      VK_assert(!isRunning);
+      isRunning = true;
+      if (pIndirectBackend)
+        pIndirectBackend->run();
+      else
+        doRun();
+    }
 
-    template <typename T, typename ...Args>
-    inline AgentStatus write(Args&& ...args) noexcept {
-      if constexpr (sizeof...(Args) > 0) {
-        std::tuple<Args&&...> argTuple{ std::forward<Args>(args)... };
-        return this->writeMessage(Detail::template emplaceMsgFunc<T, Args...>, &argTuple);
-      }
-      else {
-        return this->writeMessage(Detail::template emplaceMsgDefaultCtor<T>);
+    AgentBackend* getAddress() noexcept {
+      if (pIndirectBackend)
+        return pIndirectBackend;
+      return this;
+    }
+
+    virtual ~AgentBackend() {
+      if (pIndirectBackend) {
+
       }
     }
 
-    virtual ~AgentBase() = default;
   };
 
-  template <typename Derived, std::derived_from<AgentBase> Base = AgentBase>
-  class Agent : public Base{
-  public:
-    using typename Base::message_type;
-    using typename Base::status_type;
-    using base_type = Base;
-    using process_fn_type = status_type(Derived::*)(message_type& msg) noexcept;
+  class Agent{
 
-    using Base::Base;
+    enum class Flags{
+      MultiProducer   = 0x1,
+      MultiConsumer   = 0x2,
+      NonBlocking     = 0x4,
+      RelaxedOrdering = 0x8,
+      Shared          = 0x10,
+      MaxValuePlusOne
+    };
+
+    friend constexpr Flags operator|(Flags a, Flags b) noexcept {
+      return static_cast<Flags>(static_cast<u32>(a) | static_cast<u32>(b));
+    }
+    friend constexpr Flags operator&(Flags a, Flags b) noexcept {
+      return static_cast<Flags>(static_cast<u32>(a) & static_cast<u32>(b));
+    }
+    friend constexpr Flags operator^(Flags a, Flags b) noexcept {
+      return static_cast<Flags>(static_cast<u32>(a) ^ static_cast<u32>(b));
+    }
+
+    inline constexpr static Flags flagMask =
+        Flags{
+            static_cast<u32>(Flags::MaxValuePlusOne) |
+            (static_cast<u32>(Flags::MaxValuePlusOne) - 2)
+        };
+
+
+
+    friend constexpr Flags operator~(Flags a) noexcept {
+      return flagMask & static_cast<Flags>(~static_cast<u32>(a));
+    }
+
+  protected:
+
+
+
+    AgentMailbox  mailbox;
+    AgentBackend* pBackend;
+
+    explicit Agent(AgentConcurrency concurrency, AgentBackend* pBackend, Status& status) noexcept
+        : mailbox(concurrency, status),
+          pBackend(pBackend->getAddress()) {
+      if (status.success())
+        status = this->pBackend->registerMailbox(mailbox);
+    }
+    explicit Agent(u32 queueSize, AgentConcurrency concurrency, AgentBackend* pBackend, Status& status) noexcept
+        : mailbox(queueSize, concurrency, status),
+          pBackend(pBackend->getAddress()) {
+      if (status.success())
+        status = this->pBackend->registerMailbox(mailbox);
+    }
+
+  public:
+
+    inline constexpr static Flags MultiProducer   = Flags::MultiProducer;
+    inline constexpr static Flags MultiConsumer   = Flags::MultiConsumer;
+    inline constexpr static Flags NonBlocking     = Flags::NonBlocking;
+    inline constexpr static Flags RelaxedOrdering = Flags::RelaxedOrdering;
+    inline constexpr static Flags Shared          = Flags::Shared;
+
+    virtual ~Agent() {
+      pBackend->unregisterMailbox(mailbox);
+    }
+  };
+
+
+  template <typename A = Agent>
+  class agent_ptr{
+  public:
+    using pointer = A*;
+    using reference = A&;
+
+
+    reference operator*() const noexcept {
+      return *pObject;
+    }
+    pointer   operator->() const noexcept {
+      return pObject;
+    }
+
+
 
   private:
-
-    status_type doReadMessage(message_type& msg) noexcept {
-
-    }
-    status_type doWriteMessage(message_type& msg) noexcept {
-
-    }
+    pointer pObject;
   };
 
 
-  /*template <typename T>
-  class agent_ptr{
-    static_assert(std::derived_from<T, Agent>,
-        "For all agent_ptr<T>, T must be a subtype of valkyrie::Core::Agent");
-  };*/
+  class ExecutionQueue : public AgentBackend{
 
-  class AbstractExecutor : public Agent<AbstractExecutor>{};
+  };
+
+  struct AgentPolicy{
+    using status_type = AgentStatus;
+    using backend_type = AgentBackend;
+    inline constexpr static AgentConcurrency concurrency{};
+
+    //inline static
+  };
+
+  /*class AbstractExecutor : public Agent<AbstractExecutor>{};
 
   class Thread     : public Agent<Thread, AbstractExecutor>{};
   class ThreadPool : public Agent<ThreadPool, AbstractExecutor>{
@@ -371,44 +579,6 @@ namespace valkyrie::Core{
 
   class MessageProcessor;
 
-  /*template <auto BufferSize = dynamicExtent>
-  class AgentQuery;
-
-  template <>
-  class AgentQuery<>{
-    template <typename Derived, QueryMessageKind messageKind>
-    friend struct QueryMessage;
-    std::u8string resultBuffer;
-  public:
-
-  };
-  template <size_t N>
-  class AgentQuery<N>{
-    template <typename Derived, QueryMessageKind messageKind>
-    friend struct QueryMessage;
-    utf8 resultBuffer[N];
-  public:
-  };
-
-  struct AgentQueryResult{
-    Status status{ GenericStatus(Code::NotReady) };
-    utf8*  pBuffer;
-    u64    bufferLength;
-  };
-
-  template <typename Derived, QueryMessageKind messageKind>
-  struct QueryMessage : Message{
-    template <size_t N>
-    QueryMessage(Message* pPrevious, const AgentQuery<N>& query) noexcept
-        : Message{ .mDomain = MessageDomain::Query, .mInstruction = (u32)messageKind, .pNext = (Message*)(((byte*)this) + sizeof(Derived)) }{
-      pPrevious->pNext = this;
-    }
-    QueryMessage(Message* pPrevious, const AgentQuery<>&  query) noexcept
-        : Message{ .mDomain = MessageDomain::Query, .mInstruction = (u32)messageKind }{
-      pPrevious->pNext = this;
-    }
-  };*/
-
   using PFN_processMessage = void(*)(MessageProcessor&, Message&, void*);
 
 
@@ -416,7 +586,7 @@ namespace valkyrie::Core{
     struct MessageHookKey;
   }
 
-  using MessageHookHandle = Detail::MessageHookKey*;
+  using MessageHookHandle = Detail::MessageHookKey*;*/
 
   /*struct IMessageProcessor{
     virtual AgentStatus doKill(Message& message) noexcept;

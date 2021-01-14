@@ -6,7 +6,7 @@
 #define VALKYRIE_QUEUE_HPP
 
 #include <valkyrie/Graphics/API/Vulkan.hpp>
-#include <valkyrie/Core/Utility/Span.hpp>
+#include <valkyrie/Core/ADT/ArrayRef.hpp.hpp>
 #include <valkyrie/Core/Utility/BitFlags.hpp>
 #include <valkyrie/Core/Utility/Interval.hpp>
 

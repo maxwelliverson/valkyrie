@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_ADDRESS_HPP
 #define VALKYRIE_ADDRESS_HPP
 
-#include <valkyrie/Core/Error/Status.hpp>
+#include <valkyrie/Core/Utility/Shapes.hpp>
 #include <valkyrie/Core/Error/Maybe.hpp>
 #include <valkyrie/Core/Utility/BitFlags.hpp>
 
@@ -295,7 +295,7 @@ namespace valkyrie::Core{
         return *this;
       }
 
-      template <typename ...Args> requires(std::constructible_from<value_type, Args...>)
+      template <typename ...Args> requires(ConstructibleFrom<value_type, Args...>)
       explicit MemoryAddressStorage(std::in_place_t, const address_space_type* pAddressSpace, Args&& ...args) noexcept
           : base(pAddressSpace), value_{ std::forward<Args>(args)... }{}
 
@@ -376,7 +376,7 @@ namespace valkyrie::Core{
     template <Detail::SafelyErasableFrom<value_type> V, typename S, typename D, typename Stat>
     explicit MemoryAddress(const MemoryAddress<Detail::ErasedSpace<V, S, D, Stat>>& erasedSpace)
         noexcept(std::is_nothrow_copy_constructible_v<value_type>)
-        requires(std::constructible_from<ThisType, value_type>) {}
+        requires(ConstructibleFrom<ThisType, value_type>) {}
 
 
     template <typename Other>

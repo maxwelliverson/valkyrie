@@ -8,6 +8,7 @@
 #include <valkyrie/Core/Types.hpp>
 
 #include <iterator>
+#include <tuple>
 
 namespace valkyrie::Core{
   using InputIterator = std::input_iterator_tag;

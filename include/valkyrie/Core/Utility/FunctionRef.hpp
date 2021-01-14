@@ -48,7 +48,7 @@ namespace valkyrie::Core{
         return static_cast<Ret>((*static_cast<F*>(pUserData))(std::forward<Args>(args)...));
       };
 
-      using PFN_indirect = Ret(*)(void*, Args...) noexcept;
+      using PFN_indirect = Ret(*)(void*, Args&&...) noexcept;
       using PFN_direct   = Ret(*)(Args...) noexcept;
     };
   }
@@ -71,13 +71,14 @@ namespace valkyrie::Core{
 
     FunctionRef() = delete;
 
-    template <typename F> requires(traits::template invocable<F>)
+    template <NotSameAs<FunctionRef> F> requires(traits::template invocable<F>)
     FunctionRef(F&& func) noexcept
         : pIndirectFunction(traits::template indirectLambda<std::remove_reference_t<F>>),
           pUserData(std::addressof(func)){}
     FunctionRef(PFN_direct directFunc) noexcept : pIndirectFunction(nullptr), pDirectFunction(directFunc){}
 
     FunctionRef(const FunctionRef& other) = default;
+    FunctionRef(FunctionRef&&) noexcept = default;
     ~FunctionRef() = default;
 
 

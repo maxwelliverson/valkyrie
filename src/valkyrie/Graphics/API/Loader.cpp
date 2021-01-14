@@ -8,6 +8,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include <utility>
+
 /*class Library{
 public:
   Library(){
@@ -30,7 +32,24 @@ private:
 const static Library lib{};*/
 
 FreeFunctionLoader::FreeFunctionLoader() {
-  HINSTANCE library = LoadLibraryA("vulkan-1.dll");
-  this->getProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(::GetProcAddress(library, "vkGetInstanceProcAddr"));
-  FreeLibrary(library);
+  libraryHandle = LoadLibrary("vulkan-1.dll");
+  this->getProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(::GetProcAddress((HMODULE)libraryHandle, "vkGetInstanceProcAddr"));
 }
+FreeFunctionLoader::FreeFunctionLoader(FreeFunctionLoader&& other) noexcept : libraryHandle(nullptr), getProcAddr(nullptr){
+  std::swap(libraryHandle, other.libraryHandle);
+  std::swap(getProcAddr, other.getProcAddr);
+}
+FreeFunctionLoader::~FreeFunctionLoader() {
+  if (libraryHandle) {
+    auto freeResult = FreeLibrary((HMODULE) libraryHandle);
+    assert(freeResult);
+  }
+}
+
+namespace {
+  inline FreeFunctions* getFreeFunctions() noexcept {
+    static FreeFunctions instance{};
+    return &instance;
+  }
+}
+FreeFunctions* FreeFunctions::pInstance = getFreeFunctions();

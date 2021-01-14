@@ -2,7 +2,7 @@
 // Created by Maxwell on 2020-11-13.
 //
 
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
 
 #include <iostream>
 

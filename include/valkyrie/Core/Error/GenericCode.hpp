@@ -5,11 +5,15 @@
 #ifndef VALKYRIE_GENERIC_STATUS_CODE_HPP
 #define VALKYRIE_GENERIC_STATUS_CODE_HPP
 
+
+#include <valkyrie/Core/Error/Status.hpp>
 #include <valkyrie/Core/Error/Severity.hpp>
-#include <valkyrie/Core/Types.hpp>
 
 namespace valkyrie::Core{
+  
   enum class Code : i32 {
+    InvalidatedState              = -65,
+    BadDriver                     = -64,
     NotImplemented                = -63,
     BadAlignment                  = -62,
     TooFragmented                 = -61,
@@ -99,7 +103,7 @@ namespace valkyrie::Core{
     Changed                       = 14,
     Unnecessary                   = 15
   };
-  inline static constexpr Severity getDefaultSeverity(Code code) noexcept{
+  inline Severity getDefaultSeverity(Code code) noexcept{
 
 
     /*
@@ -314,6 +318,46 @@ EUSERS          Code::ResourceLimitReached
         return Severity::Error;
     }
   }
+
+  class GenericDomain final : public StatusDomain{
+  public:
+    using status_type = StatusCode<GenericDomain>;
+    using error_type  = ErrorCode<GenericDomain>;
+    using value_type  = Code;
+    using domain_type = GenericDomain;
+
+    inline constexpr static Uuid uuid{"4be5eed5-f1c2-4495-8630-0c5d8107d4a1"};
+
+    constexpr GenericDomain() noexcept : StatusDomain(uuid){};
+    ~GenericDomain() = default;
+
+    VK_nodiscard StringRef name() const noexcept override;
+    VK_nodiscard StringRef doMessage(const StatusCode<void>& Stat) const noexcept override;
+    VK_nodiscard Code doCode(const StatusCode<void>& ) const noexcept override;
+    VK_nodiscard bool doFailure(const StatusCode<void> &) const noexcept override;
+    VK_nodiscard bool doEquivalent(const StatusCode<void>& , const StatusCode<void>&) const noexcept override;
+    VK_noreturn  void doThrowException(const StatusCode<void>& code) const override;
+
+    VK_nodiscard static constexpr const GenericDomain& get() noexcept;
+  };
+
+  using GenericError  = ErrorCode<GenericDomain>;
+  using GenericStatus = StatusCode<GenericDomain>;
+
+  namespace Detail{
+    inline constexpr static Core::GenericDomain genericDomainInstance_{};
+  }
+
+
+  inline constexpr const GenericDomain& GenericDomain::get() noexcept {
+    return Detail::genericDomainInstance_;
+  }
+  inline GenericStatus makeStatusCode(Code code) noexcept {
+    return GenericStatus(std::in_place, code);
+  }
+
+
+
 }
 
 #endif //VALKYRIE_GENERIC_STATUS_CODE_HPP

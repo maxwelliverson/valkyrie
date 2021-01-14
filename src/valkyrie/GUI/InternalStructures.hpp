@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_GUI_INTERNAL_STRUCTURES_HPP
 #define VALKYRIE_GUI_INTERNAL_STRUCTURES_HPP
 
+#include <valkyrie/Core/ADT/Arrays.hpp>
 #include <valkyrie/GUI/Monitor.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
 
 #include <atomic>
 

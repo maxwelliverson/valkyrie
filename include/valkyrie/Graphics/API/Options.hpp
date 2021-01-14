@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_VULKAN_OPTIONS_HPP
 #define VALKYRIE_VULKAN_OPTIONS_HPP
 
-#include <valkyrie/Core/Utility/Arrays.hpp>
-#include <valkyrie/Core/Utility/StringView.hpp>
-#include <valkyrie/Core/Utility/String.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
 #include <valkyrie/Core/Error/Maybe.hpp>
+#include <valkyrie/Core/Utility/String.hpp>
+#include <valkyrie/Core/Utility/StringView.hpp>
 
 namespace valkyrie::Graphics::API{
   class Option{

@@ -165,6 +165,12 @@ namespace valkyrie{
 
     template <typename T>
     struct Domain : Meta::TemplateNoDefault{};
+
+    template <typename T>
+    struct Graph : Meta::TemplateNoDefault{
+      // using node_type = ...;
+      // using edge_type = ...;
+    };
     
     namespace Detail{
 
@@ -249,7 +255,6 @@ namespace valkyrie{
         );
       }
 
-
       namespace Enum{
 
         VK_trait(Name,
@@ -323,7 +328,7 @@ namespace valkyrie{
                  alias(status_type),
                    given(typename E),
                      member_type(status_type, Traits::StatusEnum<E>),
-                     typename (Probe<StatusDomain, E>::domain_type::status_type),
+                     if (requires{ typename Probe<StatusDomain, E>::domain_type; typename Probe<StatusDomain, E>::domain_type::status_type; })(typename Probe<StatusDomain, E>::domain_type::status_type),
                      if (Satisfies<E, StatusDomain>) (Core::StatusCode<typename Probe<StatusDomain, E>::domain_type>),
                      if (requires(E e){ { makeStatusCode(e) } -> Satisfies<Status::ValueType>; }) decltype(makeStatusCode(std::declval<E>()))
         );
@@ -331,7 +336,7 @@ namespace valkyrie{
         VK_trait(StatusInfo,
                  let(status_info),
                    given(typename E),
-                     if (VK_instantiable_with(Traits::StatusEnum, E) && requires(E e){
+                     if (requires(E e){
                        { Traits::StatusEnum<E>::info[e].message };
                        { Traits::StatusEnum<E>::info[e].generic };
                        { Traits::StatusEnum<E>::info[e].severity } -> Concepts::SameAs<Core::Severity>;
@@ -362,7 +367,6 @@ namespace valkyrie{
         );
       }
 
-
       namespace Container{
         VK_trait(Pointer,
                  alias(pointer),
@@ -379,7 +383,6 @@ namespace valkyrie{
                      if (VK_instantiable_with(Traits::StaticArray, C)) true
         );
       }
-
 
       namespace Class{
         VK_trait(Name,
@@ -686,8 +689,8 @@ namespace valkyrie{
             Probe<Enum::StatusInfo, E>,
             Probe<Enum::ScopedName, E>,
             Probe<Enum::Name, E>{
-        inline constexpr static bool isScoped = std::convertible_to<typename Probe<Enum::Type, E>::enum_type, typename Probe<Enum::UnderlyingType, E>::underlying_type>;
-        inline constexpr static bool isBitFlag = VK_instantiable_with(Traits::BitFlagEnum, E);
+        //inline constexpr static bool isScoped = std::convertible_to<typename Probe<Enum::Type, E>::enum_type, typename Probe<Enum::UnderlyingType, E>::underlying_type>;
+        //inline constexpr static bool isBitFlag = VK_instantiable_with(Traits::BitFlagEnum, E);
       };
 
 
@@ -715,8 +718,8 @@ namespace valkyrie{
       template <typename A>
       struct AllocatorInfo;
 
-      template <typename E>
-      struct StatusInfo;
+      /*template <typename E>
+      struct StatusInfo;*/
 
       template <typename E>
       struct ContainerInfo;
@@ -891,6 +894,11 @@ namespace valkyrie{
       typename Traits::Detail::AgentInfo<T>::message_type;
       typename Traits::Detail::AgentInfo<T>::status_type;
     };
+    template <typename T, typename ...Args>
+    concept ConstructibleFrom = std::constructible_from<T, Args...> ||
+                               requires(Args&& ...args){
+                                 { T{ std::forward<Args>(args)... } };
+                               };
   }
   
   template <Container T>
@@ -907,8 +915,8 @@ namespace valkyrie{
   using iterator_traits  = Traits::Detail::IteratorInfo<T>;
   template <Allocator T>
   using allocator_traits = Traits::Detail::AllocatorInfo<T>;
-  template <Status T>
-  using status_traits    = Traits::Detail::StatusInfo<T>;
+  /*template <Status T>
+  using status_traits    = Traits::Detail::StatusInfo<T>;*/
   template <Class C>
   using class_traits     = Traits::Detail::ClassInfo<C>;
   template <Numeric N>

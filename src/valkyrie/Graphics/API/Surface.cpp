@@ -73,7 +73,7 @@ namespace {
 
 class API::Surface::Impl : public Internal::SurfaceImpl{
 public:
-  Impl(Internal::InstanceImpl* pInstance, Extent2D<> extent, VulkanStatus& result){
+  Impl(Internal::InstanceImpl* pInstance, Core::Extent2D<> extent, VulkanStatus& result){
     pInstance = pInstance;
     allocator = &pInstance->allocationCallbacks;
     refCount  = 1;
@@ -105,10 +105,10 @@ public:
         .hwnd      = nativeWindow
     };
 
-    result = pInstance->instanceFunctions->createWin32Surface(pInstance->handle, &createInfo, allocator, &handle);
+    result = makeStatusCode(pInstance->instanceFunctions->createWin32Surface(pInstance->handle, &createInfo, allocator, &handle));
   }
 
-  static Impl* create(Internal::InstanceImpl* pInstance, Extent2D<> extent) noexcept {
+  static Impl* create(Internal::InstanceImpl* pInstance, Core::Extent2D<> extent) noexcept {
     VulkanStatus status;
     auto* result = new Impl(pInstance, extent, status);
     if (status.failure())
@@ -129,7 +129,7 @@ namespace valkyrie::Graphics::API{
   }
 
 
-  Surface::Surface(const Instance& instance, Extent2D<> extent) noexcept
+  Surface::Surface(const Instance& instance, Core::Extent2D<> extent) noexcept
       : pImpl(Impl::create(*reinterpret_cast<Internal::InstanceImpl* const *>(&instance), extent)){}
   Surface::Surface(const Surface & other) : pImpl(other.pImpl){
     ++pImpl->refCount;
@@ -161,8 +161,8 @@ namespace valkyrie::Graphics::API{
   bool Surface::isValid() const noexcept {
     return pImpl;
   }
-  Extent2D<> Surface::getExtents() const noexcept {
-    return pImpl ? pImpl->dims : Extent2D<>{0, 0};
+  Core::Extent2D<> Surface::getExtents() const noexcept {
+    return pImpl ? pImpl->dims : Core::Extent2D<>{0, 0};
   }
 }
 

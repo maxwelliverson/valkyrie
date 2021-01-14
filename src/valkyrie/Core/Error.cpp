@@ -2,7 +2,7 @@
 // Created by Maxwell on 2020-11-16.
 //
 
-//#include <valkyrie/Core/Error/Status.hpp>
+#include <valkyrie/Core/Error/GenericCode.hpp>
 
 #include <valkyrie/Core/Config.hpp>
 
@@ -106,22 +106,27 @@ void Core::StatusDomain::doThrowException(const StatusCode<void> &Code) const {
 }
 
 
-Core::StringView Core::Detail::GenericDomain::name() const noexcept {
+Core::StringRef Core::GenericDomain::name() const noexcept {
   return VK_string("Generic");
 }
-Core::StringRef Core::Detail::GenericDomain::doMessage(const StatusCode<void>& status) const noexcept {
+Core::StringRef Core::GenericDomain::doMessage(const StatusCode<void>& status) const noexcept {
   return VK_string("GenericDomain::doMessage not yet implemented...");
   switch (static_cast<const Core::GenericStatus&>(status).value()) {
 
   }
 }
-Core::Code Core::Detail::GenericDomain::doCode(const StatusCode<void>& status) const noexcept {
+Core::Code Core::GenericDomain::doCode(const StatusCode<void>& status) const noexcept {
   return static_cast<const Core::GenericStatus&>(status).value();
 }
-bool Core::Detail::GenericDomain::doEquivalent(const StatusCode<void> & status, const StatusCode<void> & other) const noexcept {
+bool Core::GenericDomain::doEquivalent(const StatusCode<void> & status, const StatusCode<void> & other) const noexcept {
   VK_assert(status.domain() == *this);
   return static_cast<const Core::GenericStatus&>(status).value() == other.generic();
 }
-bool Core::Detail::GenericDomain::doFailure(const StatusCode<void>& status) const noexcept {
+bool Core::GenericDomain::doFailure(const StatusCode<void>& status) const noexcept {
   return static_cast<const Core::GenericStatus&>(status).value() < Code::Success;
+}
+
+VK_noreturn void Core::GenericDomain::doThrowException(const StatusCode<void> &code) const {
+  auto&& msg = this->doMessage(code);
+  VK_if(VK_exceptions_enabled(throw std::runtime_error(std::string(msg.c_str(), msg.size())))VK_else(panic(code)));
 }

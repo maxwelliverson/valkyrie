@@ -2,8 +2,8 @@
 // Created by Maxwell on 2020-11-09.
 //
 
-#ifndef VALKYRIE_TYPES_HPP
-#define VALKYRIE_TYPES_HPP
+#ifndef VALKYRIE_CORE_TYPES_HPP
+#define VALKYRIE_CORE_TYPES_HPP
 
 #include <cstddef>
 
@@ -29,4 +29,4 @@ namespace valkyrie{
   using byte = std::byte;
 }
 
-#endif//VALKYRIE_TYPES_HPP
+#endif//VALKYRIE_CORE_TYPES_HPP

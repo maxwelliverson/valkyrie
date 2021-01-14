@@ -5,10 +5,11 @@
 #ifndef VALKYRIE_ENUM_UTILS_HPP
 #define VALKYRIE_ENUM_UTILS_HPP
 
-#include <valkyrie/Core/Error/GenericCode.hpp>
-#include <valkyrie/Core/Traits.hpp>
+
+
 #include <valkyrie/Core/Utility/BitFlags.hpp>
-#include <valkyrie/Core/Utility/FlatMap.hpp>
+#include <valkyrie/Core/Error/GenericCode.hpp>
+#include <valkyrie/Core/ADT/FlatMap.hpp>
 #include <valkyrie/Core/Utility/StringView.hpp>
 
 
@@ -24,13 +25,6 @@
   inline constexpr static std::string_view name{::valkyrie::Core::Detail::removeScopes(scoped_name)};                          \
   inline constexpr static bool isScoped = !std::convertible_to<enum_type, underlying_type>;\
   inline constexpr static ::valkyrie::Core::Detail::EnumEntryMap entries{ VK_for_each_delimit(PP_VK_impl_DEFINE_ENUM_ENTRY, VK_comma_delimiter, ##__VA_ARGS__) }
-
-/*#define PP_VK_impl_PREFIX_PERIOD_redirect(...) .__VA_ARGS__
-#define PP_VK_impl_PREFIX_PERIOD PP_VK_impl_PREFIX_PERIOD_redirect
-
-#define kwargs(...) { VK_for_each_delimit(PP_VK_impl_PREFIX_PERIOD, VK_comma_delimiter, ##__VA_ARGS__) }
-
-void functionLmao(0, "Hello", kwargs(message = "Goodbye", severity = Severity::Error))*/
 
 
 namespace valkyrie::Core{
@@ -77,7 +71,7 @@ namespace valkyrie::Core{
     struct StatusEnumInfo{
       Severity severity;
       StringView message;
-      std::initializer_list<Code> generic{};
+      std::span<const Code> generic{};
     };
 
     template <typename E>
@@ -138,14 +132,14 @@ namespace valkyrie::Core{
           : key(value), value{ .severity = severity, .message = message, .generic = {} }{}
       template <size_t N>
       constexpr StatusEnumEntry(Severity severity, E value, const utf8(&message)[N], std::initializer_list<Code> initList) noexcept
-          : key(value), value{ .severity = severity, .message = message, .generic = initList }{}
+          : key(value), value{ severity, message, std::span<const Code>{initList.begin(), initList.size()} }{}
 
       template <size_t N>
       constexpr StatusEnumEntry(E value, const utf8(&message)[N]) noexcept
           : key(value), value{ .severity = Severity::Error, .message = message, .generic = {} }{}
       template <size_t N>
       constexpr StatusEnumEntry(E value, const utf8(&message)[N], std::initializer_list<Code> initList) noexcept
-          : key(value), value{ .severity = initList.size() ? getDefaultSeverity(*initList.begin()) : Severity::Error, .message = message, .generic = initList }{}
+          : key(value), value{ .severity = (initList.size() ? getDefaultSeverity(*initList.begin()) : Severity::Error), .message = message, .generic = std::span<const Code>{initList.begin(), initList.end()} }{}
 
       constexpr friend bool operator==(StatusEnumEntry A, StatusEnumEntry B) noexcept {
         return A.key == B.key;
@@ -353,12 +347,6 @@ namespace valkyrie::Core{
 
   private:
     container_type entries;
-  };
-
-  enum class ExampleEnum{
-    A,
-    B,
-    C = -3
   };
 
 

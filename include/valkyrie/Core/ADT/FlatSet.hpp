@@ -1,15 +1,17 @@
 //
-// Created by Maxwell on 2020-11-09.
+// Created by Maxwell on 2021-01-12.
 //
 
-#ifndef VALKYRIE_FLAT_SET_HPP
-#define VALKYRIE_FLAT_SET_HPP
+#ifndef VALKYRIE_CORE_ADT_FLAT_SET_HPP
+#define VALKYRIE_CORE_ADT_FLAT_SET_HPP
 
 #include <valkyrie/Core/Traits.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/Error/Maybe.hpp>
+#include <valkyrie/Core/ADT/SmallArray.hpp>
 
-#include <optional>
+
 #include <algorithm>
+
 
 
 namespace valkyrie::Core{
@@ -54,7 +56,7 @@ namespace valkyrie::Core{
     constexpr FlatSet(std::initializer_list<T> List) : m_set_(List) {
       priv_prune_();
     }
-    template <typename ...Args> requires(std::constructible_from<container_type, Args...>)
+    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
     constexpr explicit FlatSet(std::in_place_t, Args&& ...args) noexcept
         : m_set_{ std::forward<Args>(args)... }{
       priv_prune_();
@@ -66,7 +68,7 @@ namespace valkyrie::Core{
     constexpr FlatSet(GuaranteeUniqueTag, std::initializer_list<T> List) : m_set_(List) {
       priv_sort_();
     }
-    template <typename ...Args> requires(std::constructible_from<container_type, Args...>)
+    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
     constexpr explicit FlatSet(GuaranteeUniqueTag, std::in_place_t, Args&& ...args) noexcept
         : m_set_{ std::forward<Args>(args)... }{
       priv_sort_();
@@ -212,7 +214,7 @@ namespace valkyrie::Core{
       return true;
     }
 
-    template <typename ...Args> requires(std::constructible_from<T, Args...>)
+    template <typename ...Args> requires(ConstructibleFrom<T, Args...>)
     constexpr maybe_iterator emplace(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
       auto& result = m_set_.emplace_back(std::forward<Args>(args)...);
       auto post_size = m_set_.size();
@@ -223,7 +225,7 @@ namespace valkyrie::Core{
     }
     template <OrderedWith<T> Key, typename ...Args>
     constexpr iterator find_or_emplace(const Key& key, Args&& ...args)
-        noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+    noexcept(std::is_nothrow_constructible_v<T, Args...>) {
       iterator bound = this->lower_bound(key);
       if (bound != this->end() && *bound == key)
         return bound;
@@ -341,4 +343,4 @@ namespace valkyrie::Core{
   };
 }
 
-#endif//VALKYRIE_FLAT_SET_HPP
+#endif //VALKYRIE_CORE_ADT_FLAT_SET_HPP

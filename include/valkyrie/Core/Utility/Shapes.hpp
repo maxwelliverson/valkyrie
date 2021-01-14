@@ -1,9 +1,10 @@
 //
-// Created by Maxwell on 2020-11-30.
+// Created by Maxwell on 2020-12-30.
 //
 
-#ifndef VALKYRIE_GRAPHICS_SHAPES_HPP
-#define VALKYRIE_GRAPHICS_SHAPES_HPP
+#ifndef VALKYRIE_CORE_SHAPES_HPP
+#define VALKYRIE_CORE_SHAPES_HPP
+
 
 #include <valkyrie/Core/Config.hpp>
 #include <valkyrie/Core/Types.hpp>
@@ -11,7 +12,7 @@
 
 #include <tuple>
 
-namespace valkyrie::Graphics{
+namespace valkyrie::Core{
   template <typename T = u32>
   struct Extent2D{
     T width;
@@ -33,14 +34,14 @@ namespace valkyrie::Graphics{
         : width(std::forward<A>(a)),
           height(std::forward<B>(b)){}
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit(!std::convertible_to<const U&, T>) Extent2D(const Extent2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width(other.width),
           height(other.height){}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit(!std::convertible_to<U&&, T>) Extent2D(Extent2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
-    : width(std::move(other.width)),
-    height(std::move(other.height)){}
+        : width(std::move(other.width)),
+          height(std::move(other.height)){}
   };
   template <typename T = u32>
   struct Extent3D{
@@ -74,25 +75,25 @@ namespace valkyrie::Graphics{
 
 
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit constexpr Extent3D(const Extent2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width( other.width),
           height(other.height),
           depth{}{}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit constexpr Extent3D(Extent2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
-    : width( std::move(other.width)),
-    height(std::move(other.height)),
-    depth{}{}
+        : width( std::move(other.width)),
+          height(std::move(other.height)),
+          depth{}{}
 
 
 
-    template <typename U, typename V> requires(std::constructible_from<T, const U&> && std::constructible_from<T, V>)
+    template <typename U, typename V> requires(ConstructibleFrom<T, const U&> && ConstructibleFrom<T, V>)
     constexpr Extent3D(const Extent2D<U>& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
         : width( other.width),
           height(other.height),
           depth( std::forward<V>(depth)){}
-    template <typename U, typename V> requires(std::constructible_from<T, U&&> && std::constructible_from<T, V>)
+    template <typename U, typename V> requires(ConstructibleFrom<T, U&&> && ConstructibleFrom<T, V>)
     constexpr Extent3D(Extent2D<U>&& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
         : width( std::move(other.width)),
           height(std::move(other.height)),
@@ -100,12 +101,12 @@ namespace valkyrie::Graphics{
 
 
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit(!std::convertible_to<const U&, T>) constexpr Extent3D(const Extent3D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width( other.width),
           height(other.height),
           depth( other.depth){}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit(!std::convertible_to<U&&, T>) constexpr Extent3D(Extent3D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : width( std::move(other.width)),
           height(std::move(other.height)),
@@ -158,14 +159,14 @@ namespace valkyrie::Graphics{
         : x(std::forward<A>(a)),
           y(std::forward<B>(b)){}
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit(!std::convertible_to<const U&, T>) Position2D(const Position2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x(other.x),
           y(other.y){}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit(!std::convertible_to<U&&, T>) Position2D(Position2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
-    : x(std::move(other.x)),
-    y(std::move(other.y)){}
+        : x(std::move(other.x)),
+          y(std::move(other.y)){}
   };
   template <typename T = u32>
   struct Position3D{
@@ -198,25 +199,25 @@ namespace valkyrie::Graphics{
 
 
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit constexpr Position3D(const Position2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x( other.x),
           y(other.y),
           z{}{}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit constexpr Position3D(Position2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
-    : x( std::move(other.x)),
-    y(std::move(other.y)),
-    z{}{}
+        : x( std::move(other.x)),
+          y(std::move(other.y)),
+          z{}{}
 
 
 
-    template <typename U, typename V> requires(std::constructible_from<T, const U&> && std::constructible_from<T, V>)
+    template <typename U, typename V> requires(ConstructibleFrom<T, const U&> && ConstructibleFrom<T, V>)
     constexpr Position3D(const Position2D<U>& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
         : x( other.x),
           y(other.y),
           z( std::forward<V>(z)){}
-    template <typename U, typename V> requires(std::constructible_from<T, U&&> && std::constructible_from<T, V>)
+    template <typename U, typename V> requires(ConstructibleFrom<T, U&&> && ConstructibleFrom<T, V>)
     constexpr Position3D(Position2D<U>&& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
         : x( std::move(other.x)),
           y(std::move(other.y)),
@@ -224,19 +225,19 @@ namespace valkyrie::Graphics{
 
 
 
-    template <typename U> requires(std::constructible_from<T, const U&>)
+    template <typename U> requires(ConstructibleFrom<T, const U&>)
     explicit(!std::convertible_to<const U&, T>) constexpr Position3D(const Position3D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x( other.x),
           y(other.y),
           z( other.z){}
-    template <typename U> requires(std::constructible_from<T, U&&>)
+    template <typename U> requires(ConstructibleFrom<T, U&&>)
     explicit(!std::convertible_to<U&&, T>) constexpr Position3D(Position3D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : x( std::move(other.x)),
           y(std::move(other.y)),
           z( std::move(other.z)){}
   };
-  
-  
+
+
   template <Numeric T>
   Position2D(T&&) -> Position2D<std::remove_cvref_t<T>>;
   template <Numeric T, Numeric U>
@@ -260,15 +261,17 @@ namespace valkyrie::Graphics{
   Position3D(Position2D<T>&&, U&&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
   template <Numeric T, Numeric U>
   Position3D(U&&, Position2D<T>&&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  
-  
+
+
 
   template <size_t N, typename T>
   constexpr T& get(Extent2D<T>& ext) noexcept {
-    if constexpr (N == 0)
+    if constexpr (N == 0) {
       return ext.width;
-    else if constexpr (N == 1)
+    }
+    else if constexpr (N == 1) {
       return ext.height;
+    }
     else {
       static_assert(N < 2, "Index out of range for Extent2D");
       return ext.height;
@@ -496,30 +499,29 @@ namespace valkyrie::Graphics{
 }
 
 template <typename T>
-struct std::tuple_size<valkyrie::Graphics::Extent2D<T>> : std::integral_constant<size_t, 2>{};
+struct std::tuple_size<valkyrie::Core::Extent2D<T>> : std::integral_constant<size_t, 2>{};
 template <typename T>
-struct std::tuple_size<valkyrie::Graphics::Extent3D<T>> : std::integral_constant<size_t, 3>{};
+struct std::tuple_size<valkyrie::Core::Extent3D<T>> : std::integral_constant<size_t, 3>{};
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Graphics::Extent2D<T>>{
+struct std::tuple_element<N, valkyrie::Core::Extent2D<T>>{
   using type = T;
 };
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Graphics::Extent3D<T>>{
+struct std::tuple_element<N, valkyrie::Core::Extent3D<T>>{
   using type = T;
 };
 
 template <typename T>
-struct std::tuple_size<valkyrie::Graphics::Position2D<T>> : std::integral_constant<size_t, 2>{};
+struct std::tuple_size<valkyrie::Core::Position2D<T>> : std::integral_constant<size_t, 2>{};
 template <typename T>
-struct std::tuple_size<valkyrie::Graphics::Position3D<T>> : std::integral_constant<size_t, 3>{};
+struct std::tuple_size<valkyrie::Core::Position3D<T>> : std::integral_constant<size_t, 3>{};
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Graphics::Position2D<T>>{
+struct std::tuple_element<N, valkyrie::Core::Position2D<T>>{
   using type = T;
 };
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Graphics::Position3D<T>>{
+struct std::tuple_element<N, valkyrie::Core::Position3D<T>>{
   using type = T;
 };
 
-
-#endif//VALKYRIE_GRAPHICS_SHAPES_HPP
+#endif//VALKYRIE_CORE_SHAPES_HPP

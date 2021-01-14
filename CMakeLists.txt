@@ -44,8 +44,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 
-#set(OptiX_INCLUDE_PATH "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0/include")
-#include_directories(${OptiX_INCLUDE_PATH})
+set(OptiX_INCLUDE_PATH "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0/include")
+include_directories(${OptiX_INCLUDE_PATH})
 
 function(add_dummy_target file)
     string(REGEX REPLACE "\\..+" "" targetName ${file})
@@ -87,7 +87,6 @@ add_object(spirv.SpirV)
 add_object(valkyrie.Core.Async.Semaphore)
 add_object(valkyrie.Core.Async.Agent)
 
-add_object(valkyrie.Core.Log.Messages)
 add_object(valkyrie.Core.Log.Serialize)
 add_object(valkyrie.Core.Log.Logger)
 
@@ -134,12 +133,13 @@ add_executable(valk_main main.cpp vk_object.h vk_util.h vk_object.cpp vk_pp.h vk
 
 add_dummy_target(include/valkyrie.hpp include/valkyrie/Graphics.hpp include/valkyrie/Graphics/Image.hpp include/valkyrie/Graphics/Pixel.hpp)
 
-valkyrie_test(valkyrie.Core.Utility.Arrays#[[ test/valkyrie/Core/Utility/Array.cpp]])
+#[[valkyrie_test(valkyrie.Core.Utility.Arrays)
 valkyrie_test(valkyrie.Graphics.API.Device)
 valkyrie_test(valkyrie.Core.Utility.Enums)
 valkyrie_test(valkyrie.GUI.Monitor)
-valkyrie_test(valkyrie.GUI.DXGI)
-valkyrie_test(valkyrie.Core.Log.Messages)
+valkyrie_test(valkyrie.GUI.DXGI)]]
+valkyrie_test(valkyrie.Core.Memory)
+valkyrie_test(valkyrie.Graphics.API.Swapchain)
 
 add_executable(test.Mailbox test/Mailbox.cpp)
 add_executable(test.VirtualFuncPtr test/VirtualFuncPtr.cpp)
@@ -156,10 +156,9 @@ add_executable(catch
         test/valkyrie/GUI/Monitor.cpp)
 
 
-target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:Dxva2> #[[CUDA::cuda_driver Vulkan::Vulkan]])
-target_link_libraries(test.valkyrie.GUI.DXGI PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
-target_link_libraries(test.valkyrie.Core.Log.Messages PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DbgHelp;Kernel32>)
-
+#target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:Dxva2> #[[CUDA::cuda_driver Vulkan::Vulkan]])
+#target_link_libraries(test.valkyrie.GUI.DXGI PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
+target_link_libraries(test.valkyrie.Graphics.API.Swapchain PUBLIC valkyrie.Core valkyrie.Graphics.API.Loader $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
 
 
 function(preprocess file path)

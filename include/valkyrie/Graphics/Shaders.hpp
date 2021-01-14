@@ -7,13 +7,14 @@
 
 #include <valkyrie/Graphics/API/ShaderModule.hpp>
 
-#include <valkyrie/Core/Utility/String.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/ADT/ArrayRef.hpp>
 
 namespace valkyrie::Graphics{
 
   class Shader{
-    Core::DynamicArray<u32> compiledCode;
+
+  public:
+    virtual Core::Span<const u32> compiledCode() const noexcept = 0;
   };
   class VertexShader : public Shader{};
   class TessellationControlShader{};

@@ -3,9 +3,7 @@
 //
 
 #include <valkyrie/Core/Async/Agent.hpp>
-#include <valkyrie/Core/Utility/Colony.hpp>
 
-//#define _CRTDBG_MAP_ALLOC
 #define NOMINMAX
 
 #include <windows.h>
@@ -161,9 +159,10 @@ namespace {
     return Core::System::Win32::getLastError();
   }
 
-  using SystemDomain = VK_if(VK_debug_build(Core::StatusValidationDomain<Core::System::Win32StatusDomain>) VK_else(Core::System::Win32StatusDomain));
-
+  //using SystemDomain = VK_if(VK_debug_build(Core::StatusValidationDomain<Core::System::Win32StatusDomain>) VK_else(Core::System::Win32StatusDomain));
+  using SystemDomain = Core::System::Win32StatusDomain;
   using SystemStatus = Core::StatusCode<SystemDomain>;
+  using SystemError  = Core::ErrorCode<SystemDomain>;
 
 
   template<typename T>
@@ -178,7 +177,7 @@ namespace {
     Win32Result(const SystemStatus &stat) : Win32Maybe<T>(stat) {}
     Win32Result(SystemStatus &&stat) : Win32Maybe<T>(std::move(stat)) {}
     template<typename... Args>
-    requires(std::constructible_from<T, Args...>)
+    requires(ConstructibleFrom<T, Args...>)
         Win32Result(std::in_place_t, Args &&...args) : Win32Maybe<T>(std::forward<Args>(args)...) {}
   };
 
@@ -395,9 +394,11 @@ namespace {
 
 
 
+
+
   // Messages
 
-  struct MessageHook;
+  /*struct MessageHook;
 
   inline constexpr size_t IteratorSize = 3 * sizeof(void*);
 
@@ -489,15 +490,9 @@ namespace {
 
       *hookPointer = hookStorage.emplace(pFunction, pUserData);
     }
-  };
-
-  struct MessageDispatchInfo{
-    HookKey                 hookKey;
-    Core::MessageProcessKey processKey;
-  };
+  };*/
 
 
-  inline Core::AgentStatus dispatchMessage(){}
 
 
 
@@ -506,6 +501,13 @@ namespace {
     valkyrie::byte* pBuffer;
     u32             bufferSize;
   };
+
+
+  inline Win32Result<VirtualRingBuffer> allocateRingBuffer(u32 bufferSize) noexcept {
+
+  }
+
+
 
   enum class Priority{
     Low,
@@ -533,7 +535,7 @@ namespace {
     Priority priority = DefaultPriority;
   };
 
-  template <Threading readThreading,
+  /*template <Threading readThreading,
             Threading writeThreading,
             Priority priority>
   struct AgentMailbox;
@@ -548,8 +550,10 @@ namespace {
   struct AgentMailbox<SingleThreaded, SingleThreaded, priority> : VirtualRingBuffer{
     std::atomic_uint32_t readOffset = 0;
     std::atomic_uint32_t writeOffset = 0;
-
-    bool writeProc(std::string_view message){
+  };
+  template <Priority priority>
+  struct AgentMailbox<MultiThreaded, MultiThreaded,  priority> : VirtualRingBuffer{
+    *//*bool writeProc(std::string_view message){
 
       const uint32_t messageStructSize = nextOffset(message);
 
@@ -604,7 +608,7 @@ namespace {
 
       assert(readOffset != nextOffset);
 
-      /*do {
+      *//**//*do {
         if (buffer.bufferSize == readOffset)
           return false;
         buffer.writeCompleteOffset.wait(readOffset);
@@ -615,7 +619,7 @@ namespace {
         if (buffer.bufferSize < nextOffset)
           return false;
 
-      } while(!buffer.nextReadOffset.compare_exchange_weak(readOffset, nextOffset, std::memory_order_acq_rel));*/
+      } while(!buffer.nextReadOffset.compare_exchange_weak(readOffset, nextOffset, std::memory_order_acq_rel));*//**//*
 
       outBuffer.write(pMessage->pData, pMessage->msgLength);
 
@@ -662,7 +666,7 @@ namespace {
 
       //assert(readOffset < nextOffset || readOffset == AcquireUnique);
 
-      /*if (buffer.readCompleteOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel)){
+      *//**//*if (buffer.readCompleteOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel)){
         while (checkIfValidState(pMessage->state)) {
           readOffset = nextOffset;
           pMessage = reinterpret_cast<Message*>(static_cast<std::byte*>(buffer.pBuffer) + readOffset);
@@ -671,10 +675,7 @@ namespace {
           assert(readOffset != nextOffset);
           ASSERT_EVAL(buffer.readCompleteOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel));
         }
-      }*/
-
-
-      /*while (checkIfValidState(pMessage->state) &&
+      }*//**//*while (checkIfValidState(pMessage->state) &&
              buffer.readCompleteOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel)) {
 
         pMessage = reinterpret_cast<Message*>(static_cast<std::byte*>(buffer.pBuffer) + readOffset);
@@ -683,33 +684,274 @@ namespace {
 
         nextOffset = pMessage->nextOffset.load(std::memory_order_acquire);
         assert(readOffset != nextOffset);
-      }*/
+      }*//**//*
 
-      /*do {
+      *//**//*do {
         ((std::byte*&)pMessage) += pMessage->mSize;
         nextOffset += pMessage->mSize;
       } while(pMessage->mKind == MessageFullyProcessed);
 
       pMailbox->writeCompleteOffset.compare_exchange_strong(readOffset, nextOffset);
 
-      reinterpret_cast<AgentMessage*>(pMailbox->pBuffer + readOffsetCopy)->mKind = MessageFullyProcessed;*/
+      reinterpret_cast<AgentMessage*>(pMailbox->pBuffer + readOffsetCopy)->mKind = MessageFullyProcessed;*//**//*
 
       return true;
-    }
+    }*//*
   };
   template <Priority priority>
-  struct AgentMailbox<MultiThreaded, MultiThreaded,  priority> : VirtualRingBuffer{
+  struct AgentMailbox<SingleThreaded, MultiThreaded, priority> : VirtualRingBuffer{
 
-  };
-  template <Priority priority>
-  struct AgentMailbox<SingleThreaded, MultiThreaded, priority> : VirtualRingBuffer{};
-  template <Priority priority>
-  struct AgentMailbox<MultiThreaded, SingleThreaded, priority> : VirtualRingBuffer{};
+    *//*bool writeProc(std::string_view message){
+
+      const uint32_t messageStructSize = nextOffset(message);
+
+      uint32_t writeOffset = 0;
+      uint32_t nextOffset;
+      Message* pMessage;
+
+      do {
+        nextOffset = writeOffset + messageStructSize;
+        if (buffer.bufferSize < (nextOffset + offsetof(Message, nextOffset)))
+          return false;
+      } while(!buffer.nextWriteOffset.compare_exchange_strong(writeOffset, nextOffset, std::memory_order_acq_rel));
+
+
+      pMessage = std::launder(new(static_cast<std::byte*>(buffer.pBuffer) + writeOffset) Message);
+      pMessage->nextOffset.store(nextOffset, std::memory_order_release);
+      pMessage->msgLength = uint32_t(message.length());
+      std::memcpy(pMessage->pData, message.data(), pMessage->msgLength);
+
+      pMessage->state.store(MessageState::Written, std::memory_order_release);
+      pMessage->state.notify_all();
+
+      return true;
+    }*//*
+  };*/
+}
+
+
+valkyrie::Core::AgentMailbox::AgentMailbox(const u32 queueSize, const AgentConcurrency concurrency, Status &status) noexcept
+    : pMessageQueue(nullptr), queueSize(queueSize), dynamicInterface(dispatchInterface(concurrency)){
+  MappedMemory mainBuffer, overflowBuffer;
+  if (auto result = allocateCircularBuffer(queueSize)) {
+    std::tie(mainBuffer, overflowBuffer) = result.take();
+    status = Code::Success;
+  } else
+    status = result.status();
+  overflowBuffer.release();
+  std::tie(pMessageQueue, this->queueSize) = mainBuffer.release();
+}
+
+valkyrie::Core::AgentMailbox::AgentMailbox(const AgentConcurrency concurrency, Status &status) noexcept
+    : AgentMailbox(AllocationGranularity, concurrency, status){}
+
+valkyrie::Core::AgentMailbox::AgentMailbox(AgentMailbox&& otherMailbox) noexcept
+    : pMessageQueue(nullptr),
+      queueSize(0),
+      nextWriteOffset(otherMailbox.nextWriteOffset.load()),
+      nextReadOffset(otherMailbox.nextWriteOffset.load()),
+      dynamicInterface(otherMailbox.dynamicInterface){
+  std::swap(pMessageQueue, otherMailbox.pMessageQueue);
+  std::swap(queueSize, otherMailbox.queueSize);
+}
+
+valkyrie::Core::AgentMailbox & valkyrie::Core::AgentMailbox::operator=(AgentMailbox && other) noexcept {
+  this->~AgentMailbox();
+  new(this) AgentMailbox(std::move(other));
+  return *this;
+}
+valkyrie::Core::AgentMailbox::~AgentMailbox() {
+  MappedMemory mem{pMessageQueue, queueSize}; // memory is automatically unmapped/freed in MappedMemory destructor
+}
 
 
 
-  /*struct ManyConsumerManyProducerRingBuffer{};
-  struct ManyConsumerManyProducerRingBuffer{};
-  struct ManyConsumerManyProducerRingBuffer{};
-  struct ManyConsumerManyProducerRingBuffer{};*/
+
+valkyrie::Core::AgentResult<valkyrie::Core::AgentMessage*> valkyrie::Core::AgentMailbox::writeMessageSPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+  u32 writeOffset = nextWriteOffset.load(std::memory_order_acquire);
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  nextOffset = writeOffset + msgSize;
+  if (!hasAvailableSpace(writeOffset, nextOffset))
+    return nullptr;
+  nextOffset -= queueSize <= nextOffset ? queueSize : 0;
+
+  pMessage = fnCtor(toMessage(writeOffset));
+  pMessage->nextOffset = nextOffset;
+  nextWriteOffset.store(nextOffset, std::memory_order_release);
+  nextWriteOffset.notify_one();
+  return pMessage;
+}
+valkyrie::Core::AgentResult<valkyrie::Core::AgentMessage*> valkyrie::Core::AgentMailbox::writeMessageMPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+  u32 writeOffset = nextWriteOffset.load();
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  do {
+    nextOffset = writeOffset + msgSize;
+    if (!hasAvailableSpace(writeOffset, nextOffset))
+      return nullptr;
+    nextOffset -= queueSize <= nextOffset ? queueSize : 0;
+  } while(!nextWriteOffset.compare_exchange_strong(writeOffset, nextOffset, std::memory_order_acq_rel));
+
+  pMessage = fnCtor(toMessage(writeOffset));
+  pMessage->nextOffset = nextOffset;
+  nextWriteOffset.notify_one();
+  return pMessage;
+}
+valkyrie::Core::AgentResult<valkyrie::Core::AgentMessage*> valkyrie::Core::AgentMailbox::writeMessageSPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+  u32 writeOffset = nextWriteOffset.load(std::memory_order_acquire);
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  const u32 syncOffset = syncMarker.load(std::memory_order_acquire);
+
+  nextOffset = writeOffset + msgSize;
+  if (nextOffset >= (syncOffset + (queueSize * bool(syncOffset < writeOffset))))
+    return nullptr;
+  nextOffset -= queueSize <= nextOffset ? queueSize : 0;
+
+  pMessage = fnCtor(toMessage(writeOffset));
+  pMessage->nextOffset = nextOffset;
+  nextWriteOffset.store(nextOffset, std::memory_order_release);
+  nextWriteOffset.notify_one();
+  return pMessage;
+}
+valkyrie::Core::AgentResult<valkyrie::Core::AgentMessage*> valkyrie::Core::AgentMailbox::writeMessageSPMCNonCoherent(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+  u32 writeOffset = nextWriteOffset.load();
+  u32 firstReadOffset = syncMarker.load();
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  nextOffset = writeOffset + msgSize;
+  if (nextOffset >= (firstReadOffset + (queueSize * bool(firstReadOffset < writeOffset))))
+    return nullptr;
+  nextOffset -= queueSize <= nextOffset ? queueSize : 0;
+
+  nextWriteOffset.store(nextOffset, std::memory_order_release);
+
+  pMessage = fnCtor(toMessage(writeOffset));
+  pMessage->nextOffset = nextOffset;
+  nextWriteOffset.notify_one();
+  return pMessage;
+}
+valkyrie::Core::AgentResult<valkyrie::Core::AgentMessage*> valkyrie::Core::AgentMailbox::writeMessageMPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
+  u32 writeOffset = nextWriteOffset.load();
+  u32 firstReadOffset = syncMarker.load();
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  do {
+    nextOffset = writeOffset + msgSize;
+    if (nextOffset >= (firstReadOffset + (queueSize * bool(firstReadOffset < writeOffset))))
+      return nullptr;
+    nextOffset -= queueSize <= nextOffset ? queueSize : 0;
+  } while(!nextWriteOffset.compare_exchange_strong(writeOffset, nextOffset, std::memory_order_acq_rel));
+
+  pMessage = fnCtor(toMessage(writeOffset));
+  pMessage->nextOffset = nextOffset;
+  nextWriteOffset.notify_all();
+  return pMessage;
+}
+
+valkyrie::Core::AgentStatus                valkyrie::Core::AgentMailbox::readMessageSC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept {
+  u32 readOffset = nextReadOffset.load();
+  u32 nextOffset;
+  AgentMessage* pMessage;
+
+  waitForMessage(readOffset);
+
+  pMessage   = toMessage(readOffset);
+  nextOffset = pMessage->nextOffset.load(std::memory_order_acquire);
+
+  VK_assert(readOffset != nextOffset);
+
+  AgentStatus status = msgProc(*pMessage);
+
+  pMessage->~AgentMessage();
+
+  nextReadOffset.store(nextOffset, std::memory_order_release);
+
+  return status;
+}
+valkyrie::Core::AgentStatus                valkyrie::Core::AgentMailbox::readMessageMC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept {
+
+  //FIXME: I believe that the synchronization method here is broken... not totally sure what to do though.
+
+  u32 syncOffset = syncMarker.load(std::memory_order_acq_rel);
+  u32 readOffset = nextReadOffset.load();
+  u32 nextOffset = 0;
+  AgentMessage* pMessage;
+
+  waitForMessage(readOffset);
+
+  pMessage   = toMessage(readOffset);
+  nextOffset = pMessage->nextOffset.load(std::memory_order_acquire);
+  readOffset = syncOffset;
+
+  // Blocking...
+  if (!nextReadOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel)) {
+    syncMarker.wait(syncOffset, std::memory_order_release);
+    waitForMessage(readOffset);
+    readOffset = nextReadOffset.load(std::memory_order_acquire);
+    VK_assert(syncMarker.load() == readOffset);
+    pMessage   = toMessage(readOffset);
+    nextOffset = pMessage->nextOffset.load(std::memory_order_acquire);
+    const bool acquireResult = nextReadOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel);
+    VK_assert(acquireResult);
+  }
+
+  VK_assert(readOffset != nextOffset);
+
+  AgentStatus status = msgProc(*pMessage);
+
+  pMessage->~AgentMessage();
+
+  const bool syncUpdateResult = syncMarker.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel);
+  VK_assert(syncUpdateResult);
+  syncMarker.notify_one();
+
+  return status;
+}
+valkyrie::Core::AgentStatus                valkyrie::Core::AgentMailbox::readMessageNonCoherent (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept {
+  u32 readOffset;
+  u32 nextOffset = 0;
+  AgentMessage* pMessage;
+
+  readOffset = static_cast<u32>(-1);
+
+  while (!nextReadOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel)) {
+    waitForMessage(readOffset);
+    pMessage   = toMessage(readOffset);
+    nextOffset = pMessage->nextOffset.load(std::memory_order_acquire);
+  }
+
+  VK_assert(readOffset != nextOffset);
+
+  AgentStatus status = msgProc(*pMessage);
+
+  // Tag the message as having been condemned.
+  pMessage->condemn();
+
+  // FIXME: A simple comparison should work here...
+  if (syncMarker.compare_exchange_strong(readOffset, UniqueLock, std::memory_order_acq_rel)) {
+
+    u32 exileResult       = nextOffset;
+    u32 writeOffset;
+    u32 nextMessageOffset = nextOffset;
+
+    do {
+      nextMessageOffset = exileResult;
+      writeOffset       = nextWriteOffset.load(std::memory_order_acquire);
+      exileResult       = pMessage->exile(writeOffset);
+      pMessage          = toMessage(nextMessageOffset);
+    } while (exileResult != writeOffset);
+
+    exileResult = UniqueLock;
+    const bool unlockResult = syncMarker.compare_exchange_strong(exileResult, nextMessageOffset, std::memory_order_acq_rel);
+    VK_assert(unlockResult);
+  }
+
+  return status;
 }

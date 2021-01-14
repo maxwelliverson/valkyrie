@@ -7,30 +7,6 @@
 
 #include <valkyrie/Core/Error/Status.hpp>
 
-/*#define WIN32_LEAN_AND_MEAN
-#define NOATOM
-#define NOGDI
-#define NOGDICAPMASKS
-#define NOMETAFILE
-#define NOMINMAX
-#define NOMSG
-#define NOOPENFILE
-#define NORASTEROPS
-#define NOSCROLL
-#define NOSOUND
-#define NOSYSMETRICS
-#define NOTEXTMETRIC
-#define NOWH
-#define NOCOMM
-#define NOKANJI
-#define NOCRYPT
-#define NOMCX
-#include <Windows.h>
-
-#include <atomic>*/
-
-
-
 namespace valkyrie{
   namespace Core::System{
     class Win32StatusDomain;
@@ -53,7 +29,11 @@ namespace valkyrie{
       public:
 
         using domain_type = Win32StatusDomain;
+        using status_type = StatusCode<Win32StatusDomain>;
+        using error_type  = ErrorCode<Win32StatusDomain>;
         using value_type = u32;
+
+        inline constexpr static Uuid uuid{"cf4339da-2b4a-49f9-b66e-8f32eb61d2c9"};
 
       private:
         class RefCountedWin32String : public StringRef{
@@ -73,9 +53,9 @@ namespace valkyrie{
       public:
         using string_ref = RefCountedWin32String;
 
-        constexpr Win32StatusDomain() noexcept = default;
+        constexpr Win32StatusDomain() noexcept : StatusDomain(uuid){}
 
-        StringView name() const noexcept override { return VK_raw_string(Win32); }
+        StringRef name() const noexcept override { return VK_raw_string(Win32); }
         StringRef doMessage(const StatusCode<void>& status) const noexcept override{
           VK_assert(status.domain() == *this);
           return string_ref(static_cast<const StatusCode<Win32StatusDomain>&>(status).value());
@@ -84,7 +64,6 @@ namespace valkyrie{
         Severity doSeverity(const StatusCode<void>& status) const noexcept override;
         bool doFailure(const StatusCode<void>& status) const noexcept override;
         bool doEquivalent(const StatusCode<void>& A, const StatusCode<void>& B) const noexcept override;
-        const Uuid & id() const noexcept override;
 
         constexpr static const Win32StatusDomain& get() noexcept;
       };

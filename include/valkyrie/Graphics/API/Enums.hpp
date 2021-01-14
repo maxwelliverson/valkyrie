@@ -517,6 +517,12 @@ namespace valkyrie::Graphics::API {
     SharedDemandRefresh = 1000111000,
     SharedContinuousRefresh = 1000111001
   };
+  enum class QueueGlobalPriority{
+    Low = 128,
+    Medium = 256,
+    High = 512,
+    Realtime = 1024
+  };
 
 
   namespace FlagBits {

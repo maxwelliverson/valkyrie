@@ -8,6 +8,8 @@
 
 #include <valkyrie/Core/Utility/Version.hpp>
 #include <valkyrie/Core/Utility/Interval.hpp>
+#include <valkyrie/Core/ADT/FlatMap.hpp>
+#include <valkyrie/Core/ADT/StaticArray.hpp>
 
 #include <valkyrie/Graphics/API/Vulkan.hpp>
 
@@ -36,8 +38,8 @@ namespace valkyrie::Graphics::API::Internal{
   using InternalAllocator = const VkAllocationCallbacks*;
 
   using PhysicalDeviceNameString = boost::static_string<VK_MAX_PHYSICAL_DEVICE_NAME_SIZE>;
-  using NameString        = boost::static_string<VK_MAX_EXTENSION_NAME_SIZE>;
-  using DescriptionString = boost::static_string<VK_MAX_DESCRIPTION_SIZE>;
+  using NameString               = boost::static_string<VK_MAX_EXTENSION_NAME_SIZE>;
+  using DescriptionString        = boost::static_string<VK_MAX_DESCRIPTION_SIZE>;
 
   struct InstanceImpl;
   struct ApplicationImpl;
@@ -114,13 +116,21 @@ namespace valkyrie::Graphics::API::Internal{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR,
         .pNext = nullptr
     };
-    VkPhysicalDeviceRayTracingFeaturesKHR rayTracing{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_FEATURES_KHR,
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
         .pNext = &portabilitySubset
+    };
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQuery{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+        .pNext = &accelerationStructure
+    };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+        .pNext = &rayQuery
     };
     VkPhysicalDeviceCornerSampledImageFeaturesNV cornerSampledImage{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV,
-        .pNext = &rayTracing
+        .pNext = &rayTracingPipeline
     };
     VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT textureCompressionAstchdr{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT,
@@ -311,17 +321,17 @@ namespace valkyrie::Graphics::API::Internal{
     };
   };
   struct PhysicalDeviceProperties{
-    VkPhysicalDevicePortabilitySubsetPropertiesKHR portabilitySubset{
+    /*VkPhysicalDevicePortabilitySubsetPropertiesKHR portabilitySubset{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR,
         .pNext = nullptr
-    };
-    VkPhysicalDeviceGroupProperties group{
+    };*/
+    /*VkPhysicalDeviceGroupProperties group{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES,
-        .pNext = &portabilitySubset
-    };
+        .pNext =
+    };*/
     VkPhysicalDevicePushDescriptorPropertiesKHR pushDescriptor{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR,
-        .pNext = &group
+        .pNext = nullptr
     };
     VkPhysicalDevicePerformanceQueryPropertiesKHR performanceQuery{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR,
@@ -363,17 +373,21 @@ namespace valkyrie::Graphics::API::Internal{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV,
         .pNext = &shaderSmBuiltins
     };
-    VkPhysicalDeviceRayTracingPropertiesKHR rayTracingBETA{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_KHR,
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR accelerationStructure{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR,
         .pNext = &shadingRateImage
     };
-    VkPhysicalDeviceRayTracingPropertiesNV rayTracing{
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipeline{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+        .pNext = &accelerationStructure
+    };
+    VkPhysicalDeviceRayTracingPropertiesNV rayTracingNV{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV,
-        .pNext = &rayTracingBETA
+        .pNext = &rayTracingPipeline
     };
     VkPhysicalDeviceExternalMemoryHostPropertiesEXT externalMemoryHost{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT,
-        .pNext = &rayTracing
+        .pNext = &rayTracingNV
     };
     VkPhysicalDeviceShaderCoreProperties2AMD shaderCore2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD,
@@ -411,13 +425,9 @@ namespace valkyrie::Graphics::API::Internal{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV,
         .pNext = &customBorderColor
     };
-    VkPhysicalDeviceMemoryBudgetPropertiesEXT memoryBudget{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT,
-        .pNext = &cooperativeMatrix
-    };
     VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroupSizeControl{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT,
-        .pNext = &memoryBudget
+        .pNext = &cooperativeMatrix
     };
     VkPhysicalDeviceFragmentDensityMap2PropertiesEXT fragmentDensityMap2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT,
@@ -435,13 +445,9 @@ namespace valkyrie::Graphics::API::Internal{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT,
         .pNext = &pciBusInfo
     };
-    VkPhysicalDeviceMemoryProperties2       memory{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
-        .pNext = &lineRasterization
-    };
     VkPhysicalDeviceVulkan12Properties vulkan12{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
-        .pNext = &memory
+        .pNext = &lineRasterization
     };
     VkPhysicalDeviceVulkan11Properties vulkan11{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
@@ -492,9 +498,6 @@ namespace valkyrie::Graphics::API::Internal{
 
   struct PerformanceCounter{
 
-    inline constexpr static PerformanceCounterFlags PerformanceImpacting{PerformanceCounterBits::PerformanceImpacting};
-    inline constexpr static PerformanceCounterFlags ConcurrentlyImpacted{PerformanceCounterBits::ConcurrentlyImpacted};
-
     VkPerformanceCounterKHR handle;
     PerformanceCounterFlags flags;
     NameString              name;
@@ -510,12 +513,12 @@ namespace valkyrie::Graphics::API::Internal{
   };
 
   struct QueueFamily{
-    QueueFlags             queueFlags;
-    u32                    queueCount;
-    u32                    timestampValidBits;
-    Extent3D<Core::MinU32> imageTransferGranularity;
-    PipelineStageFlags     checkpointExecutionStageMask;
-    Core::SmallArray<PerformanceCounter> performanceCounters{};
+    QueueFlags                   queueFlags;
+    u32                          queueCount;
+    u32                          timestampValidBits;
+    Core::Extent3D<Core::MinU32> imageTransferGranularity;
+    PipelineStageFlags           checkpointExecutionStageMask;
+    //Core::SmallArray<PerformanceCounter> performanceCounters{};
 
     explicit QueueFamily(const VkQueueFamilyProperties& props) noexcept
         : queueFlags(props.queueFlags),
@@ -551,12 +554,13 @@ namespace valkyrie::Graphics::API::Internal{
 
     std::atomic_uint32_t refCount;
 
-    HWND nativeWindow;
+    HWND      nativeWindow;
+    HMONITOR  nativeMonitor;
     HINSTANCE nativeProcess;
 
     Core::SystemStatus lastResult;
 
-    Extent2D<> dims;
+    Core::Extent2D<> dims;
   };
 
   void destroySurfaceRef(Internal::SurfaceImpl* pImpl) noexcept;
@@ -577,8 +581,8 @@ namespace valkyrie::Graphics::API::Internal{
     mutable Core::FlatSet<DeviceExtension> extensions;
 
     mutable Core::FlatMap<VkFormat, VkFormatProperties2> formatProperties;
-    mutable Core::FlatMap<u32, QueueFamily> queueFamilies;
-    mutable Core::FlatMap<SampleCountBits, Extent2D<Core::MaxU32>> sampleLocationMap;
+    mutable Core::StaticArray<QueueFamily, 8> queueFamilies;
+    mutable Core::FlatMap<FlagBits::SampleCount, Core::Extent2D<Core::MaxU32>> sampleLocationMap;
     mutable Core::StaticArray<VkTimeDomainEXT, 4> timeDomains;
     mutable Core::DynamicArray<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
 
@@ -627,8 +631,9 @@ namespace valkyrie::Graphics::API::Internal{
 
     VkQueue handle;
     PhysicalDeviceImpl* pPhysicalDevice;
-    u32                 familyIndex;
-
+    QueueAPI api;
+    u32      familyIndex;
+    float    priority;
   };
 
   struct DeviceImpl{
@@ -662,19 +667,19 @@ namespace valkyrie::Graphics::API::Internal{
   struct SwapchainImpl{
     VkSwapchainKHR handle;
     VkSwapchainCreateInfoKHR createInfo;
-    SwapchainFlags flags;
-    SurfaceImpl*   surface;
-    uint32_t                         minImageCount;
-    Format     imageFormat;
-    ColorSpace imageColorSpace;
-    Extent2D<> imageExtent;
-    uint32_t   imageArrayLayers;
-    ImageUsageFlags imageUsage;
-    SharingMode     imageSharingMode;
-    uint32_t        queueFamilyIndexCount;
-    const uint32_t* pQueueFamilyIndices;
-    SurfaceTransformBits preTransform;
-    CompositeAlphaBits   compositeAlpha;
+    SwapchainFlags   flags;
+    SurfaceImpl*     surface;
+    uint32_t         minImageCount;
+    Format           imageFormat;
+    ColorSpace       imageColorSpace;
+    Core::Extent2D<> imageExtent;
+    uint32_t         imageArrayLayers;
+    ImageUsageFlags  imageUsage;
+    SharingMode      imageSharingMode;
+    uint32_t         queueFamilyIndexCount;
+    const uint32_t*  pQueueFamilyIndices;
+    FlagBits::SurfaceTransform preTransform;
+    FlagBits::CompositeAlpha   compositeAlpha;
     PresentMode          presentMode;
     bool                 clipped;
     VkSwapchainKHR       oldSwapchain;

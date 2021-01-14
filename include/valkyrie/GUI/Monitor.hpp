@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_MONITOR_HPP
 #define VALKYRIE_MONITOR_HPP
 
+#include <valkyrie/Core/Utility/Shapes.hpp>
 #include <valkyrie/Graphics/Pixel.hpp>
-#include <valkyrie/Graphics/Shapes.hpp>
 #include <valkyrie/Core/Error/Status.hpp>
 
 namespace valkyrie::GUI{

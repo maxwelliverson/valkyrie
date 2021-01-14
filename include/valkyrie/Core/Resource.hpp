@@ -9,25 +9,33 @@
 
 namespace valkyrie::Core{
 
-  class Device{};
+  class Device{ };
+  class DeviceQueue{ };
 
-  class ResourceLifetime{};
-  class ResourceScope{};
-  class ResourceMemory{};
-
-
-
-  class Resource{};
-  class ResourceView{};
-
-  template <typename PixelType>
-  class Image{};
-  template <typename ElementType>
-  class Buffer{};
+  class ResourceLifetime{ };
+  class ResourceScope{ };
+  class ResourceMemory{ };
 
 
-  class ImageView{};
-  class BufferView{};
+
+  class Resource{ };
+  class ResourceView{
+  public:
+    virtual Resource* getBackingResource() noexcept = 0;
+  };
+
+  class Image : public Resource{ };
+  class Buffer : public Resource{  };
+
+
+  class ImageView : public ResourceView{
+  public:
+    Image* getBackingResource() noexcept override = 0;
+  };
+  class BufferView : public ResourceView{
+  public:
+    Buffer* getBackingResource() noexcept override = 0;
+  };
 }
 
 

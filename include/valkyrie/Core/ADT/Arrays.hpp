@@ -2,45 +2,22 @@
 // Created by Maxwell on 2020-11-09.
 //
 
-#ifndef VALKYRIE_CORE_ARRAYS_HPP
-#define VALKYRIE_CORE_ARRAYS_HPP
+#ifndef VALKYRIE_CORE_ADT_ARRAYS_HPP
+#define VALKYRIE_CORE_ADT_ARRAYS_HPP
 
-#include <valkyrie/Core/Utility/Span.hpp>
+#include <valkyrie/Core/ADT/ArrayRef.hpp>
 #include <valkyrie/Core/Utility/Iterator.hpp>
 #include <valkyrie/Core/Utility/Interval.hpp>
 #include <valkyrie/Math/Calculus/Polynomial.hpp>
 
-#include <boost/container/static_vector.hpp>
-#include <boost/container/small_vector.hpp>
-
 
 #include <memory>
 #include <vector>
+#include <array>
 #include <algorithm>
 
 
 namespace valkyrie::Core{
-
-  /*namespace CT{
-    template <auto ...Values>
-    struct Container{};
-    template <auto Val>
-    using Box = Container<Val>;
-
-    template <decltype(auto) From, decltype(auto) To>
-    inline constexpr static Container<From, To> interval{};
-    template <decltype(auto) Val>
-    inline constexpr static Box<Val> value{};
-  }*/
-
-
-
-  template <typename T, size_t N>
-  using StaticArray = boost::container::static_vector<T, N>;
-  template <typename T, size_t N = 4, typename Alloc = std::allocator<T>>
-  using SmallArray = boost::container::small_vector<T, N, Alloc>;
-  template <typename T, typename Alloc = std::allocator<T>>
-  using DynamicArray = std::vector<T, Alloc>;
 
 
   namespace Arrays{
@@ -108,11 +85,11 @@ namespace valkyrie::Core{
 
         template <Concepts::StrictExtent<IndexType> auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, Head, OtherTail...>& Other) noexcept
-            //requires(std::constructible_from<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
+            //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()){}
         template <Concepts::StrictExtent<IndexType> auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, dynamicExtent, OtherTail...>& Other) noexcept
-            //requires(std::constructible_from<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
+            //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()){
           VK_constexpr_assert(Other.extent() == Head);
         }
@@ -137,7 +114,7 @@ namespace valkyrie::Core{
 
         template <Concepts::StrictExtent<IndexType> auto OtherHead, Concepts::StrictExtent<IndexType> auto ...OtherTail>
         inline constexpr ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, OtherHead, OtherTail...>& Other) noexcept
-            requires(std::constructible_from<ExtentStorage<IndexType, Tail...>, const ExtentStorage<IndexType, OtherTail...>&>)
+            requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()),
               thisIndex_(Other.extent()){}
         template <std::convertible_to<IndexType> I, std::convertible_to<IndexType> ...Index>
@@ -170,11 +147,11 @@ namespace valkyrie::Core{
 
         template <Concepts::StrictExtent<IndexType> auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, Head, OtherTail...>& Other) noexcept
-        //requires(std::constructible_from<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
+        //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()){}
         template <Concepts::StrictExtent<IndexType> auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, dynamicExtent, OtherTail...>& Other) noexcept
-        //requires(std::constructible_from<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
+        //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()){
           VK_constexpr_assert(Other.extent() == Head);
         }
@@ -199,7 +176,7 @@ namespace valkyrie::Core{
 
         template </*Concepts::StrictExtent<IndexType>*/ auto OtherHead, /*Concepts::StrictExtent<IndexType>*/ auto ...OtherTail>
         inline constexpr ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, OtherHead, OtherTail...>& Other) noexcept
-        requires(std::constructible_from<ExtentStorage<Stride<IndexType>, Tail...>, const ExtentStorage<Stride<IndexType>, OtherTail...>&>)
+        requires(ConstructibleFrom<ExtentStorage<Stride<IndexType>, Tail...>, const ExtentStorage<Stride<IndexType>, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()),
               thisIndex_(Other.extent()){}
         template <std::convertible_to<IndexType> I, std::convertible_to<IndexType> ...Index>
@@ -305,7 +282,7 @@ namespace valkyrie::Core{
       template<Concepts::Extent<IndexType> auto ...OtherExtents>
       constexpr BasicExtents(const BasicExtents<IndexType, OtherExtents...>& Other) noexcept
       requires(!std::same_as<BasicExtents, BasicExtents<IndexType, OtherExtents...>> &&
-          std::constructible_from<Storage_, const typename BasicExtents<IndexType, OtherExtents...>::Storage_&>)
+          ConstructibleFrom<Storage_, const typename BasicExtents<IndexType, OtherExtents...>::Storage_&>)
           : Storage_{Detail::copyConstruct, Other}{}
 
       template<std::convertible_to<index_type>... IndexType_>
@@ -316,7 +293,7 @@ namespace valkyrie::Core{
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
       template<Concepts::Extent<IndexType> auto ...OtherExtents>
-      requires(std::constructible_from<BasicExtents, const BasicExtents<IndexType, OtherExtents...>&>)
+      requires(ConstructibleFrom<BasicExtents, const BasicExtents<IndexType, OtherExtents...>&>)
       constexpr BasicExtents& operator=(const BasicExtents<IndexType, OtherExtents...>& Other) noexcept{
         this->~Extents();
         new(this) BasicExtents(Other);
@@ -367,7 +344,7 @@ namespace valkyrie::Core{
       template</*Concepts::Extent<IndexType> */auto ...OtherExtents>
       constexpr BasicExtents(const BasicExtents<Stride<IndexType>, OtherExtents...>& Other) noexcept
       requires(!std::same_as<BasicExtents, BasicExtents<Stride<IndexType>, OtherExtents...>> &&
-               std::constructible_from<Storage_, const typename BasicExtents<Stride<IndexType>, OtherExtents...>::Storage_&>)
+               ConstructibleFrom<Storage_, const typename BasicExtents<Stride<IndexType>, OtherExtents...>::Storage_&>)
           : Storage_{Detail::copyConstruct, Other}{}
 
       template<std::convertible_to<index_type>... IndexType_>
@@ -378,7 +355,7 @@ namespace valkyrie::Core{
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
       template</*Concepts::Extent<IndexType>*/ auto ...OtherExtents>
-      requires(std::constructible_from<BasicExtents, const BasicExtents<Stride<IndexType>, OtherExtents...>&>)
+      requires(ConstructibleFrom<BasicExtents, const BasicExtents<Stride<IndexType>, OtherExtents...>&>)
       constexpr BasicExtents& operator=(const BasicExtents<Stride<IndexType>, OtherExtents...>& Other) noexcept{
         this->~Extents();
         new(this) BasicExtents(Other);
@@ -782,10 +759,10 @@ namespace valkyrie::Core{
       class ArrayViewStorage : public Accessor, ArrayViewStorageMapping<Ext, Layout>{
 
       protected:
-        template <typename ...Args> requires(std::default_initializable<Accessor> && std::constructible_from<typename Layout::template mapping<Ext>, Args...>)
+        template <typename ...Args> requires(std::default_initializable<Accessor> && ConstructibleFrom<typename Layout::template mapping<Ext>, Args...>)
         constexpr explicit ArrayViewStorage(Args&& ...args) noexcept
             : ArrayViewStorageMapping<Ext, Layout>(std::forward<Args>(args)...){}
-        template <typename ...Args> requires(std::constructible_from<typename Layout::template mapping<Ext>, Args...>)
+        template <typename ...Args> requires(ConstructibleFrom<typename Layout::template mapping<Ext>, Args...>)
         constexpr explicit ArrayViewStorage(const Accessor& accessor, Args&& ...args) noexcept
             : Accessor(accessor), ArrayViewStorageMapping<Ext, Layout>(std::forward<Args>(args)...){}
 
@@ -1273,7 +1250,7 @@ namespace valkyrie::Core{
           return interval_.max - interval_.min;
         }
 
-        template <typename ...Args> requires(std::constructible_from<Interval<T, Opts...>, Args...>)
+        template <typename ...Args> requires(ConstructibleFrom<Interval<T, Opts...>, Args...>)
         constexpr SliceType(Args&& ...args) noexcept : interval_{std::forward<Args>(args)...}{
           VK_constexpr_assert(interval_.min < interval_.max);
         }
@@ -1542,4 +1519,4 @@ template <typename T, size_t Ext>
 struct valkyrie::Traits::View<std::span<T, Ext>>{ };
 
 #endif
-#endif
+#endif //VALKYRIE_CORE_ADT_ARRAYS_HPP

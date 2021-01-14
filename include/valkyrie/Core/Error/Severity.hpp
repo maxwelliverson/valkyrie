@@ -5,8 +5,10 @@
 #ifndef VALKYRIE_SEVERITY_HPP
 #define VALKYRIE_SEVERITY_HPP
 
+#include <valkyrie/Core/Types.hpp>
+
 namespace valkyrie::Core{
-  enum class Severity{
+  enum class Severity : i32{
     Debug         = 0x1,
     Performance   = 0x2,
     Success       = 0x4,

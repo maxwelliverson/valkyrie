@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_IO_STRING_BUFFER_HPP
 #define VALKYRIE_IO_STRING_BUFFER_HPP
 
-#include <valkyrie/Core/IO/Messages.hpp>
+#include <valkyrie/Core/Async/Agent.hpp>
 
 namespace valkyrie::Core{
   class StringBuffer{

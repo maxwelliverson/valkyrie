@@ -354,7 +354,7 @@ namespace valkyrie::Core{
   class IntrusiveMutex{
     mutable Mut mutex;
   protected:
-    template <typename ...Args> requires(std::constructible_from<Mut, Args...>)
+    template <typename ...Args> requires(ConstructibleFrom<Mut, Args...>)
     explicit IntrusiveMutex(Args&& ...args) noexcept : mutex{std::forward<Args>(args)...}{}
   public:
     Lock lock() noexcept;

@@ -13,7 +13,7 @@ namespace valkyrie::Graphics::API{
     Impl* pImpl;
   public:
 
-    Surface(const Instance& instance, Extent2D<> extent) noexcept;
+    Surface(const Instance& instance, Core::Extent2D<> extent) noexcept;
     Surface(const Surface&);
     Surface(Surface&&) noexcept;
     Surface& operator=(const Surface&);
@@ -24,7 +24,7 @@ namespace valkyrie::Graphics::API{
 
 
     bool isValid() const noexcept;
-    Extent2D<> getExtents() const noexcept;
+    Core::Extent2D<> getExtents() const noexcept;
   };
 }
 

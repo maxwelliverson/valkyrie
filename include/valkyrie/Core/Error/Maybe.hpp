@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_MAYBE_HPP
 #define VALKYRIE_MAYBE_HPP
 
-#include <valkyrie/Core/Error/Status.hpp>
+#include <valkyrie/Core/Error/GenericCode.hpp>
 
 namespace valkyrie::Core{
 
@@ -307,7 +307,7 @@ namespace valkyrie::Core{
 
 
     template <typename U, typename D2>
-    requires(std::constructible_from<T, const U&> && std::constructible_from<status_type, const StatusCode<D2>&>)
+    requires(ConstructibleFrom<T, const U&> && ConstructibleFrom<status_type, const StatusCode<D2>&>)
     explicit(!std::convertible_to<const U&, T> || !std::convertible_to<const StatusCode<D2>&, status_type>)
     constexpr Maybe(const Maybe<U, D2>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : Base{ .is_valid_ = other.is_valid_ }{
@@ -318,7 +318,7 @@ namespace valkyrie::Core{
     }
 
     template <typename U, typename D2>
-    requires(std::constructible_from<T, U&&> && std::constructible_from<status_type, StatusCode<D2>&&>)
+    requires(ConstructibleFrom<T, U&&> && ConstructibleFrom<status_type, StatusCode<D2>&&>)
     explicit(!std::convertible_to<U&&, T> || !std::convertible_to<StatusCode<D2>&&, status_type>)
     constexpr Maybe(Maybe<U, D2>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : Base{ .is_valid_ = other.is_valid_ }{
@@ -330,13 +330,13 @@ namespace valkyrie::Core{
 
 
     template <typename ...Args>
-    requires(std::constructible_from<T, Args...> && !(sizeof...(Args) == 1 && SameAsOneOf<T, Args...>))
+    requires(ConstructibleFrom<T, Args...> && !(sizeof...(Args) == 1 && SameAsOneOf<T, Args...>))
     explicit(sizeof...(Args) == 1 && !(std::convertible_to<Args, T> && ...))
     constexpr Maybe(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
         : Base{ .is_valid_ = true, .value_ = T{ std::forward<Args>(args)... }}{}
 
     template <typename ...Args>
-    requires(std::constructible_from<status_type, Args...> && !(sizeof...(Args) == 1 && SameAsOneOf<status_type, Args...>))
+    requires(ConstructibleFrom<status_type, Args...> && !(sizeof...(Args) == 1 && SameAsOneOf<status_type, Args...>))
     explicit(sizeof...(Args) == 1 && !(std::convertible_to<Args, status_type> && ...))
     constexpr Maybe(Args&& ...args) noexcept(std::is_nothrow_constructible_v<status_type, Args...>)
         : Base{ .status_ = status_type{ std::forward<Args>(args)... }}{}*/

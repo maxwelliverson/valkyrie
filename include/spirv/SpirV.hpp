@@ -5,9 +5,9 @@
 #ifndef VALKYRIE_SPIRV_HPP
 #define VALKYRIE_SPIRV_HPP
 
-#include <valkyrie/Core/Types.hpp>
 #include <spirv/Enums.hpp>
-#include <valkyrie/Core/Utility/Arrays.hpp>
+#include <valkyrie/Core/ADT/Arrays.hpp>
+#include <valkyrie/Core/Types.hpp>
 #include <valkyrie/Core/Utility/Enums.hpp>
 #include <valkyrie/Core/Utility/StringView.hpp>
 

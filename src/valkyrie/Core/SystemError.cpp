@@ -412,11 +412,6 @@ bool valkyrie::Core::System::Win32StatusDomain::doFailure(const StatusCode<void>
 bool valkyrie::Core::System::Win32StatusDomain::doEquivalent(const StatusCode<void>& A, const StatusCode<void>& B) const noexcept {
   return translateWin32CodeToGeneric(static_cast<const status_type&>(A).value()) == B.generic();
 }
-const valkyrie::Core::Uuid & valkyrie::Core::System::Win32StatusDomain::id() const noexcept {
-  return class_traits<Win32StatusDomain>::uuid;
-  //return class_traits<Win32StatusDomain>::uuid;
-  //return Traits::Singleton<Win32StatusDomain>::uuid;
-}
 
 valkyrie::Core::System::Win32::Status valkyrie::Core::System::Win32::getLastError() noexcept {
   return Status{ GetLastError() };
@@ -424,8 +419,8 @@ valkyrie::Core::System::Win32::Status valkyrie::Core::System::Win32::getLastErro
 
 #endif
 
-#include <valkyrie/Core/Error/System/Posix.hpp>
-#include <valkyrie/Core/Utility/FlatMap.hpp>
+/*#include <valkyrie/Core/Error/System/Posix.hpp>
+#include <valkyrie/Core/ADT/FlatMap.hpp>
 
 #include <shared_mutex>
 
@@ -466,4 +461,4 @@ bool system::Detail::PosixStatusDomain::doFailure(const StatusCode<void> &status
   return static_cast<const status_type&>(status).value();
 }
 Core::StringRef system::Detail::PosixStatusDomain::doMessage(const StatusCode<void> &status) const noexcept {}
-Core::Severity system::Detail::PosixStatusDomain::doSeverity(const StatusCode<void> &status) const noexcept {}
+Core::Severity system::Detail::PosixStatusDomain::doSeverity(const StatusCode<void> &status) const noexcept {}*/

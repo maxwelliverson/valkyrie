@@ -7,7 +7,7 @@
 
 #include <valkyrie/Core/Types.hpp>
 #include <valkyrie/Graphics/API/Enums.hpp>
-#include <valkyrie/Graphics/Shapes.hpp>
+#include <valkyrie/Core/Utility/Shapes.hpp>
 
 #include <concepts>
 #include <tuple>

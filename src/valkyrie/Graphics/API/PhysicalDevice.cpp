@@ -51,7 +51,7 @@ namespace valkyrie::Graphics::API{
         }
         impl.pInterface->getQueueFamilyProperties(impl.handle, &queueFamilySize, queueFamiliesTmp.data());
         for (u32 i = 0; i < queueFamilySize; ++i)
-          impl.queueFamilies.emplace(i, queueFamiliesTmp[i].queueFamilyProperties);
+          impl.queueFamilies.emplace_back(queueFamiliesTmp[i].queueFamilyProperties);
       }
       void lazyLoadQueueFamiliesWithCheckpoints(PhysicalDeviceImpl &impl) noexcept {
         u32 queueFamilySize;
@@ -68,7 +68,7 @@ namespace valkyrie::Graphics::API{
         }
         impl.pInterface->getQueueFamilyProperties(impl.handle, &queueFamilySize, queueFamiliesTmp.data());
         for (u32 i = 0; i < queueFamilySize; ++i)
-          impl.queueFamilies.emplace(i, queueFamiliesTmp[i].queueFamilyProperties, checkpointPropertiesTmp[i]);
+          impl.queueFamilies.emplace_back(queueFamiliesTmp[i].queueFamilyProperties, checkpointPropertiesTmp[i]);
       }
       VulkanStatus lazyLoadPerformanceCounters(PhysicalDeviceImpl &impl) noexcept {
         VkPerformanceCounterKHR *counters;
@@ -79,10 +79,10 @@ namespace valkyrie::Graphics::API{
           for (; i < impl.queueFamilies.size(); ++i) {
             auto &family = impl.queueFamilies[i];
             u32 counterCount = 0;
-            VK_safe_call(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr));
+            VK_safe_call(makeStatusCode(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr)));
             counters = VK_malloc(VkPerformanceCounterKHR, counterCount);
             descriptions = VK_malloc(VkPerformanceCounterDescriptionKHR, counterCount);
-            VK_safe_call(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions));
+            VK_safe_call(makeStatusCode(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions)));
             for (u32 j = 0; i < counterCount; ++j)
               family.performanceCounters.emplace_back(counters[j], descriptions[j]);
             VK_free(counters);
@@ -102,18 +102,18 @@ namespace valkyrie::Graphics::API{
           if (!impl.extensionsLoaded) {
             Core::DynamicArray<VkExtensionProperties> deviceExtensions;
             u32 extSize;
-            VK_safe_call(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, nullptr));
+            VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, nullptr)));
             deviceExtensions.resize(extSize);
-            VK_safe_call(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, deviceExtensions.data()));
+            VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, deviceExtensions.data())));
 
             impl.extensions.insert(deviceExtensions);
 
 
             for (auto &&layer : impl.pInstance->layers) {
               deviceExtensions.clear();
-              VK_safe_call(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, nullptr));
+              VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, nullptr)));
               deviceExtensions.resize(extSize);
-              VK_safe_call(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, deviceExtensions.data()));
+              VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, deviceExtensions.data())));
               impl.extensions.insert(deviceExtensions);
             }
             impl.extensionsLoaded = true;
