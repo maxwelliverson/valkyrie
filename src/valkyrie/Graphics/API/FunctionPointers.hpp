@@ -214,154 +214,168 @@ struct InstanceFunctions{
 struct CommandBufferFunctions{
   DeviceFunctionLoader loader;
 
+#define VK_cmd_function(name_, ...) VK_function(Cmd##name_, cmd##name_)
+
   VK_function(BeginCommandBuffer, begin);
   VK_function(EndCommandBuffer, end);
   VK_function(ResetCommandBuffer, reset);
 
 
-  VK_function(CmdSetViewport, cmdSetViewport);
-  VK_function(CmdSetScissor, cmdSetScissor);
-  VK_function(CmdSetLineWidth, cmdSetLineWidth);
-  VK_function(CmdSetDepthBias, cmdSetDepthBias);
-  VK_function(CmdSetBlendConstants, cmdSetBlendConstants);
-  VK_function(CmdSetDepthBounds, cmdSetDepthBounds);
-  VK_function(CmdSetStencilCompareMask, cmdSetStencilCompareMask);
-  VK_function(CmdSetStencilWriteMask, cmdSetStencilWriteMask);
-  VK_function(CmdSetStencilReference, cmdSetStencilReference);
-  VK_function(CmdSetCullModeEXT, cmdSetCullMode);
-  VK_function(CmdSetFrontFaceEXT, cmdSetFrontFace);
-  VK_function(CmdSetPrimitiveTopologyEXT, cmdSetPrimitiveTopology);
-  VK_function(CmdSetViewportWithCountEXT, cmdSetViewportWithCount);
-  VK_function(CmdSetScissorWithCountEXT, cmdSetScissorWithCount);
-  VK_function(CmdSetDepthTestEnableEXT, cmdSetDepthTestEnable);
-  VK_function(CmdSetDepthWriteEnableEXT, cmdSetDepthWriteEnable);
-  VK_function(CmdSetDepthCompareOpEXT, cmdSetDepthCompareOp);
-  VK_function(CmdSetDepthBoundsTestEnableEXT, cmdSetDepthBoundsTestEnable);
-  VK_function(CmdSetStencilTestEnableEXT, cmdSetStencilTestEnable);
-  VK_function(CmdSetStencilOpEXT, cmdSetStencilOp);
-  VK_function(CmdSetViewportWScalingNV, cmdSetViewportWScaling);
-  VK_function(CmdSetDiscardRectangleEXT, cmdSetDiscardRectangle);
-  VK_function(CmdSetViewportShadingRatePaletteNV, cmdSetViewportShadingRatePalette);
-  VK_function(CmdSetCoarseSampleOrderNV, cmdSetCoarseSampleOrder);
-  VK_function(CmdSetSampleLocationsEXT, cmdSetSampleLocations);
-  VK_function(CmdSetExclusiveScissorNV, cmdSetExclusiveScissor);
-  VK_function(CmdSetCheckpointNV, cmdSetCheckpoint);
-  VK_function(CmdSetPerformanceMarkerINTEL, cmdSetPerformanceMarker);
-  VK_function(CmdSetPerformanceStreamMarkerINTEL, cmdSetPerformanceStreamMarker);
-  VK_function(CmdSetPerformanceOverrideINTEL, cmdSetPerformanceOverride);
-  VK_function(CmdSetLineStippleEXT, cmdSetLineStipple);
-  VK_function(CmdSetDeviceMask, cmdSetDeviceMask);
-  VK_function(CmdSetEvent, cmdSetEvent);
-  VK_function(CmdSetRayTracingPipelineStackSizeKHR, cmdSetRayTracingPipelineStackSizeKHR);
+  /*  =*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*[ Vulkan Commands ]*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+   *
+   *              Command                                 | Command Buffer Level | Render Pass Scope |         Queue Types         | Pipeline Type
+   * */
 
 
-  VK_function(CmdBindPipeline, cmdBindPipeline);
-  VK_function(CmdBindDescriptorSets, cmdBindDescriptorSets);
-  VK_function(CmdBindIndexBuffer, cmdBindIndexBuffer);
-  VK_function(CmdBindVertexBuffers, cmdBindVertexBuffers);
-  VK_function(CmdBindVertexBuffers2EXT, cmdBindVertexBuffers2);
-  VK_function(CmdBindShadingRateImageNV, cmdBindShadingRateImage);
-  VK_function(CmdBindTransformFeedbackBuffersEXT, cmdBindTransformFeedbackBuffers);
-  VK_function(CmdBindPipelineShaderGroupNV, cmdBindPipelineShaderGroup);
+  // Control Flow
+  VK_cmd_function(ExecuteCommands,                          Primary,               Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(BeginRenderPass,                          Primary,               Outside,            Graphics,                      Graphics);
+  VK_cmd_function(BeginRenderPass2,                         Primary,               Outside,            Graphics,                      Graphics);
+  VK_cmd_function(NextSubpass,                              Primary,               Inside,             Graphics,                      Graphics);
+  VK_cmd_function(NextSubpass2,                             Primary,               Inside,             Graphics,                      Graphics);
+  VK_cmd_function(EndRenderPass,                            Primary,               Inside,             Graphics,                      Graphics);
+  VK_cmd_function(EndRenderPass2,                           Primary,               Inside,             Graphics,                      Graphics);
 
 
-  VK_function(CmdDraw, cmdDraw);
-  VK_function(CmdDrawIndexed, cmdDrawIndexed);
-  VK_function(CmdDrawIndirect, cmdDrawIndirect);
-  VK_function(CmdDrawIndirectCount, cmdDrawIndirectCount);
-  VK_function(CmdDrawIndexedIndirect, cmdDrawIndexedIndirect);
-  VK_function(CmdDrawIndexedIndirectCount, cmdDrawIndexedIndirectCount);
-  VK_function(CmdDrawIndirectByteCountEXT, cmdDrawIndirectByteCount);
-  VK_function(CmdDrawMeshTasksNV, cmdDrawMeshTasks);
-  VK_function(CmdDrawMeshTasksIndirectNV, cmdDrawMeshTasksIndirect);
-  VK_function(CmdDrawMeshTasksIndirectCountNV, cmdDrawMeshTasksIndirectCount);
-  VK_function(CmdTraceRaysKHR, cmdTraceRaysKHR);
-  VK_function(CmdTraceRaysIndirectKHR, cmdTraceRaysIndirectKHR);
+  VK_cmd_function(PipelineBarrier,                          Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(SetDeviceMask,                            Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(BeginConditionalRenderingEXT,             Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(EndConditionalRenderingEXT,               Both,                  Both,               Graphics | Compute);
+
+  VK_cmd_function(PreprocessGeneratedCommandsNV,            Both,                  Outside,            Graphics | Compute);
+  VK_cmd_function(ExecuteGeneratedCommandsNV,               Both,                  Inside,             Graphics | Compute);
+
+  VK_cmd_function(SetEvent,                                 Both,                  Outside,            Graphics | Compute);
+  VK_cmd_function(ResetEvent,                               Both,                  Outside,            Graphics | Compute);
+  VK_cmd_function(WaitEvents,                               Both,                  Both,               Graphics | Compute);
 
 
-  VK_function(CmdCopyBuffer, cmdCopyBuffer);
-  VK_function(CmdCopyBuffer2KHR, cmdCopyBuffer2);
-  VK_function(CmdCopyImage, cmdCopyImage);
-  VK_function(CmdCopyImage2KHR, cmdCopyImage2);
-  VK_function(CmdCopyBufferToImage, cmdCopyBufferToImage);
-  VK_function(CmdCopyBufferToImage2KHR, cmdCopyBufferToImage2);
-  VK_function(CmdCopyImageToBuffer, cmdCopyImageToBuffer);
-  VK_function(CmdCopyImageToBuffer2KHR, cmdCopyImageToBuffer2);
-  VK_function(CmdCopyAccelerationStructureNV, cmdCopyAccelerationStructureNV);
-  VK_function(CmdCopyQueryPoolResults, cmdCopyQueryPoolResults);
 
 
-  VK_function(CmdBeginQuery, cmdBeginQuery);
-  VK_function(CmdBeginRenderPass, cmdBeginRenderPass);
-  VK_function(CmdBeginRenderPass2, cmdBeginRenderPass2);
-  VK_function(CmdBeginTransformFeedbackEXT, cmdBeginTransformFeedback);
-  VK_function(CmdBeginQueryIndexedEXT, cmdBeginQueryIndexed);
-  VK_function(CmdBeginConditionalRenderingEXT, cmdBeginConditionalRendering);
-  VK_function(CmdBeginDebugUtilsLabelEXT, cmdBeginDebugUtilsLabel);
+  // State Modification
+  VK_cmd_function(PushConstants,                            Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(PushDescriptorSetKHR,                     Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(PushDescriptorSetWithTemplateKHR,         Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(BindPipeline,                             Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(BindDescriptorSets,                       Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(BindIndexBuffer,                          Both,                  Both,               Graphics);
+  VK_cmd_function(BindVertexBuffers,                        Both,                  Both,               Graphics);
+  VK_cmd_function(BindShadingRateImageNV,                   Both,                  Both,               Graphics);
+  VK_cmd_function(BindTransformFeedbackBuffersEXT,          Both,                  Both,               Graphics);
+  VK_cmd_function(BindPipelineShaderGroupNV,                Both,                  Both,               Graphics | Compute);
+
+  VK_cmd_function(SetViewport,                              Both,                  Both,               Graphics);
+  VK_cmd_function(SetScissor,                               Both,                  Both,               Graphics);
+  VK_cmd_function(SetLineWidth,                             Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthBias,                             Both,                  Both,               Graphics);
+  VK_cmd_function(SetBlendConstants,                        Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthBounds,                           Both,                  Both,               Graphics);
+  VK_cmd_function(SetStencilCompareMask,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetStencilWriteMask,                      Both,                  Both,               Graphics);
+  VK_cmd_function(SetStencilReference,                      Both,                  Both,               Graphics);
+  VK_cmd_function(SetViewportWScalingNV,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetDiscardRectangleEXT,                   Both,                  Both,               Graphics);
+  VK_cmd_function(SetSampleLocationsEXT,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetViewportShadingRatePaletteNV,          Both,                  Both,               Graphics);
+  VK_cmd_function(SetCoarseSampleOrderNV,                   Both,                  Both,               Graphics);
+  VK_cmd_function(SetExclusiveScissorNV,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetFragmentShadingRateKHR,                Both,                  Both,               Graphics);
+  VK_cmd_function(SetFragmentShadingRateEnumNV,             Both,                  Both,               Graphics);
+  VK_cmd_function(SetLineStippleEXT,                        Both,                  Both,               Graphics);
+  VK_cmd_function(SetCullModeEXT,                           Both,                  Both,               Graphics);
+  VK_cmd_function(SetFrontFaceEXT,                          Both,                  Both,               Graphics);
+  VK_cmd_function(SetPrimitiveTopologyEXT,                  Both,                  Both,               Graphics);
+  VK_cmd_function(SetViewportWithCountEXT,                  Both,                  Both,               Graphics);
+  VK_cmd_function(SetScissorWithCountEXT,                   Both,                  Both,               Graphics);
+  VK_cmd_function(BindVertexBuffers2EXT,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthTestEnableEXT,                    Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthWriteEnableEXT,                   Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthCompareOpEXT,                     Both,                  Both,               Graphics);
+  VK_cmd_function(SetDepthBoundsTestEnableEXT,              Both,                  Both,               Graphics);
+  VK_cmd_function(SetStencilTestEnableEXT,                  Both,                  Both,               Graphics);
+  VK_cmd_function(SetStencilOpEXT,                          Both,                  Both,               Graphics);
+
+  VK_cmd_function(SetRayTracingPipelineStackSizeKHR,        Both,                  Outside,            Compute);
 
 
-  VK_function(CmdEndRenderPass, cmdEndRenderPass);
-  VK_function(CmdEndRenderPass2, cmdEndRenderPass2);
-  VK_function(CmdEndQuery, cmdEndQuery);
-  VK_function(CmdEndTransformFeedbackEXT, cmdEndTransformFeedback);
-  VK_function(CmdEndQueryIndexedEXT, cmdEndQueryIndexed);
-  VK_function(CmdEndConditionalRenderingEXT, cmdEndConditionalRendering);
-  VK_function(CmdEndDebugUtilsLabelEXT, cmdEndDebugUtilsLabel);
 
 
-  VK_function(CmdDispatch, cmdDispatch);
-  VK_function(CmdDispatchIndirect, cmdDispatchIndirect);
-  VK_function(CmdDispatchBase, cmdDispatchBase);
+  // Development Utilities
+  VK_cmd_function(InsertDebugUtilsLabelEXT,                 Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(BeginDebugUtilsLabelEXT,                  Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(EndDebugUtilsLabelEXT,                    Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(SetCheckpointNV,                          Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(SetPerformanceMarkerINTEL,                Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(SetPerformanceStreamMarkerINTEL,          Both,                  Both,               Graphics | Compute | Transfer);
+  VK_cmd_function(SetPerformanceOverrideINTEL,              Both,                  Both,               Graphics | Compute | Transfer);
 
 
-  VK_function(CmdBlitImage, cmdBlitImage);
-  VK_function(CmdBlitImage2KHR, cmdBlitImage2);
+
+  // Draw Commands
+  VK_cmd_function(Draw,                                     Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndexed,                              Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndirect,                             Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndirectCount,                        Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndexedIndirect,                      Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndexedIndirectCount,                 Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawIndirectByteCountEXT,                 Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawMeshTasksNV,                          Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawMeshTasksIndirectNV,                  Both,                  Inside,             Graphics,                      Graphics);
+  VK_cmd_function(DrawMeshTasksIndirectCountNV,             Both,                  Inside,             Graphics,                      Graphics);
+
+  VK_cmd_function(Dispatch,                                 Both,                  Outside,            Compute,                       Compute);
+  VK_cmd_function(DispatchIndirect,                         Both,                  Outside,            Compute,                       Compute);
+  VK_cmd_function(DispatchBase,                             Both,                  Outside,            Compute,                       Compute);
+
+  VK_cmd_function(TraceRaysKHR,                             Both,                  Outside,            Compute,                       RayTracing);
+  VK_cmd_function(TraceRaysIndirectKHR,                     Both,                  Outside,            Compute,                       RayTracing);
 
 
-  VK_function(CmdClearColorImage, cmdClearColorImage);
-  VK_function(CmdClearDepthStencilImage, cmdClearDepthStencilImage);
-  VK_function(CmdClearAttachments, cmdClearAttachments);
+  // Memory Commands
+  //  |
+  //  |-> Images
+  VK_cmd_function(BlitImage,                                Both,                  Outside,            Graphics,                      Transfer);
+  VK_cmd_function(BlitImage2KHR,                            Both,                  Outside,            Graphics,                      Transfer);
+  VK_cmd_function(CopyImage,                                Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(CopyImage2KHR,                            Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(ResolveImage,                             Both,                  Outside,            Graphics,                      Transfer);
+  VK_cmd_function(ResolveImage2KHR,                         Both,                  Outside,            Graphics,                      Transfer);
+  VK_cmd_function(ClearColorImage,                          Both,                  Outside,            Graphics | Compute,            Transfer);
+  VK_cmd_function(ClearDepthStencilImage,                   Both,                  Outside,            Graphics,                      Transfer);
+
+  VK_cmd_function(CopyBuffer,                               Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(CopyBuffer2KHR,                           Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(UpdateBuffer,                             Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(FillBuffer,                               Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+
+  VK_cmd_function(CopyBufferToImage,                        Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(CopyBufferToImage2KHR,                    Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(CopyImageToBuffer,                        Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(CopyImageToBuffer2KHR,                    Both,                  Outside,            Graphics | Compute | Transfer, Transfer);
+  VK_cmd_function(ClearAttachments,                         Both,                  Inside,             Graphics,                      Graphics);
+
+  VK_cmd_function(BuildAccelerationStructuresKHR,           Both,                  Outside,            Compute);
+  VK_cmd_function(BuildAccelerationStructuresIndirectKHR,   Both,                  Outside,            Compute);
+  VK_cmd_function(WriteAccelerationStructuresPropertiesKHR, Both,                  Outside,            Compute);
+  VK_cmd_function(CopyAccelerationStructureKHR,             Both,                  Outside,            Compute);
+  VK_cmd_function(CopyAccelerationStructureNV,              Both,                  Outside,            Compute);
+  VK_cmd_function(CopyAccelerationStructureToMemoryKHR,     Both,                  Outside,            Compute);
+  VK_cmd_function(CopyMemoryToAccelerationStructureKHR,     Both,                  Outside,            Compute);
 
 
-  VK_function(CmdResolveImage, cmdResolveImage);
-  VK_function(CmdResolveImage2KHR, cmdResolveImage2);
+  // Queries
 
+  VK_cmd_function(WriteTimestamp,                           Both,                  Both,               Graphics | Compute | Transfer, Transfer);
 
-  VK_function(CmdResetQueryPool, cmdResetQueryPool);
-  VK_function(CmdResetEvent, cmdResetEvent);
+  VK_cmd_function(BeginTransformFeedbackEXT,                Both,                  Inside,             Graphics);
+  VK_cmd_function(EndTransformFeedbackEXT,                  Both,                  Inside,             Graphics);
+  VK_cmd_function(BeginQueryIndexedEXT,                     Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(EndQueryIndexedEXT,                       Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(BeginQuery,                               Both,                  Both,               Graphics | Compute);
+  VK_cmd_function(EndQuery,                                 Both,                  Both,               Graphics | Compute);
 
-
-  VK_function(CmdPushConstants, cmdPushConstants);
-  VK_function(CmdPushDescriptorSetKHR, cmdPushDescriptorSet);
-  VK_function(CmdPushDescriptorSetWithTemplateKHR, cmdPushDescriptorSetWithTemplate);
-
-
-  VK_function(CmdBuildAccelerationStructuresKHR,           cmdBuildAccelerationStructuresKHR);
-  VK_function(CmdBuildAccelerationStructuresIndirectKHR,   cmdBuildAccelerationStructuresIndirectKHR);
-  VK_function(CmdWriteAccelerationStructuresPropertiesKHR, cmdWriteAccelerationStructuresPropertiesKHR);
-  VK_function(CmdCopyAccelerationStructureKHR,             cmdCopyAccelerationStructureKHR);
-  VK_function(CmdCopyAccelerationStructureToMemoryKHR,     cmdCopyAccelerationStructureToMemoryKHR);
-  VK_function(CmdCopyMemoryToAccelerationStructureKHR,     cmdCopyMemoryToAccelerationStructureKHR);
-
-
-  VK_function(CmdNextSubpass, cmdNextSubpass);
-  VK_function(CmdNextSubpass2, cmdNextSubpass2);
-
-
-  VK_function(CmdPreprocessGeneratedCommandsNV, cmdPreprocessGeneratedCommands);
-  VK_function(CmdExecuteGeneratedCommandsNV, cmdExecuteGeneratedCommands);
-  VK_function(CmdExecuteCommands, cmdExecuteCommands);
-
-  VK_function(CmdPipelineBarrier, cmdPipelineBarrier);
-  VK_function(CmdWaitEvents, cmdWaitEvents);
-
-
-  VK_function(CmdWriteTimestamp, cmdWriteTimestamp);
-  VK_function(CmdInsertDebugUtilsLabelEXT, cmdInsertDebugUtilsLabel);
-
-
-  VK_function(CmdUpdateBuffer, cmdUpdateBuffer);
-  VK_function(CmdFillBuffer, cmdFillBuffer);
+  VK_cmd_function(ResetQueryPool,                           Both,                  Outside,            Graphics | Compute);
+  VK_cmd_function(CopyQueryPoolResults,                     Both,                  Outside,            Graphics | Compute,            Transfer);
 
 
   CommandBufferFunctions(DeviceFunctionLoader loader) noexcept : loader(loader){}

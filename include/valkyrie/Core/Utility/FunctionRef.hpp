@@ -25,8 +25,11 @@ namespace valkyrie::Core{
       VK_constant bool invocable      = std::invocable<F, Args...> && (std::convertible_to<std::invoke_result_t<F, Args...>, Ret> || (std::is_void_v<Ret> && std::is_void_v<std::invoke_result_t<F, Args...>>));
 
 
+      using PFN_indirect = Ret(*)(void*, Args&&...);
+      using PFN_direct   = Ret(*)(Args...);
+
       template <typename F>
-      VK_constant auto indirectLambda = [](void* pUserData, Args&&... args) -> Ret{
+      VK_constant PFN_indirect indirectLambda = [](void* pUserData, Args&&... args) -> Ret{
         return static_cast<Ret>((*static_cast<F*>(pUserData))(std::forward<Args>(args)...));
       };
 
@@ -36,20 +39,21 @@ namespace valkyrie::Core{
       template <size_t N>
       using arg_type = std::tuple_element_t<N, std::tuple<Args...>>;
 
-      using PFN_indirect = Ret(*)(void*, Args...);
-      using PFN_direct   = Ret(*)(Args...);
+
     };
     template <typename Ret, typename ...Args>
     struct FunctionTypeTraits<Ret(Args...) noexcept> : FunctionTypeTraits<Ret(Args...)>{
       VK_constant bool is_noexcept = true;
 
+      using PFN_indirect = Ret(*)(void*, Args&&...) noexcept;
+      using PFN_direct   = Ret(*)(Args...) noexcept;
+
       template <typename F>
-      VK_constant auto indirectLambda = [](void* pUserData, Args&&... args) noexcept -> Ret{
+      VK_constant PFN_indirect indirectLambda = [](void* pUserData, Args&&... args) noexcept -> Ret{
         return static_cast<Ret>((*static_cast<F*>(pUserData))(std::forward<Args>(args)...));
       };
 
-      using PFN_indirect = Ret(*)(void*, Args&&...) noexcept;
-      using PFN_direct   = Ret(*)(Args...) noexcept;
+
     };
   }
 
@@ -74,11 +78,15 @@ namespace valkyrie::Core{
     template <NotSameAs<FunctionRef> F> requires(traits::template invocable<F>)
     FunctionRef(F&& func) noexcept
         : pIndirectFunction(traits::template indirectLambda<std::remove_reference_t<F>>),
-          pUserData(std::addressof(func)){}
+          pConstUserData(std::addressof(func)){}
+    /*template <NotSameAs<FunctionRef> F> requires(traits::template invocable<const F>)
+    FunctionRef(const F& func) noexcept
+        : pIndirectFunction(traits::template indirectLambda<const F>),
+          pConstUserData(std::addressof(func)){}*/
     FunctionRef(PFN_direct directFunc) noexcept : pIndirectFunction(nullptr), pDirectFunction(directFunc){}
 
-    FunctionRef(const FunctionRef& other) = default;
-    FunctionRef(FunctionRef&&) noexcept = default;
+    //FunctionRef(const FunctionRef& other) = default;
+    //FunctionRef(FunctionRef&&) noexcept = default;
     ~FunctionRef() = default;
 
 
@@ -91,10 +99,11 @@ namespace valkyrie::Core{
 
 
   private:
-    PFN_indirect pIndirectFunction;
+    const PFN_indirect pIndirectFunction;
     union{
-      void*      pUserData;
-      PFN_direct pDirectFunction;
+      void*       pUserData;
+      const void* pConstUserData;
+      PFN_direct  pDirectFunction;
     };
   };
 
