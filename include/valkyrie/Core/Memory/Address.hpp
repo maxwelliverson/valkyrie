@@ -504,8 +504,6 @@ namespace valkyrie::Core{
   class MemoryAddress<Erased<ErasedType>>{
 
   };*/
-
-
   /*template <typename ErasedType>
   class MemoryBuffer<Erased<ErasedType>>{
 
