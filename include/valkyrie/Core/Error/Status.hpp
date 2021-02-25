@@ -375,7 +375,9 @@ namespace valkyrie::Core{
     using domain_type = Dom;
     //using value_type = typename domain_traits<Dom>::value_type;
     using value_type = typename domain_type::value_type;
-    using string_ref = typename domain_type::string_ref;
+    using string_ref = StringRef;
+    //using string_ref = typename domain_type::string_ref;
+
 
   protected:
     using Base::Base;
@@ -436,7 +438,7 @@ namespace valkyrie::Core{
 
 
 
-    VK_nodiscard string_ref message() const noexcept { return this->Domain ? this->Domain->doMessage(*this) : string_ref("(empty)"); }
+    VK_nodiscard string_ref message() const noexcept { return this->Domain ? string_ref(this->Domain->doMessage(*this)) : string_ref("(empty)"); }
   };
 
   template <typename Arg, typename ...Args> requires(Detail::HasMakeStatusCode<Arg, Args...>)
@@ -675,6 +677,19 @@ namespace valkyrie::Core{
     if(Base::success())
       assertPanic("An ErrorCode object was created from a non-failure status code. "
                   "Consider using StatusCode instead.");
+  }
+
+
+
+  template <typename ToDomain, typename FromDomain> requires(std::derived_from<ToDomain, FromDomain>)
+  inline static StatusCode<ToDomain> domain_cast(const StatusCode<FromDomain>& from) noexcept {
+    VK_assert(from.domain() == ToDomain());
+    return *(const StatusCode<ToDomain>*)&from;
+  }
+  template <typename ToDomain, typename FromDomain> requires(std::derived_from<ToDomain, FromDomain>)
+  inline static StatusCode<ToDomain> domain_cast(StatusCode<FromDomain>&& from) noexcept {
+    VK_assert(from.domain() == ToDomain());
+    return std::move(*(const StatusCode<ToDomain>*)&from);
   }
 }
 

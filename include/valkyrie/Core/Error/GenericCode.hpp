@@ -12,6 +12,8 @@
 namespace valkyrie::Core{
   
   enum class Code : i32 {
+    BadCast                       = -67,
+    ObjectNotInitialized          = -66,
     InvalidatedState              = -65,
     BadDriver                     = -64,
     NotImplemented                = -63,
@@ -42,6 +44,7 @@ namespace valkyrie::Core{
 
     IOError                       = -41,
 
+    BadInvariant                  = -40,
     FailedAssertion               = -40,
     DataCorruption                = -39,
     OutOfDomain                   = -38,

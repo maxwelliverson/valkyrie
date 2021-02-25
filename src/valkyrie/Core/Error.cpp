@@ -79,6 +79,22 @@ void Core::printStackTraceToStdErr() {
   std::cerr << boost::stacktrace::basic_stacktrace(2, 32) << std::endl;
 }
 
+namespace valkyrie::Core::Detail{
+  VK_noreturn void badInvariant(utf8_string pMessage, utf8_string pFunction, utf8_string pFilename, int lineNum) noexcept {
+
+    std::basic_stringstream<utf8> outMsg;
+
+
+    //std::cerr << "\n\n\n!!! BAD INVARIANT !!!";
+    outMsg << u8"\n\tInvariant: \"" << pMessage;
+    outMsg << u8"\"\n\tCalling Function: " << pFunction;
+    outMsg << u8"\n\tSource Location: " << pFilename << u8":" << lineNum << u8"\n";
+    panic(GenericError(Code::BadInvariant), outMsg.str().c_str());
+    //std::cerr << "Stacktrace: \n\n" << boost::stacktrace::basic_stacktrace(4, 100) << std::endl;
+    //abort();
+  }
+}
+
 
 VK_noreturn void Core::panic(const utf8 *pMessage) noexcept {
   std::cerr << "\n\nPANIC!\n\tMessage: " << (const char*)pMessage << std::endl;

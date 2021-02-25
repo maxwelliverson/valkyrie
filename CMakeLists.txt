@@ -83,6 +83,17 @@ function(add_object_library name_)
 endfunction()
 
 add_object(spirv.SpirV)
+add_object(spirv.Shader)
+
+add_object(valkyrie.Core.Agent.Mailbox)
+add_object(valkyrie.Core.Agent.Registry)
+add_object(valkyrie.Core.Agent.PrivateAgent)
+add_object(valkyrie.Core.Agent.LocalAgent)
+add_object(valkyrie.Core.Agent.SharedAgent)
+add_object(valkyrie.Core.Agent.Sender)
+add_object(valkyrie.Core.Agent.Receiver)
+add_object(valkyrie.Core.Agent.Agent)
+add_object(valkyrie.Core.Agent.Message)
 
 add_object(valkyrie.Core.Async.Semaphore)
 add_object(valkyrie.Core.Async.Agent)
@@ -90,11 +101,13 @@ add_object(valkyrie.Core.Async.Agent)
 add_object(valkyrie.Core.Log.Serialize)
 add_object(valkyrie.Core.Log.Logger)
 
-
+add_object(valkyrie.Core.Memory.Manager)
 add_object(valkyrie.Core.Memory)
 add_object(valkyrie.Core.Utility)
 add_object(valkyrie.Core.Error)
 add_object(valkyrie.Core.SystemError)
+
+add_object(valkyrie.Core.Win32Functions)
 
 add_object(valkyrie.Core.Utility.JSON)
 
@@ -103,6 +116,7 @@ add_object(valkyrie.Graphics.API.PhysicalDevice)
 add_object(valkyrie.Graphics.API.Device)
 add_object(valkyrie.Graphics.API.Queue)
 add_object(valkyrie.Graphics.API.CommandBuffer)
+add_object(valkyrie.Graphics.API.CommandPool)
 add_object(valkyrie.Graphics.API.Pipeline)
 add_object(valkyrie.Graphics.API.Loader)
 add_object(valkyrie.Graphics.API.Surface)
@@ -115,11 +129,15 @@ add_object(valkyrie.GUI.DXGI)
 
 add_object(valkyrie.Graphics.Engine.Engine)
 add_object(valkyrie.Graphics.Engine.Option)
+add_object(valkyrie.Graphics.Engine.Types)
 
+add_object_library(spirv OBJECTS SpirV Shader)
+
+add_object_library(valkyrie.Core.Agent OBJECTS Agent LocalAgent Mailbox Message PrivateAgent Receiver Registry Sender SharedAgent)
 add_object_library(valkyrie.Core.Async OBJECTS Semaphore Agent)
-add_object_library(valkyrie.Core OBJECTS #[[Log.Messages]] Log.Serialize Log.Logger Memory Utility Error SystemError Utility.JSON)
-add_object_library(valkyrie.Graphics.API OBJECTS Instance PhysicalDevice Device Queue CommandBuffer Loader Surface Display)
-add_object_library(valkyrie.Graphics.Engine OBJECTS Engine Option)
+add_object_library(valkyrie.Core OBJECTS #[[Log.Messages]] Log.Serialize Log.Logger Memory Utility Error SystemError Utility.JSON Win32Functions)
+add_object_library(valkyrie.Graphics.API OBJECTS Instance PhysicalDevice Device Queue CommandBuffer Loader Surface Display CommandPool)
+add_object_library(valkyrie.Graphics.Engine OBJECTS Engine Option Types)
 add_object_library(valkyrie.GUI OBJECTS Window Monitor)
 
 target_link_libraries(valkyrie.GUI PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
@@ -154,6 +172,23 @@ add_executable(catch
         test/valkyrie/Graphics/API/Device.cpp
         test/valkyrie/GUI/DXGI.cpp
         test/valkyrie/GUI/Monitor.cpp)
+
+add_executable(CudaGraph test/CudaGraph.cpp)
+target_link_libraries(CudaGraph PUBLIC CUDA::cuda_driver)
+
+add_executable(DirectedGraph test/DirectedGraph.cpp)
+target_link_libraries(DirectedGraph PUBLIC valkyrie.Core)
+
+
+add_executable(vulkan_example src/example.cpp)
+
+add_executable(clangd_debug debug_clangd.cpp)
+
+
+
+add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h)
+
+
 
 
 #target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:Dxva2> #[[CUDA::cuda_driver Vulkan::Vulkan]])

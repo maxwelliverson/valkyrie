@@ -262,6 +262,21 @@ namespace valkyrie::Core{
         : Base{ std::forward<Args>(args)... }{}
 
 
+
+
+
+    Maybe& operator=(const Maybe& other) {
+      Maybe tmp = std::move(*this);
+      new(this) Maybe(other);
+      return *this;
+    }
+    Maybe& operator=(Maybe&& other) noexcept {
+      this->~Maybe();
+      new(this) Maybe(std::move(other));
+      return *this;
+    }
+
+
     /*constexpr Maybe() noexcept(std::is_nothrow_default_constructible_v<T>) requires(std::default_initializable<T>)
         : Base{ .is_valid_ = true, .value_ = {}}{}
     constexpr Maybe(const Maybe& other) : Base{ .is_valid_ = other.is_valid_ }{
