@@ -71,7 +71,7 @@
     class AgentMessageStatusDomain  : public AgentStatusDomain{};
     class AgentExternalStatusDomain : public AgentStatusDomain{};
   }
-  enum class AgentStatusCode {
+  enum class AgentCode {
     Success,
     Queued,
     UnknownError,
@@ -94,33 +94,33 @@
 
 namespace valkyrie::Traits{
   template <>
-  struct StatusEnum<Core::AgentStatusCode>{
+  struct StatusEnum<Core::AgentCode>{
 
-    using enum_type = Core::AgentStatusCode;
+    using enum_type = Core::AgentCode;
 
-    inline constexpr static Core::StringView name{VK_string("AgentStatusCode")};
-    inline constexpr static Core::StringView scoped_name{VK_string("valkyrie::Core::AgentStatusCode")};
+    inline constexpr static Core::StringView name{VK_string("AgentCode")};
+    inline constexpr static Core::StringView scoped_name{VK_string("valkyrie::Core::AgentCode")};
 
     inline constexpr static Core::StringView domain_name{VK_string("Agent Status")};
     inline constexpr static Core::Uuid       domain_uuid{"1204717e-359a-4b77-9e7f-e0ab787e8e55"};
 
     inline const*//*expr*//* static Core::StatusEnumMap<enum_type> info{
-        { Core::Severity::Success,       Core::AgentStatusCode::Success,                   VK_string("Success"),                                                          { Core::Code::Success } },
-        { Core::Severity::Info,          Core::AgentStatusCode::Queued,                    VK_string("Message is queued but has not yet been read"),                      { Core::Code::InProgress, Core::Code::Success } },
-        { Core::Severity::InternalError, Core::AgentStatusCode::UnknownError,              VK_string("Unknown Internal Error occurred in the Valkyrie Agents subsystem"), { } },
-        { Core::Severity::Warning,       Core::AgentStatusCode::ChannelBlocked,            VK_string("Channel is currently blocked (Eg. by waiting on a semaphore)"),     { Core::Code::Busy } },
-        {                                Core::AgentStatusCode::ChannelTooManyProducers,   VK_string("Channel has too many producers"),                                   { Core::Code::ConnectionLimitReached } },
-        {                                Core::AgentStatusCode::ChannelNoConsumer,         VK_string("Channel has no consumer"),                                          { Core::Code::NotConnected } },
-        {                                Core::AgentStatusCode::ChannelBufferOverflow,     VK_string("Core::AgentStatusCode::ChannelBufferOverflow"),                     { Core::Code::InsufficientSize, Core::Code::OutOfBoundsAccess } },
-        {                                Core::AgentStatusCode::ChannelMessageTooLarge,    VK_string("Core::AgentStatusCode::ChannelMessageTooLarge"),                    { Core::Code::ResourceTooLarge, Core::Code::InvalidArgument } },
-        {                                Core::AgentStatusCode::CommandNotSupported,       VK_string("Core::AgentStatusCode::CommandNotSupported"),                       { Core::Code::NotSupported } },
-        {                                Core::AgentStatusCode::CommandDomainNotSupported, VK_string("Core::AgentStatusCode::CommandDomainNotSupported"),                 { Core::Code::NotSupported } },
-        {                                Core::AgentStatusCode::CommandInvalidValue,       VK_string("Core::AgentStatusCode::CommandInvalidValue"),                       { Core::Code::OutOfDomain, Core::Code::InvalidArgument } },
-        {                                Core::AgentStatusCode::PropertyNotFound,          VK_string("Core::AgentStatusCode::PropertyNotFound"),                          { Core::Code::ResourceNotFound } },
-        {                                Core::AgentStatusCode::PropertyInvalidFormat,     VK_string("Core::AgentStatusCode::PropertyInvalidFormat"),                     { Core::Code::InvalidFormat } },
-        {                                Core::AgentStatusCode::MessageInvalidContents,    VK_string("Core::AgentStatusCode::MessageInvalidContents"),                    { Core::Code::InvalidArgument } },
-        {                                Core::AgentStatusCode::MessageInvalidSize,        VK_string("Core::AgentStatusCode::MessageInvalidSize"),                        { Core::Code::InvalidArgument } },
-        {                                Core::AgentStatusCode::FailedToProcessExternal,   VK_string("Core::AgentStatusCode::FailedToProcessExternal"),                   { Core::Code::ExternalError } }
+        { Core::Severity::Success,       Core::AgentCode::Success,                   VK_string("Success"),                                                          { Core::Code::Success } },
+        { Core::Severity::Info,          Core::AgentCode::Queued,                    VK_string("Message is queued but has not yet been read"),                      { Core::Code::InProgress, Core::Code::Success } },
+        { Core::Severity::InternalError, Core::AgentCode::UnknownError,              VK_string("Unknown Internal Error occurred in the Valkyrie Agents subsystem"), { } },
+        { Core::Severity::Warning,       Core::AgentCode::ChannelBlocked,            VK_string("Channel is currently blocked (Eg. by waiting on a semaphore)"),     { Core::Code::Busy } },
+        {                                Core::AgentCode::ChannelTooManyProducers,   VK_string("Channel has too many producers"),                                   { Core::Code::ConnectionLimitReached } },
+        {                                Core::AgentCode::ChannelNoConsumer,         VK_string("Channel has no consumer"),                                          { Core::Code::NotConnected } },
+        {                                Core::AgentCode::ChannelBufferOverflow,     VK_string("Core::AgentCode::ChannelBufferOverflow"),                     { Core::Code::InsufficientSize, Core::Code::OutOfBoundsAccess } },
+        {                                Core::AgentCode::ChannelMessageTooLarge,    VK_string("Core::AgentCode::ChannelMessageTooLarge"),                    { Core::Code::ResourceTooLarge, Core::Code::InvalidArgument } },
+        {                                Core::AgentCode::CommandNotSupported,       VK_string("Core::AgentCode::CommandNotSupported"),                       { Core::Code::NotSupported } },
+        {                                Core::AgentCode::CommandDomainNotSupported, VK_string("Core::AgentCode::CommandDomainNotSupported"),                 { Core::Code::NotSupported } },
+        {                                Core::AgentCode::CommandInvalidValue,       VK_string("Core::AgentCode::CommandInvalidValue"),                       { Core::Code::OutOfDomain, Core::Code::InvalidArgument } },
+        {                                Core::AgentCode::PropertyNotFound,          VK_string("Core::AgentCode::PropertyNotFound"),                          { Core::Code::ResourceNotFound } },
+        {                                Core::AgentCode::PropertyInvalidFormat,     VK_string("Core::AgentCode::PropertyInvalidFormat"),                     { Core::Code::InvalidFormat } },
+        {                                Core::AgentCode::MessageInvalidContents,    VK_string("Core::AgentCode::MessageInvalidContents"),                    { Core::Code::InvalidArgument } },
+        {                                Core::AgentCode::MessageInvalidSize,        VK_string("Core::AgentCode::MessageInvalidSize"),                        { Core::Code::InvalidArgument } },
+        {                                Core::AgentCode::FailedToProcessExternal,   VK_string("Core::AgentCode::FailedToProcessExternal"),                   { Core::Code::ExternalError } }
     };
   };
 }*/
@@ -132,17 +132,22 @@ namespace valkyrie::Core{
 
 
   enum class MessageCmd : u32;
-
-  namespace Detail{
-    /*class MessageDomainBase{
-
-    };*/
-  }
-
   enum class MessageState : u32{
     Dead,
     Alive,
     Condemned
+  };
+
+
+  enum class AgentCode : u32{
+    Success,
+    NotReady,
+    Blocked,
+    MailboxIsEmpty,
+    MailboxIsFull,
+    MailboxCorrupted,
+    BadMessage,
+    UnsupportedMessage
   };
 
   class AgentStatusDomain : public StatusDomain{
@@ -154,26 +159,75 @@ namespace valkyrie::Core{
 
   class AgentStatusCodeDomain : public AgentStatusDomain{
   public:
-    enum class Kind : u32{
-      Success,
-      NotReady
-    };
-    using value_type = Kind;
-    /*struct value_type{
-      Kind kind;
+    using value_type = AgentCode;
 
-    };*/
+    constexpr AgentStatusCodeDomain() noexcept : AgentStatusDomain(Uuid("3e0b5eaf-aa7c-43ed-86dd-6fbbb0ba117d")){}
+
+    StringRef name() const noexcept override {
+      return "Valkyrie Agent Code";
+    }
+    bool doFailure(const StatusCode<void>& status) const noexcept override { }
+    bool doEquivalent(const StatusCode<void>& statusA, const StatusCode<void>& statusB) const noexcept override { }
+    Code doCode(const StatusCode<void>& status) const noexcept override { }
+    StringRef doMessage(const StatusCode<void>& status) const noexcept override { }
+
+    inline static const AgentStatusCodeDomain& get() noexcept {
+      constexpr static AgentStatusCodeDomain domainInstance{};
+      return domainInstance;
+    }
   };
-  class AgentException{};
+  class AgentExceptionPayload{
+    friend class AgentExceptionDomain;
+    Atomic<u32> refCount;
+
+    virtual void doDestroy() noexcept = 0;
+    void acquireRef() noexcept {
+      ++refCount;
+    }
+    void releaseRef() noexcept {
+      if (!--refCount) {
+        this->doDestroy();
+      }
+    }
+  protected:
+    ~AgentExceptionPayload() = default;
+  public:
+    virtual StringRef message()   const noexcept = 0;
+    virtual Code      toGeneric() const noexcept = 0;
+    virtual Severity  severity() const noexcept = 0;
+    virtual bool      equivalentTo(const AgentExceptionPayload& other) const noexcept = 0;
+  };
   class AgentExceptionDomain : public AgentStatusDomain{
   public:
-    using value_type = AgentException*;
+    using value_type = AgentExceptionPayload*;
+
+    bool doFailure(const StatusCode<void>& status) const noexcept { }
+    bool doEquivalent(const StatusCode<void>& statusA, const StatusCode<void>& statusB) const noexcept { }
+    Code doCode(const StatusCode<void>& status) const noexcept { }
+    StringRef doMessage(const StatusCode<void>& status) const noexcept { }
+
+    virtual Severity  doSeverity(const StatusCode<void>& status) const noexcept { return getDefaultSeverity(this->doCode(status)); }
+    virtual void doErasedCopy(StatusCode<void>& To, const StatusCode<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
+    virtual void doErasedDestroy(StatusCode<void>& Code, size_t Bytes) const noexcept { }
+
+    VK_noreturn virtual void doThrowException(const StatusCode<void>& code) const VK_throws;
 
 
   };
+
+
+
+
+
 
 
   using AgentStatus = StatusCode<AgentStatusDomain>;
+  using AgentStatusCode = StatusCode<AgentStatusCodeDomain>;
+  using AgentException = StatusCode<AgentExceptionDomain>;
+
+  AgentStatusCode makeStatusCode(AgentCode code) noexcept;
+  AgentException  makeStatusCode(AgentExceptionPayload* pPayload) noexcept;
+
   template <typename T>
   using AgentResult = Maybe<T, AgentStatusDomain>;
 
@@ -224,6 +278,19 @@ namespace valkyrie::Core{
 
   class AgentMailbox;
 
+  template <typename Msg>
+  struct MessageTraits{};
+
+  class AgentMessage;
+
+  template <>
+  struct MessageTraits<AgentMessage>{
+    inline static u32  nextOffset(const AgentMessage& msg) noexcept;
+    inline static void condemn(AgentMessage& msg) noexcept;
+    inline static u32  exile(AgentMessage& msg, u32) noexcept;
+    inline static void destroy(AgentMessage& msg) noexcept;
+  };
+
   class AgentMessage{
 
     friend class AgentMailbox;
@@ -238,6 +305,8 @@ namespace valkyrie::Core{
   public:
     virtual ~AgentMessage() = default;
   };
+
+
 
   class AgentMessage::CondemnedMessage final : public AgentMessage{
   public:
@@ -284,8 +353,7 @@ namespace valkyrie::Core{
   enum class AgentConcurrency : u32{
     MultiProducer = 0x1,
     MultiConsumer = 0x2,
-    OutOfOrderConsumption = 0x4 | MultiConsumer,
-    Blocking      = 0x8
+    OutOfOrderConsumption = 0x4 | MultiConsumer
   };
 
   class AgentMailbox{
@@ -293,8 +361,34 @@ namespace valkyrie::Core{
 
     friend class Agent;
 
+    using PFN_writeMessage = AgentResult<AgentMessage*>(AgentMailbox::*)(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    using PFN_readMessage  = AgentStatus(AgentMailbox::*)(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
 
-    inline constexpr static u32              UniqueLock = u32(-1);
+    AgentResult<AgentMessage*> writeMessageSPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageMPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageSPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageSPMCNonCoherent(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+    AgentResult<AgentMessage*> writeMessageMPMC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
+
+    AgentStatus                readMessageSC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                readMessageMC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                readMessageNonCoherent (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+
+    AgentStatus                tryReadMessageSC(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                tryReadMessageMC(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+    AgentStatus                tryReadMessageNonCoherent(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
+
+  public:
+    struct Interface{
+      PFN_writeMessage pfnWriteMessage;
+      PFN_readMessage  pfnReadMessage;
+      PFN_readMessage  pfnTryReadMessage;
+    };
+
+  private:
+    static Interface dispatchInterface(Core::AgentConcurrency concurrency) noexcept;
+
+    /*inline constexpr static u32              UniqueLock = u32(-1);
 
     inline constexpr static AgentConcurrency ConcurrencySPSC{ 0 };
     inline constexpr static AgentConcurrency ConcurrencyMPSC{ AgentConcurrency::MultiProducer };
@@ -302,9 +396,6 @@ namespace valkyrie::Core{
     inline constexpr static AgentConcurrency ConcurrencyMPMC{ (u32)AgentConcurrency::MultiProducer | (u32)AgentConcurrency::MultiConsumer };
     inline constexpr static AgentConcurrency ConcurrencySPMCNonCoherent{ AgentConcurrency::OutOfOrderConsumption };
     inline constexpr static AgentConcurrency ConcurrencyMPMCNonCoherent{ (u32)AgentConcurrency::MultiProducer | (u32)AgentConcurrency::OutOfOrderConsumption };
-
-    using PFN_writeMessage = AgentResult<AgentMessage*>(AgentMailbox::*)(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
-    using PFN_readMessage  = AgentStatus(AgentMailbox::*)(FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
 
 
     AgentResult<AgentMessage*> writeMessageSPSC(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept;
@@ -317,10 +408,6 @@ namespace valkyrie::Core{
     AgentStatus                readMessageMC (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
     AgentStatus                readMessageNonCoherent (FunctionRef<AgentStatus(AgentMessage&)> msgProc) noexcept;
 
-    struct Interface{
-      PFN_writeMessage pfnWriteMessage;
-      PFN_readMessage  pfnReadMessage;
-    };
 
     inline static Interface dispatchInterface(AgentConcurrency concurrency) noexcept {
       switch (concurrency) {
@@ -338,7 +425,7 @@ namespace valkyrie::Core{
           return { &AgentMailbox::writeMessageMPMC, &AgentMailbox::readMessageNonCoherent };
         VK_no_default;
       }
-    }
+    }*/
 
   protected:
     void* pMessageQueue;
@@ -351,11 +438,6 @@ namespace valkyrie::Core{
 
     Interface dynamicInterface;
 
-
-
-    inline void          waitForMessage(const u32 readOffset) const noexcept {
-      nextWriteOffset.wait(readOffset);
-    }
     inline AgentMessage* toMessage(const u32 offset) const noexcept {
       return reinterpret_cast<AgentMessage*>(static_cast<std::byte*>(pMessageQueue) + offset);
     }
@@ -376,6 +458,9 @@ namespace valkyrie::Core{
     AgentMailbox& operator=(AgentMailbox&&) noexcept;
     ~AgentMailbox();
 
+    inline static AgentMailbox        deferCreation() noexcept {
+      return AgentMailbox{};
+    }
     inline static Maybe<AgentMailbox> create(AgentConcurrency concurrency) noexcept {
       Status status;
       AgentMailbox mailbox{concurrency, status};
@@ -398,8 +483,11 @@ namespace valkyrie::Core{
     inline AgentResult<AgentMessage*> writeMessage(FunctionRef<AgentMessage*(void*)> fnCtor, u64 msgSize) noexcept {
       return (this->*dynamicInterface.pfnWriteMessage)(fnCtor, msgSize);
     }
-    inline AgentStatus                readMessage( FunctionRef<AgentStatus(AgentMessage&)> msgProc)        noexcept {
+    inline AgentStatus                readMessage( FunctionRef<AgentStatus(AgentMessage&)> msgProc)       noexcept {
       return (this->*dynamicInterface.pfnReadMessage)(msgProc);
+    }
+    inline AgentStatus                tryReadMessage( FunctionRef<AgentStatus(AgentMessage&)> msgProc)    noexcept {
+      return (this->*dynamicInterface.pfnTryReadMessage)(msgProc);
     }
   };
   class AgentBackend{
@@ -776,6 +864,13 @@ namespace valkyrie::Core{
       return false;
     }
   };*/
+
+  template <std::derived_from<AgentStatusDomain> Dom> requires(!std::same_as<Dom, AgentStatusDomain>)
+  inline AgentStatus makeStatusCode(const StatusCode<Dom>& derivedCode) noexcept {
+    return AgentStatus(std::in_place, erasure_cast<u64>(derivedCode.value()));
+  }
 }
+
+
 
 #endif//VALKYRIE_ASYNC_AGENT_HPP
