@@ -9,10 +9,12 @@
 #include <valkyrie/Graphics/API/CommandPool.hpp>
 
 namespace valkyrie::Graphics::API{
-  class CommandBuffer : public VulkanObject{};
+  class CommandBuffer : public VulkanObject{
 
-  class PrimaryCommandBuffer : public CommandBuffer{};
-  class SecondaryCommandBuffer : public CommandBuffer{};
+  };
+
+  class PrimaryCommandBuffer   : public CommandBuffer{ };
+  class SecondaryCommandBuffer : public CommandBuffer{ };
 }
 
 #endif//VALKYRIE_COMMAND_BUFFER_HPP

@@ -155,7 +155,7 @@ namespace valkyrie::Graphics::API {
     Disjoint,
     Conjoint
   };
-  enum class DynamicStateFlags {
+  enum class DynamicState {
     Viewport = 0,
     Scissor = 1,
     LineWidth = 2,
@@ -524,10 +524,36 @@ namespace valkyrie::Graphics::API {
     Realtime = 1024
   };
 
+  enum class ShadingRatePaletteEntry{
+    NoInvocationsNV = 0,
+    x16PerPixelNV = 1,
+    x8PerPixelNV = 2,
+    x4PerPixelNV = 3,
+    x2PerPixelNV = 4,
+    OncePerPixelNV = 5,
+    OncePer2x1PixelsNV = 6,
+    OncePer1x2PixelsNV = 7,
+    OncePer2x2PixelsNV = 8,
+    OncePer4x2PixelsNV = 9,
+    OncePer2x4PixelsNV = 10,
+    OncePer4x4PixelsNV = 11
+  };
+  enum class CoarseSampleOrderType {
+    DefaultNV     = 0,
+    CustomNV      = 1,
+    PixelMajorNV  = 2,
+    SampleMajorNV = 3
+  };
+
 
   namespace FlagBits {
     enum class CullMode {
       None = 0x0,
+      Front = 0x1,
+      Back = 0x2,
+      FrontAndBack = 0x3
+    };
+    enum class StencilFace{
       Front = 0x1,
       Back = 0x2,
       FrontAndBack = 0x3
@@ -1086,6 +1112,7 @@ namespace valkyrie::Graphics::API {
     struct ShaderStage;
     struct PipelineStage;
     struct CullMode;
+    struct StencilFace;
     struct SampleCount;
 
 
@@ -1141,6 +1168,7 @@ namespace valkyrie::Graphics::API{
   
   
   VK_declare_flag_type(CullMode);
+  VK_declare_flag_type(StencilFace);
   VK_declare_flag_type(SampleCount);
   VK_declare_flag_type(ColorComponent);
   VK_declare_flag_type(ShaderStage);
@@ -1177,6 +1205,16 @@ namespace valkyrie::Graphics::API{
                       Back,
                       FrontAndBack)
     };
+
+    struct StencilFace{
+      VK_inline_flags(StencilFace,
+                      Front,
+                      Back,
+                      FrontAndBack)
+    };
+
+
+
     struct SampleCount{
       VK_inline_flags(SampleCount,
                       x1,

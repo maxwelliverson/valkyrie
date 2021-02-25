@@ -5,9 +5,10 @@
 #ifndef VALKYRIE_GRAPHICS_API_VULKAN_HPP
 #define VALKYRIE_GRAPHICS_API_VULKAN_HPP
 
-#include <valkyrie/Core/Types.hpp>
+#include <valkyrie/Core/Error/Maybe.hpp>
 #include <valkyrie/Graphics/API/Enums.hpp>
 #include <valkyrie/Core/Utility/Shapes.hpp>
+#include <valkyrie/Core/Utility/Interval.hpp>
 
 #include <concepts>
 #include <tuple>
@@ -20,6 +21,41 @@ namespace valkyrie::Graphics::API{
   namespace Internal{
     class QueueFamily;
   }
+
+  enum class StatusCode : u32{
+    Success = 0
+  };
+
+  class VulkanStatusDomain : public Core::StatusDomain{
+    inline static StatusCode enumValue(const Core::StatusCode<void>& status) noexcept {
+      //VK_assert();
+    }
+  public:
+    using value_type = StatusCode;
+
+    constexpr VulkanStatusDomain() noexcept : Core::StatusDomain(Core::Uuid("8ad355cf-d68b-4712-beb6-7e0938c9f835")){}
+
+
+    string_ref name() const noexcept override{
+      return VK_string("Vulkan API");
+    }
+
+    Core::Code doCode(const Core::StatusCode<void> &status) const noexcept override {}
+    Core::StringRef doMessage(const Core::StatusCode<void> &status) const noexcept override {}
+    bool doFailure(const Core::StatusCode<void> &status) const noexcept override {}
+    Core::Severity doSeverity(const Core::StatusCode<void> &status) const noexcept override {}
+    bool doEquivalent(const Core::StatusCode<void> &statusA, const Core::StatusCode<void> &statusB) const noexcept override {}
+
+    inline static const VulkanStatusDomain& get() noexcept {
+      constexpr static VulkanStatusDomain domainInstance{};
+      return domainInstance;
+    }
+  };
+
+  using Status = Core::StatusCode<VulkanStatusDomain>;
+  using Error  = Core::ErrorCode<VulkanStatusDomain>;
+  template <typename T>
+  using Result = Core::Maybe<T, VulkanStatusDomain>;
 
   class Instance;
   class PhysicalDevice;
@@ -97,6 +133,33 @@ namespace valkyrie::Graphics::API{
     ComponentSwizzle g = ComponentSwizzle::Identity;
     ComponentSwizzle b = ComponentSwizzle::Identity;
     ComponentSwizzle a = ComponentSwizzle::Identity;
+  };
+  struct Viewport : Core::Box2D<f32>{
+    Core::Interval<f32> depth;
+  };
+  struct StencilOpState{
+    StencilOp failOp;
+    StencilOp passOp;
+    StencilOp depthFailOp;
+    CompareOp compareOp;
+    u32       compareMask;
+    u32       writeMask;
+    u32       reference;
+  };
+  struct ShadingRatePalette{
+    u32                            entryCount;
+    const ShadingRatePaletteEntry* pEntries;
+  };
+  struct SampleLocation : Core::Position2D<f32>{};
+  struct CoarseSampleLocation{
+    Core::Position2D<u32> pixel;
+    u32 sample;
+  };
+  struct CoarseSampleOrderCustom {
+    ShadingRatePaletteEntry     shadingRate;
+    u32                         sampleCount;
+    u32                         sampleLocationCount;
+    const CoarseSampleLocation* pSampleLocations;
   };
 }
 
