@@ -18,15 +18,39 @@
 namespace valkyrie::Core{
 
 
+  namespace Json{
+    enum class Type{
+      Null,
+      True,
+      False,
+      String,
+      Number,
+      Object,
+      Array
+    };
+    enum class TypeFlags{
+      Null         = 0x0000,
+      True         = 0x0001,
+      False        = 0x0002,
+      PooledString = 0x0004,
+      ConstString  = 0x0008,
+      SmallString  = 0x0010,
+      Int32        = 0x0020,
+      UInt32       = 0x0040,
+      Int64        = 0x0080,
+      UInt64       = 0x0100,
+      BigInt       = 0x0200,
+      Float64      = 0x0400,
+      Float32      = 0x0800,
+      BigFloat     = 0x1000,
+      Object       = 0x2000,
+      Array        = 0x4000
+    };
+  }
 
-  enum class JsonType{
-    Null,
-    String,
-    Boolean,
-    Number,
-    Object,
-    Array
-  };
+
+
+
 
 
   class StringPool{

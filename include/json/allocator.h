@@ -1,0 +1,8 @@
+//
+// Created by Maxwell on 2021-02-13.
+//
+
+#ifndef VALKYRIE_JSON_ALLOCATOR_H
+#define VALKYRIE_JSON_ALLOCATOR_H
+
+#endif//VALKYRIE_JSON_ALLOCATOR_H
