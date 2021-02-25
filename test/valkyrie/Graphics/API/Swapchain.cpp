@@ -7,10 +7,113 @@
 
 #include <vulkan/vulkan_win32.h>
 
+#include <cuda.h>
+#include <curand.h>
+
 #include <iostream>
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <span>
+#include <memory_resource>
+
+
+
+/*namespace Vk{
+
+  struct Device{
+    VkDevice handle;
+
+  };
+
+  using Allocator = const VkAllocationCallbacks*;
+
+  struct ThreadPool{
+    Device device;
+    VkCommandPool pool;
+    VkCommandPool transientPool;
+    uint32_t index;
+
+    explicit ThreadPool(VkResult& result, Device device, Allocator alloc, uint32_t index)
+        : device(device),
+          pool(nullptr),
+          transientPool(nullptr),
+          index(index){
+      VkCommandPoolCreateInfo createInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = this->index
+      };
+      result = vkCreateCommandPool(device, &createInfo, alloc, &transientPool);
+      if (result == VK_SUCCESS) [[likely]] {
+        createInfo.flags = 0;
+        result = vkCreateCommandPool(device, &createInfo, alloc, &pool);
+        if (result != VK_SUCCESS) [[unlikely]] {
+          vkDestroyCommandPool(device, transientPool, alloc);
+          transientPool = nullptr;
+          pool = nullptr;
+        }
+      } else {
+        transientPool = nullptr;
+      }
+    }
+    ~ThreadPool(){
+      vkDestroyCommandPool()
+    }
+  };
+  struct Thread{
+    ThreadPool* threadPool;
+    VkQueue queue;
+    float   priority;
+  };
+
+  struct Kernel{
+    ThreadPool* threadPool;
+    VkCommandBuffer buffer;
+  };
+  struct Subroutine{
+    ThreadPool* threadPool;
+    VkCommandBuffer buffer;
+  };
+
+  struct ShaderInterface{
+    struct InParam{};
+    struct OutParam{};
+  };
+
+
+
+
+  struct Shader{};
+  struct GraphicsShader   : Shader{};
+  struct ComputeShader    : Shader{};
+  struct RayTracingShader : Shader{};
+
+  struct VertexShader                 : GraphicsShader{};
+  struct GeometryShader               : GraphicsShader{};
+  struct FragmentShader               : GraphicsShader{};
+  struct TessellationShader           : GraphicsShader{};
+  struct TessellationControlShader    : TessellationShader{};
+  struct TessellationEvaluationShader : TessellationShader{};
+
+  struct VkMeshShader : GraphicsShader{};
+  struct VkTaskShader : GraphicsShader{};
+
+  struct RayGenShader       : RayTracingShader{};
+  struct AnyHitShader       : RayTracingShader{};
+  struct ClosestHitShader   : RayTracingShader{};
+  struct MissShader         : RayTracingShader{};
+  struct IntersectionShader : RayTracingShader{};
+  struct CallableShader     : RayTracingShader{};
+
+
+  struct ShaderGraph;
+  struct RenderPass;
+  struct ExecutionGraph;
+  struct FrameDescription;
+}*/
+
 
 
 struct AllocationCache{
@@ -533,6 +636,156 @@ int main(){
 
 
 
+  const auto* cmdApi = &deviceApi.commandBuffer;
+
+  VkCommandBufferBeginInfo cmdBufferBeginInfo{
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .pNext = nullptr,
+      .flags = 0,
+      .pInheritanceInfo = nullptr
+  };
+
+  VkDeviceMemory sampledImageMemory, resolveImageMemory, depthStencilMemory;
+  VkImage sampledImage, resolveImage, depthStencil;
+  VkImageView sampledImageView, resolveImageView, depthStencilView;
+
+  VkImageCreateInfo imageCreateInfo[]{
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .pNext = nullptr,
+          .flags = VK_IMAGE_CREATE_ALIAS_BIT,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = surfaceFormat.format,
+          .extent = { windowExtents.load().width, windowExtents.load().height, 1 },
+          .mipLevels = 1,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_4_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .queueFamilyIndexCount = 0,
+          .pQueueFamilyIndices = nullptr,
+          .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+      },
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .pNext = nullptr,
+          .flags = VK_IMAGE_CREATE_ALIAS_BIT,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = surfaceFormat.format,
+          .extent = { windowExtents.load().width, windowExtents.load().height, 1 },
+          .mipLevels = 1,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .queueFamilyIndexCount = 0,
+          .pQueueFamilyIndices = nullptr,
+          .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+      },
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .pNext = nullptr,
+          .flags = VK_IMAGE_CREATE_ALIAS_BIT,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = VK_FORMAT_D24_UNORM_S8_UINT,
+          .extent = { windowExtents.load().width, windowExtents.load().height, 1 },
+          .mipLevels = 1,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .queueFamilyIndexCount = 0,
+          .pQueueFamilyIndices = nullptr,
+          .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+      }
+  };
+
+  VkMemoryAllocateInfo deviceMemoryAllocationInfo{
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = nullptr
+  };
+
+
+  deviceApi.allocateMemory();
+
+
+
+
+  auto sampledImageResult = deviceApi.image.createImage(device, &imageCreateInfo[0], nullptr, &sampledImage);
+  auto resolveImageResult = deviceApi.image.createImage(device, &imageCreateInfo[1], nullptr, &resolveImage);
+  auto depthStencilResult = deviceApi.image.createImage(device, &imageCreateInfo[2], nullptr, &depthStencil);
+
+
+
+
+
+
+
+
+  VkAttachmentDescription2 attachmentDescriptions[]{
+      {
+          .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+          .pNext = nullptr,
+          .flags = 0,
+          .format = surfaceFormat.format,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+      }
+  };
+
+
+  std::vector<VkAttachmentReference2>
+      inputAttachments,
+      colorAttachments,
+      resolveAttachments,
+      depthStencilAttachments;
+
+  VkSubpassDescription2 subpassDescriptions[]{
+      {
+          .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+          .pNext = nullptr,
+          .flags = 0,
+          .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+          .viewMask = 0,
+          .inputAttachmentCount = uint32_t(inputAttachments.size()),
+          .pInputAttachments = inputAttachments.data(),
+          .colorAttachmentCount = uint32_t(colorAttachments.size()),
+          .pColorAttachments = colorAttachments.data(),
+          .p
+      }
+  };
+
+  VkRenderPassCreateInfo2 renderPassCreateInfo{
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+      .pNext = nullptr,
+      .flags = 0
+  };
+
+
+
+  //
+  {
+    auto beginResult = cmdApi->begin(commandBuffers[0], &cmdBufferBeginInfo);
+
+
+
+
+
+    auto endResult = cmdApi->end(commandBuffers[0]);
+  }
+
+
+
+
+
 
 
   /*VkFramebufferCreateInfo framebufferCreateInfo{
@@ -570,6 +823,10 @@ int main(){
 
   VkResult finalWaitResult = deviceApi.waitIdle(device);
 
+
+  deviceApi.image.destroyImage(device, sampledImage, nullptr);
+  deviceApi.image.destroyImage(device, resolveImage, nullptr);
+  deviceApi.image.destroyImage(device, depthStencil, nullptr);
 
   deviceApi.presentation.destroySwapchain(device, swapchain, swapchainAllocator);
   deviceApi.freeCommandBuffers(device, commandPool, uint32_t(std::size(commandBuffers)), commandBuffers);
