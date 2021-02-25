@@ -25,6 +25,7 @@ namespace valkyrie{
   using utf32 = char32_t;
 
   using cstring = const ascii*;
+  using utf8_string = const utf8*;
 
   using byte = std::byte;
 }

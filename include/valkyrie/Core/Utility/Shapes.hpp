@@ -475,6 +475,15 @@ namespace valkyrie::Core{
     Extent3D<T> extents;
   };
 
+  struct Rect2D{
+    Position2D<i32> offsets;
+    Extent2D<u32>   extents;
+  };
+  struct Rect3D{
+    Position3D<i32> offsets;
+    Extent3D<u32>   extents;
+  };
+
   template <typename T>
   inline constexpr static auto square(T&& sideLength) noexcept {
     using V = std::remove_cvref_t<T>;

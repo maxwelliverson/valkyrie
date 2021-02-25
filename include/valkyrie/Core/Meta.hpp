@@ -108,6 +108,18 @@ namespace valkyrie::Meta{
 
 
 
+  template <typename T>
+  struct AddConstPastPointer{
+    using type = const T;
+  };
+  template <typename T>
+  struct AddConstPastPointer<T*>{
+    using type = const T*;
+  };
+
+
+
+
   template <typename To, typename From>
   struct CopyCv{
     using type = To;
@@ -151,6 +163,10 @@ namespace valkyrie::Meta{
   using copy_ref_t = typename CopyRef<To, From>::type;
   template <typename To, typename From>
   using copy_cvref_t = typename CopyCvRef<To, From>::type;
+
+
+  template <typename T>
+  using add_const_past_pointer_t = typename AddConstPastPointer<T>::type;
 }
 
 #define VK_wrap(...) decltype(::valkyrie::Meta::wrap_<__VA_ARGS__>(::valkyrie::Meta::Overload<2>{}))

@@ -218,6 +218,15 @@ namespace valkyrie::Core{
       using byte_pointer = std::conditional_t<std::is_const_v<element_type>, const byte*, byte*>;
       byte_pointer pAddress;
     };
+
+
+    template <typename Ext, typename Ind = size_t>
+    concept StrictExtent = SameAs<Ext, DynamicExtentType> || SameAs<Ind, Ext>;
+    template <typename Ext, typename Ind = size_t>
+    concept ExtentLike = SameAs<Ext, DynamicExtentType> || std::convertible_to<Ind, Ext>;
+
+
+
     /*class ArrayRefSentinel{
     public:
 
