@@ -2,6 +2,8 @@
 // Created by Maxwell on 2021-02-18.
 //
 
+#include <utility>
+
 #include <json/json.h>
 #include "jsonmm.h"
 
@@ -14,15 +16,30 @@
 #include <limits>
 #include <memory_resource>
 #include <optional>
-#include <utility>
+
 #include <string>
 #include <typeindex>
 #include <concurrent_unordered_map.h>
 
+
+#define this_is_null() (!(const volatile void*)this)
+
+#define VALKYRIE_EXPENSIVE_CHECKS
+
+#if defined(VALKYRIE_EXPENSIVE_CHECKS)
+#define expensive_assert(...) assert(__VA_ARGS__)
+#else
+#define expensive_assert(...)
+#endif
+
+
+
 namespace json{
 
-  using u32 = unsigned;
+
   using u8  = unsigned char;
+  using u16 = unsigned short;
+  using u32 = unsigned int;
   using u64 = unsigned long long;
   using std::byte;
 
@@ -107,8 +124,14 @@ namespace json{
 
 
 
-  template <size_t BlockSize, u8 BlocksPerChunk = u8(256)>
+  template <size_t BlockSize_, u8 BlocksPerChunk_ = std::numeric_limits<u8>::max()>
   class FixedSizeAllocator{
+  public:
+
+    inline constexpr static size_t BlockSize = BlockSize_;
+    inline constexpr static u32    BlocksPerChunk = BlocksPerChunk_;
+
+  private:
 
     static_assert(BlockSize && !(BlockSize & (BlockSize - 1)),
                   "FixedSizeAllocator<BlockSize, BlocksPerChunk> -> BlockSize must be a power of 2");
@@ -125,6 +148,7 @@ namespace json{
       byte* pMemory         = nullptr;
 
       void init(std::pmr::memory_resource* allocator) noexcept {
+        auto blocksPerChunk = BlocksPerChunk;
         pMemory = static_cast<std::byte*>(allocator->allocate(ChunkMemorySize, ChunkMemoryAlignment));
         u8 i{0x00};
         byte* p = pMemory;
@@ -135,6 +159,9 @@ namespace json{
 
         assert(this->empty());
 
+        this->release(allocator);
+      }
+      void release(std::pmr::memory_resource* allocator) noexcept {
         allocator->deallocate(pMemory, ChunkMemorySize, ChunkMemoryAlignment);
         pMemory = nullptr;
       }
@@ -155,16 +182,16 @@ namespace json{
 
       Chunk& operator=(const Chunk&) = delete;
       Chunk& operator=(Chunk&& other) noexcept {
-        this->~ChunkHandle();
+        this->~Chunk();
         new(this) Chunk(std::move(other));
         return *this;
       }
 
       ~Chunk(){
-        assert(this->empty());
+        assert( !pMemory );
 
-        if (pMemory)
-          destroy(std::pmr::get_default_resource());
+        /*if (pMemory)
+          destroy(std::pmr::get_default_resource());*/
 
         //assert(!pMemory);
         /*if (pChunk) {
@@ -293,6 +320,7 @@ namespace json{
       return nullptr;
     }*/
 
+
     Chunk* findDeallocChunk(void* p) const noexcept {
       if ( chunks.empty() )
         return nullptr;
@@ -398,24 +426,31 @@ namespace json{
       return lastChunk;
     }
 
-
-    inline static constexpr u32 InvalidChunkIndex = static_cast<u32>(-1);
+    inline constexpr static auto InvalidChunkIndex = static_cast<u32>(-1);
 
   public:
     FixedSizeAllocator() = default;
-    FixedSizeAllocator(std::pmr::memory_resource* pResource) noexcept : pChunkResource(pResource){}
+    explicit FixedSizeAllocator(std::pmr::memory_resource* pResource) noexcept
+        : pChunkResource(pResource){
+      chunks.reserve(4);
+      chunks.emplace_back(pChunkResource);
+    }
+
+    ~FixedSizeAllocator() {
+        assert( chunks.empty() && "Must release() FixedSizeAllocator before it is destroyed." );
+    }
+
     /*FixedSizeAllocator(std::pmr::memory_resource* pChunkVectorResource, std::pmr::memory_resource* pChunkResource) noexcept
         : chunks(0, pChunkVectorResource),
           pChunkResource(pChunkResource){}*/
 
-    u32 ownedChunkIndex(void* p) const noexcept {
+    u32    ownedChunkIndex(void* p) const noexcept {
       for (u32 i = 0; i < chunks.size(); ++i)
         if (chunks[i].contains(p))
           return i;
       return InvalidChunkIndex;
     }
-
-    bool tryDeallocate(void* p) noexcept {
+    bool   tryDeallocate(void* p) noexcept {
       auto foundChunk = findDeallocChunk(p);
       if ( !foundChunk )
         return false;
@@ -424,7 +459,6 @@ namespace json{
       assert(countEmptyChunks() < 2);
       return true;
     }
-
     size_t trimEmptyChunk() {
       // prove either emptyChunk_ points nowhere, or points to a truly empty Chunk.
       assert( ( !emptyChunk ) || emptyChunk->empty() );
@@ -471,16 +505,22 @@ namespace json{
       return (startCapacity - chunks.capacity()) * sizeof(Chunk);
     }
 
+    void  release() noexcept {
+
+      for (Chunk& chunk : chunks )
+        chunk.release(pChunkResource);
+
+      chunks.clear();
+    }
+    void  reset() noexcept {
+      release();
+      chunks.emplace_back(pChunkResource);
+    }
 
     void* allocate() noexcept {
-      ChunkHint discardHint;
-      return this->allocate(&discardHint);
-    }
-    void* allocate(ChunkHint* pChunkHint) noexcept {
       assert( !chunks.empty() );
-      assert( pChunkHint );
-      assert(deallocChunk < chunks.size());
-      assert(allocChunk < chunks.size());
+      assert(!deallocChunk || ((&chunks.front() <= deallocChunk) && (deallocChunk <= &chunks.back())));
+      assert(!allocChunk || ((&chunks.front() <= allocChunk) && (allocChunk <= &chunks.back())));
       assert( countEmptyChunks() < 2 );
 
       if ( !allocChunk || allocChunk->full()) {
@@ -506,20 +546,28 @@ namespace json{
       if (allocChunk == emptyChunk)
         emptyChunk = nullptr;
 
-      *pChunkHint = ChunkHint(allocChunk - &chunks.front());
-
       return allocChunk->allocate();
     }
-    void* allocateWithHint(ChunkHint chunkHint) noexcept {
+    void* allocate(ChunkHint chunkHint) noexcept {
       assert(u32(chunkHint) < chunks.size());
       allocChunk = &chunks[u32(chunkHint)];
-      ChunkHint discardHint;
-      return this->allocate(&discardHint);
+
+      if ( allocChunk->full() )
+        return this->allocate();
+      return allocChunk->allocate();
     }
-    void* allocateWithHint(ChunkHint chunkHint, ChunkHint* pChunkHint) noexcept {
-      assert(u32(chunkHint) < chunks.size());
-      allocChunk = &chunks[u32(chunkHint)];
-      return this->allocate(pChunkHint);
+
+    std::pair<void*, ChunkHint> allocateWithHint() noexcept {
+      std::pair<void*, ChunkHint> ret;
+      ret.first = this->allocate();
+      ret.second = ChunkHint(allocChunk - &chunks.front());
+      return ret;
+    }
+    std::pair<void*, ChunkHint> allocateWithHint(ChunkHint chunkHint) noexcept {
+      std::pair<void*, ChunkHint> ret;
+      ret.first = this->allocate(chunkHint);
+      ret.second = ChunkHint(allocChunk - &chunks.front());
+      return ret;
     }
 
     void  deallocate(void* p) noexcept {
@@ -538,11 +586,13 @@ namespace json{
 
       assert( u32(chunk) < chunks.size() );
 
-      auto foundChunk = &chunks[u32(chunk)];
-      assert( foundChunk->contains(p) );
+      deallocChunk = &chunks[u32(chunk)];
+      deallocChunk = findDeallocChunk(p);
 
-      deallocChunk = foundChunk;
+      assert( deallocChunk && deallocChunk->contains(p) );
+
       doDeallocate(p);
+
       assert( countEmptyChunks() < 2 );
     }
 
@@ -672,8 +722,58 @@ namespace json{
   }
 
 
-
   template <typename T>
+  class ObjectAllocator{
+  public:
+    using value_type = T;
+    using pointer = T*;
+
+
+  };
+
+  template <size_t BlockSize, u8 BlocksPerChunk = u8(256)>
+  class FixedResource : public std::pmr::memory_resource{
+  public:
+    FixedResource() = default;
+    explicit FixedResource(std::pmr::memory_resource* pUpstreamResource) noexcept
+        : allocatorObj(pUpstreamResource){}
+
+    void release() noexcept {
+      allocatorObj.release();
+    }
+    void reset() noexcept {
+      allocatorObj.reset();
+    }
+
+  private:
+
+    void * do_allocate(size_t bytes, size_t align) override{
+      assert( bytes <= BlockSize );
+      assert( align <= BlockSize );
+
+      return allocatorObj.allocate();
+    }
+    void do_deallocate(void * p, size_t bytes, size_t align) override {
+      assert( bytes <= BlockSize );
+      assert( align <= BlockSize );
+
+      allocatorObj.deallocate(p);
+    }
+    [[nodiscard]] bool do_is_equal(const memory_resource & that) const noexcept override{
+      return this == &that;
+    }
+
+    FixedSizeAllocator<BlockSize, BlocksPerChunk> allocatorObj;
+  };
+
+
+  template <typename O, typename T, typename U>
+  concept weak_order = requires(O&& order, const T& t, const U& u){
+    { std::forward<O>(order)(t, u) } -> std::convertible_to<std::weak_ordering>;
+  };
+
+
+  template <typename T, weak_order<const T&, const T&> Order = std::compare_three_way>
   class RBTree;
 
   class RBTreeBase{
@@ -683,14 +783,17 @@ namespace json{
       using Node = RBNodeBase;
 
     public:
-      enum class Colour   : unsigned short{ Red,  Black };
-      enum class Position : unsigned short{ Root, Left, Right };
+      enum class Colour   : u8 { Red,  Black };
+      enum class Position : u8 { Root, Left, Right };
+
+
 
     private:
 
       int             leftOffset   = 0;
       int             rightOffset  = 0;
       int             parentOffset = 0;
+      u16             chunkHint;
       Colour          colour       = Colour::Red;
       Position        position;
 
@@ -711,8 +814,6 @@ namespace json{
         return static_cast<int>(nodeOffset);
       }
 
-
-
       inline int leftOffsetFrom(const Node* other) const noexcept {
         return leftOffset + getOffsetFrom(other);
       }
@@ -723,24 +824,16 @@ namespace json{
         return parentOffset + getOffsetFrom(other);
       }
 
-      inline int safeLeftOffsetFrom(const Node* other) const noexcept {
-        return leftOffset ? leftOffsetFrom(other): 0;
-      }
-      inline int safeRightOffsetFrom(const Node* other) const noexcept {
-        return rightOffset ? rightOffsetFrom(other) : 0;
-      }
-      inline int safeParentOffsetFrom(const Node* other) const noexcept {
-        return parentOffset ? parentOffsetFrom(other) : 0;
-      }
-
     protected:
 
-      explicit RBNodeBase() noexcept : position(Position::Root){}
-      RBNodeBase(RBNodeBase* parent, Position pos) noexcept : position(pos){
+      explicit RBNodeBase(ChunkHint chunkHint) noexcept
+          : chunkHint(u16(chunkHint)), colour(Colour::Black), position(Position::Root){}
+      RBNodeBase(RBNodeBase* parent, ChunkHint chunkHint, Position pos) noexcept
+          : chunkHint(u16(chunkHint)), position(pos){
         parent->setChild(this);
       }
 
-      ~RBNodeBase();
+      ~RBNodeBase() = default;
 
       RBNodeBase& operator=(RBNodeBase&&) noexcept {
         // Implemented as a NOOP so that move assignment of the derived Node type does not modify any of the node's metadata in any way
@@ -748,31 +841,23 @@ namespace json{
       }
 
       inline void setParent(Node* other) noexcept {
-        if (other)
-          parentOffset = other->getOffsetFrom(this);
-        else
-          parentOffset = 0;
+        parentOffset = other->getOffsetFrom(this);
       }
       inline void setRightChild(Node* other) noexcept {
-        if (other) {
-          rightOffset = other->getOffsetFrom(this);
-          other->setParent(this);
-          other->position = Position::Right;
-        } else
-          rightOffset = 0;
+        rightOffset = other->getOffsetFrom(this);
+        other->setParent(this);
+        other->position = Position::Right;
       }
       inline void setLeftChild(Node* other) noexcept {
-        if (other) {
-          leftOffset = other->getOffsetFrom(this);
-          other->setParent(this);
-          other->position = Position::Left;
-        } else
-          leftOffset = 0;
+        leftOffset = other->getOffsetFrom(this);
+        other->setParent(this);
+        other->position = Position::Left;
       }
 
       // Deduce right/left from other->position
       inline void setChild(Node* other) noexcept {
         assert(other->position != Position::Root);
+
         if (other->position == Position::Right){
           rightOffset = other->getOffsetFrom(this);
           other->setParent(this);
@@ -788,13 +873,6 @@ namespace json{
         else
           setLeftChild(other);
       }
-
-      inline void makeRoot(RBTreeBase* pTree) noexcept {
-        parentOffset = 0;
-        position = Position::Root;
-        pTree->pRoot = this;
-      }
-
 
 
       inline void leftRotate(RBTreeBase* tree) noexcept {
@@ -815,7 +893,7 @@ namespace json{
             __assume(false);
             assert(false && "Node::position contained an invalid value");
         }
-        setRightChild(y->getLeftChildOrNull());
+        setRightChild(y->getLeftChild());
         y->setLeftChild(this);
       }
       inline void rightRotate(RBTreeBase* tree) noexcept {
@@ -837,8 +915,20 @@ namespace json{
             __assume(false);
             assert(false && "Node::position contained an invalid value");
         }
-        setLeftChild(y->getRightChildOrNull());
+        setLeftChild(y->getRightChild());
         y->setRightChild(this);
+      }
+      inline void rotate(RBTreeBase* tree, Position pos) noexcept {
+        if (pos == Position::Left)
+          leftRotate(tree);
+        else
+          rightRotate(tree);
+      }
+      inline void reverseRotate(RBTreeBase* tree, Position pos) noexcept {
+        if (pos == Position::Left)
+          rightRotate(tree);
+        else
+          leftRotate(tree);
       }
 
       inline void  doInsert(RBTreeBase* tree) noexcept {
@@ -872,7 +962,7 @@ namespace json{
           }
           else {
             y = pp->getLeftChild();
-            if (y->isRed()) {
+            if ( y->isRed() ) {
               p->setBlack();
               y->setBlack();
               pp->setRed();
@@ -891,46 +981,79 @@ namespace json{
             }
           }
         }
-        tree->pRoot->setBlack();
+        if ( tree->pRoot->isRed() ) {
+          ++tree->blackDepth;
+          tree->pRoot->setBlack();
+        }
       }
-      template <typename NodeType>
-      inline Node* doDelete(RBTreeBase* tree) noexcept {
+      inline Node* doDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
         Node* removedNode;
         Node* subTree;
-
-        if (leftOffset && rightOffset) {
-          removedNode = getRightChild()->getMinimum();
-          subTree     = removedNode->getRightChildOrNull();
-          static_cast<NodeType&>(*this) = std::move(static_cast<NodeType&>(*removedNode));
-          removedNode->getParent()->setChild(subTree, removedNode->position);
+        Node* subTreeParent;
+        Position subTreePos;
+        
+        if ( !(tree->isNull(getRightChild()) || tree->isNull(getLeftChild())) ) {
+          removedNode = getSuccessor();
+          pfnMoveAssign(this, removedNode);
         } else {
-          removedNode = this;
-          subTree = leftOffset ? getLeftChild() : getRightChildOrNull();
+          if ( isRoot() ) {
 
-          switch (position) {
-            case Position::Root: [[unlikely]]
-              tree->pRoot = subTree;
-              if (subTree)
-                subTree->position = position;
-              break;
-            case Position::Left:
-              getParent()->setLeftChild(subTree);
-              break;
-            case Position::Right:
-              getParent()->setRightChild(subTree);
-              break;
-            default:
-              __assume(false);
-              assert(false && "Shouldn't be able to get here....");
+          }
+        }
+        
+        if ( tree->isNull(getRightChild()) ) {
+          subTreePos = Position::Left;
+        }
+        else {
+          if ( !tree->isNull(getLeftChild()) ) {
+            
           }
         }
 
+        subTreePos = rightOffset ? Position::Right : Position::Left;;
+
+        if ( leftOffset && rightOffset ) {
+          removedNode = getSuccessor();
+          pfnMoveAssign(this, removedNode);
+        } else {
+          if ( isRoot() ) {
+            getChild(subTreePos)->makeRoot(tree);
+            return this;
+          }
+          removedNode = this;
+        }
+
+        subTreeParent = removedNode->getParent();
+        subTree = removedNode->getChild(subTreePos);
+        subTreeParent->setChild(subTree, subTreePos);
+
+        /*if (leftOffset && rightOffset) {
+          removedNode = getRightChild()->getMinimum();
+          subTree     = removedNode->getRightChild();
+          subTreePos  = Position::Right;
+          subTreeParent = removedNode->getParent();
+
+          subTreeParent->setChild(subTree, removedNode->position);
+        } else {
+          removedNode = this;
+          subTreePos = leftOffset ? Position::Left : Position::Right;
+          subTreeParent = getParent();
+          subTree = getChild(subTreePos);
+          if (isRoot()) {
+            tree->pRoot = subTree;
+            if (subTree)
+              subTree->position = Position::Root;
+          } else {
+            subTreeParent->setChild(subTree, position);
+          }
+
+        }*/
+
         if (removedNode->isBlack())
-          doPostDeleteRebalance(tree, subTree);
+          doPostDeleteRebalance(tree, subTreeParent, subTreePos);
 
         return removedNode;
       }
-
       inline static void doPostDeleteRebalance(RBTreeBase* tree, Node* node) noexcept {
 
         Node* parent;
@@ -941,7 +1064,7 @@ namespace json{
           parent = node->getParent();
 
           if ( node->position == Position::Left ) {
-            sibling = parent->getRightChildOrNull();
+            sibling = parent->getRightChild();
 
             if ( sibling->isRed() ) {
               sibling->setBlack();
@@ -969,7 +1092,132 @@ namespace json{
           }
           else {
 
-            sibling = parent->getLeftChildOrNull();
+            sibling = parent->getLeftChild();
+
+            if ( sibling->isRed() ) {
+              sibling->setBlack();
+              parent->setRed();
+              parent->rightRotate(tree);
+              parent = node->getParent();
+              sibling = parent->getLeftChild();
+            }
+
+            if ( sibling->getLeftChild()->isBlack() ) {
+              if ( sibling->getRightChild()->isBlack() ) {
+                sibling->setRed();
+                return doPostDeleteRebalance(tree, parent);
+              }
+              sibling->getRightChild()->setBlack();
+              sibling->setRed();
+              sibling->leftRotate(tree);
+              sibling = parent->getLeftChild();
+            }
+
+            sibling->colour = parent->colour;
+            parent->setBlack();
+            sibling->getLeftChild()->setBlack();
+            parent->rightRotate(tree);
+          }
+
+          tree->pRoot->setBlack();
+        }
+        else
+          node->setBlack();
+      }
+      inline static void doPostDeleteRebalance(RBTreeBase* tree, Node* parent, Position pos) noexcept {
+
+        __assume(pos != Position::Root);
+
+        Node* subTree = parent->getChild(pos);
+        Node* sibling = parent->getSibling(pos);
+        Node* subRoot = parent;
+
+        if ( subTree->isBlackOrNull() ) {
+
+          if ( sibling->isRed() ) {
+            sibling->setBlack();
+            parent->setRed();
+            subRoot = sibling;
+            parent->rotate(tree, pos);
+            sibling = parent->getSibling(pos);
+            //parent =
+          }
+
+
+        }
+        
+        if ( !parent ) {
+          if ( tree->pRoot )
+            tree->pRoot->setBlack();
+        } else {
+          subTree = parent->getChild(pos);
+          sibling = parent->getSibling(pos);
+          
+          if ( !subTree || subTree->isBlack() ) {
+
+            if ( sibling->isRed() ) {
+              sibling->setBlack();
+              parent->setRed();
+              parent->rotate(tree, pos);
+              //parent = node->getParent();
+              sibling = parent->getSibling(pos);
+            }
+
+            if ( sibling->getRightChild()->isBlack() ) {
+              if ( sibling->getLeftChild()->isBlack() ) {
+                sibling->setRed();
+                return doPostDeleteRebalance(tree, subRoot, pos);
+              }
+              sibling->getChild(pos)->setBlack();
+              sibling->setRed();
+              sibling->reverseRotate(tree, pos);
+              sibling = parent->getSibling(pos);
+            }
+
+            sibling->colour = parent->colour;
+            parent->setBlack();
+            sibling->getSibling(pos)->setBlack();
+            parent->rotate(tree, pos);
+          } 
+
+
+
+        }
+
+        if ( parent && (!(subTree = parent->getChild(subTreePos)) || subTree->isBlack()) ) {
+
+          //parent = node->getParent();
+
+          if ( node->position == Position::Left ) {
+            sibling = parent->getRightChild();
+
+            if ( sibling->isRed() ) {
+              sibling->setBlack();
+              parent->setRed();
+              parent->leftRotate(tree);
+              parent = node->getParent();
+              sibling = parent->getRightChild();
+            }
+
+            if ( sibling->getRightChild()->isBlack() ) {
+              if ( sibling->getLeftChild()->isBlack() ) {
+                sibling->setRed();
+                return doPostDeleteRebalance(tree, parent);
+              }
+              sibling->getLeftChild()->setBlack();
+              sibling->setRed();
+              sibling->rightRotate(tree);
+              sibling = parent->getRightChild();
+            }
+
+            sibling->colour = parent->colour;
+            parent->setBlack();
+            sibling->getRightChild()->setBlack();
+            parent->leftRotate(tree);
+          }
+          else {
+
+            sibling = parent->getLeftChild();
 
             if ( sibling->isRed() ) {
               sibling->setBlack();
@@ -1002,103 +1250,219 @@ namespace json{
           node->setBlack();
       }
 
+      inline Node* doDelete(RBTreeBase* tree) noexcept {
+        if (position)
+      }
+      inline Node* doLeftDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
 
+        Node* removedNode;
+
+        if ( !tree->isNull(getRightChild())) {
+          removedNode = getSuccessor(tree);
+          pfnMoveAssign(this, removedNode);
+        }
+      }
+      inline Node* doRightDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
+        if ( !tree->isNull(getLeftChild()) )
+      }
+      inline static void doPostDeleteRebalanceLeft(RBTreeBase* tree, Node* parent) noexcept {
+
+        if ( !parent ) {
+          if ( tree->pRoot ) {
+            tree->pRoot->setBlack();
+            return;
+          }
+        }
+
+
+        Node* node    = parent->getLeftChild();
+        Node* sibling = parent->getRightChild();
+        Node* subRoot = parent;
+
+        if ( node->isBlackOrNull() ) {
+
+          if ( sibling->isRed() ) {
+            sibling->setBlack();
+            parent->setRed();
+            subRoot = sibling;
+            parent->leftRotate(tree);
+            sibling = parent->getRightChild();
+          }
+
+
+        }
+
+      }
+      inline static void doPostDeleteRebalanceRight(RBTreeBase* tree, Node* parent) noexcept {}
     public:
 
-      inline bool  isRoot()   const noexcept {
-        assert(position == Position::Root);
+      explicit RBNodeBase(std::nullptr_t, ChunkHint hint) noexcept
+          : chunkHint(static_cast<u16>(hint)), colour(Colour::Black), position(Position::Root){}
+
+      [[nodiscard]] inline bool  isRoot()   const noexcept {
+        //assert(position == Position::Root);
         return parentOffset == 0;
       }
-      inline bool  isLeaf()   const noexcept {
+      [[nodiscard]] inline bool  isLeaf()   const noexcept {
         return leftOffset == 0 && rightOffset == 0;
       }
-      inline bool  isBranch() const noexcept {
+      [[nodiscard]] inline bool  isBranch() const noexcept {
         return leftOffset != 0 && rightOffset != 0;
       }
 
-
-      inline Node* getChild(Position pos) noexcept {
-        if (pos == Position::Right)
-          return getRightChild();
-        return getLeftChild();
-      }
-      inline Node* getLeftChild() noexcept {
+      
+      /*[[nodiscard]] inline Node* getLeftChild() const noexcept {
         assert(leftOffset != 0);
         const auto* result = doGetLeftChild();
         assert(result != this);
         assert(result->position == Position::Left);
         return const_cast<Node*>(result);
       }
-      inline Node* getRightChild() noexcept {
+      [[nodiscard]] inline Node* getRightChild() const noexcept {
         assert(rightOffset != 0);
         const auto* result = doGetRightChild();
         assert(result != this);
         assert(result->position == Position::Right);
         return const_cast<Node*>(result);
       }
-      inline Node* getParent() noexcept {
+      [[nodiscard]] inline Node* getParent() const noexcept {
         assert(!isRoot());
         const auto* result = doGetParent();
         assert(result != this);
         assert((position == Position::Left && result->doGetLeftChild() == this) || (result->doGetRightChild() == this));
         return const_cast<Node*>(result);
-      }
+      }*/
 
 
-      inline Node* getChildOrNull(Position pos) noexcept {
+      [[nodiscard]] inline Node* getChild(Position pos) const noexcept {
         if (pos == Position::Right)
-          return getRightChildOrNull();
-        return getLeftChildOrNull();
-      }
-      inline Node* getLeftChildOrNull() noexcept {
-        if (leftOffset)
-          return getLeftChild();
-        return nullptr;
-      }
-      inline Node* getRightChildOrNull() noexcept {
-        if (rightOffset)
           return getRightChild();
-        return nullptr;
+        return getLeftChild();
       }
-      inline Node* getParentOrNull() noexcept {
-        if (parentOffset != 0)
-          return getParent();
-        return nullptr;
+      [[nodiscard]] inline Node* getSibling(Position pos) const noexcept {
+        if (pos == Position::Left)
+          return getRightChild();
+        return getLeftChild();
+      }
+      [[nodiscard]] inline Node* getLeftChild() const noexcept {
+        /*if (leftOffset)
+          return const_cast<Node*>(doGetLeftChild());
+        return nullptr;*/
+        return const_cast<Node*>(doGetLeftChild());
+      }
+      [[nodiscard]] inline Node* getRightChild() const noexcept {
+        /*if (rightOffset)
+          return const_cast<Node*>(doGetRightChild());
+        return nullptr;*/
+        return const_cast<Node*>(doGetRightChild());
+      }
+      [[nodiscard]] inline Node* getParent() const noexcept {
+        /*if (parentOffset != 0)
+          return const_cast<Node*>(doGetParent());
+        return nullptr;*/
+        return const_cast<Node*>(doGetParent());
       }
 
-      inline Node* getMaximum() noexcept {
-        Node* x = this;
+      [[nodiscard]] inline Node* getMaximum() const noexcept {
+
+        if (this_is_null())
+          return nullptr;
+
+        const Node* x = this;
         while (x->rightOffset)
           x = x->getRightChild();
-        return x;
+        return const_cast<Node*>(x);
       }
-      inline Node* getMinimum() noexcept {
-        Node* x = this;
+      [[nodiscard]] inline Node* getMinimum() const noexcept {
+
+        if (this_is_null())
+          return nullptr;
+
+        const Node* x = this;
+
         while (x->leftOffset)
           x = x->getLeftChild();
-        return x;
+        return const_cast<Node*>(x);
       }
-      inline Node* getSuccessor() noexcept {
+      [[nodiscard]] inline Node* getSuccessor() const noexcept {
+
+        if (this_is_null())
+          return nullptr;
+
         if (rightOffset)
           return getRightChild()->getMinimum();
-        Node* x = this;
-        Node* y;
+        const Node* x = this;
+        const Node* y;
         do {
           y = x;
-          x = x->getParentOrNull();
+          x = x->getParent();
         } while(x && y->position == Position::Right);
-        return x;
+        return const_cast<Node*>(x);
       }
-      inline Node* getPredecessor() noexcept{
+      [[nodiscard]] inline Node* getPredecessor() const noexcept{
+
+        if (this_is_null())
+          return nullptr;
+
         if (leftOffset)
           return getLeftChild()->getMaximum();
-        Node* x = this;
-        Node* y;
+        const Node* x = this;
+        const Node* y;
         do {
           y = x;
-          x = x->getParentOrNull();
+          x = x->getParent();
         } while(x && y->position == Position::Left);
-        return x;
+        return const_cast<Node*>(x);
+      }
+
+      [[nodiscard]] inline Node* getMaximum(RBTreeBase* tree) const noexcept {
+        
+
+        const Node* x = this;
+        const Node* y = x->getRightChild();
+        
+        while ( !tree->isNull(y) ) {
+          x = y;
+          y = y->getRightChild();
+        }
+        return const_cast<Node*>(x);
+      }
+      [[nodiscard]] inline Node* getMinimum(RBTreeBase* tree) const noexcept {
+        
+        const Node* x = this;
+        const Node* y = x->getLeftChild();
+
+        while ( !tree->isNull(y) ) {
+          x = y;
+          y = y->getLeftChild();
+        }
+        return const_cast<Node*>(x);
+      }
+      [[nodiscard]] inline Node* getSuccessor(RBTreeBase* tree) const noexcept {
+        
+        if (const Node* rightChild = getRightChild(); !tree->isNull(rightChild) ) 
+          return rightChild->getMinimum();
+        
+        const Node* x = this;
+        const Node* y;
+        do {
+          y = x;
+          x = x->getParent();
+        } while( !tree->isNull(x) && y->position == Position::Right);
+        return const_cast<Node*>(x);
+      }
+      [[nodiscard]] inline Node* getPredecessor(RBTreeBase* tree) const noexcept{
+
+        if (const Node* leftChild = getLeftChild(); !tree->isNull(leftChild) )
+          return leftChild->getMaximum();
+
+        const Node* x = this;
+        const Node* y;
+        do {
+          y = x;
+          x = x->getParent();
+        } while( !tree->isNull(x) && y->position == Position::Left);
+        return const_cast<Node*>(x);
       }
 
       inline void  setRed() noexcept {
@@ -1108,81 +1472,481 @@ namespace json{
         colour = Colour::Black;
       }
 
-      inline bool  isRed() const noexcept {
+      inline void makeRoot(RBTreeBase* pTree) noexcept {
+        pTree->pRoot = this;
+        position = Position::Root;
+        setParent(pTree->pNull);
+      }
+
+      [[nodiscard]] inline bool  isRed() const noexcept {
         return colour == Colour::Red;
       }
-      inline bool  isBlack() const noexcept {
+      [[nodiscard]] inline bool  isBlack() const noexcept {
         return colour == Colour::Black;
+      }
+
+      [[nodiscard]] inline ChunkHint getAllocHint() const noexcept {
+        return ChunkHint(chunkHint);
+      }
+
+      [[nodiscard]] inline std::pair<u32, bool> checkTreeInvariants(const RBTreeBase* tree) const noexcept{
+
+        if ( tree->isNull(this) )
+          return { 0, true };
+
+        auto [ leftDepth,  leftSuccess ]  = getLeftChild()->checkTreeInvariants(tree);
+        auto [ rightDepth, rightSuccess ] = getRightChild()->checkTreeInvariants(tree);
+
+        if ( !leftSuccess || !rightSuccess ) {
+          assert( false );
+          return { 0, false };
+        }
+
+        if ( leftDepth != rightDepth ) {
+          assert( false );
+          return { 0, false };
+        }
+
+        if (isRed()) {
+          if ( getLeftChild()->isRed() ) {
+            assert( false );
+            return { 0, false };
+          }
+          if ( getRightChild()->isRed() ) {
+            assert( false );
+            return { 0, false };
+          }
+          return { leftDepth, true };
+        }
+
+        return { leftDepth + 1, true };
       }
     };
 
 
     RBNodeBase* pRoot;
-    unsigned    blackDepth;
+    RBNodeBase* pNull;
+    u32         blackDepth;
+    u32         nodeCount;
+
+
+    [[nodiscard]] inline bool isNull(const RBNodeBase* node) const noexcept {
+      return node == pNull;
+    }
+
+  public:
+
+    [[nodiscard]] bool checkInvariants() const noexcept {
+      if ( !pRoot )
+        return true;
+
+      if ( pRoot->isRed() ) {
+        assert( false );
+        return false;
+      }
+      auto [ treeDepth, success ] = pRoot->checkTreeInvariants(this);
+
+      if ( !success )
+        return false;
+
+      if ( treeDepth != blackDepth ) {
+        assert( false );
+        return false;
+      }
+
+      return true;
+    }
+
   };
 
-  template <typename T>
+  template <typename T, weak_order<const T&, const T&> Order>
   class RBTree : public RBTreeBase{
     class RBNode : public RBNodeBase{
-      T value_;
+
     public:
-      RBNode() : RBNodeBase(), value_(){}
+
+      T value_;
+
+
+      explicit RBNode(ChunkHint hint) : RBNodeBase(hint), value_(){}
 
       template <typename ...Args> requires(std::constructible_from<T, Args...>)
-      RBNode(std::in_place_t, Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) : RBNodeBase(), value_(std::forward<Args>(args)...){}
+      explicit RBNode(ChunkHint hint, Args&& ...args)
+              noexcept(std::is_nothrow_constructible_v<T, Args...>)
+          : RBNodeBase(hint),
+            value_(std::forward<Args>(args)...){}
+      template <typename ...Args> requires(std::constructible_from<T, Args...>)
+      RBNode(RBNode* parentNode, ChunkHint hint, Position pos, Args&& ...args)
+      noexcept(std::is_nothrow_constructible_v<T, Args...>)
+          : RBNodeBase(parentNode, hint, pos),
+            value_(std::forward<Args>(args)...){}
 
       RBNode(RBNode&& other) noexcept = default;
       RBNode& operator=(RBNode&& other) noexcept = default;
 
 
-      template <typename Key, typename F = decltype([](const Key& key, const T& t){ return key <=> t; })>
-      RBNode* find(Key&& key, F&& eqFunc = {}) noexcept {
-        auto result = eqFunc(key, value_);
+      template <typename F>
+      RBNode* find(const RBTree<T>* tree, F&& eqFunc) noexcept {
+
+        if (tree->isNull(this))
+          return this;
+
+        auto result = eqFunc(value_);
         if (result == std::weak_ordering::equivalent)
           return this;
 
-        auto* childNode = result == std::weak_ordering::less ? static_cast<RBNode*>(getLeftChildOrNull()) : static_cast<RBNode*>(getRightChildOrNull());
-        if (!childNode)
-          return childNode;
-        return childNode->find(std::forward<Key>(key), std::forward<F>(eqFunc));
+        return (result == std::weak_ordering::less ?
+                                                   leftChild() :
+                                                   rightChild()
+                )->find(tree, std::forward<F>(eqFunc));
       }
 
-      template <typename F>
-      RBNode* insert(RBTree<T>* tree, RBNode* newNode, F&& func) noexcept {
-        if (func(newNode->value_, value_)) {
-          if (auto* leftChild = static_cast<RBNode*>(getLeftChildOrNull()))
-            leftChild->insert(tree, newNode, std::forward<F>(func));
-          else {
-            setLeftChild(newNode);
-            newNode->doInsert(tree);
-          }
-          return newNode;
-        }
-        else if (func(value_, newNode->value_)) {
-          if (auto* rightChild = static_cast<RBNode*>(getRightChildOrNull()))
-            rightChild->insert(tree, newNode, std::forward<F>(func));
-          else {
-            setRightChild(newNode);
-            newNode->doInsert(tree);
-          }
-          return newNode;
-        }
+      template <typename F, typename ...Args>
+      std::pair<RBNode*, bool> insert(RBTree<T>* tree, F&& func, Args&& ...args) noexcept {
 
-        return this;
+        auto result = func(value_);
+
+        if (result == std::weak_ordering::equivalent)
+          return { this, false };
+
+        auto pos = result == std::weak_ordering::less ? Position::Left : Position::Right;
+        auto* childNode = child(pos);
+        if ( tree->isNull(childNode) ) {
+          childNode = tree->newNode(this, pos, std::forward<Args>(args)...);
+          assert( childNode );
+          childNode->doInsert(tree);
+          return { childNode, true };
+        }
+        else
+          return childNode->insert(tree, std::forward<F>(func), std::forward<Args>(args)...);
       }
-      RBNode* remove(RBTree<T>* tree) noexcept {
-        return static_cast<RBNode*>(this->template doDelete<RBNode>(tree));
+
+      [[nodiscard]] RBNode* remove(RBTree<T>* tree) noexcept {
+        return static_cast<RBNode*>(this->doDelete(tree, [](void* to, void* from) noexcept {
+          (*static_cast<RBNode*>(to)) = std::move(*static_cast<RBNode*>(from));
+        }));
       }
+
+
+      RBNode* successor() const noexcept {
+        return static_cast<RBNode*>(this->getSuccessor());
+      }
+      RBNode* predecessor() const noexcept {
+        return static_cast<RBNode*>(this->getPredecessor());
+      }
+      RBNode* minimum() const noexcept {
+        return static_cast<RBNode*>(this->getMinimum());
+      }
+      RBNode* maximum() const noexcept {
+        return static_cast<RBNode*>(this->getMaximum());
+      }
+
+      RBNode* leftChild() const noexcept {
+        return static_cast<RBNode*>(getLeftChild());
+      }
+      RBNode* rightChild() const noexcept {
+        return static_cast<RBNode*>(getRightChild());
+      }
+      RBNode* child(Position pos) const noexcept {
+        return static_cast<RBNode*>(getChild(pos));
+      }
+
     };
 
-    FixedSizeAllocator<meta::FixedChunkSize<T>::value> nodeAllocator;
+    template <typename QualifiedType>
+    class NodeIterator{
+
+
+      inline void inc() noexcept {
+        if ( *this )
+          node = node->successor();
+        else
+          node = tree->root()->minimum();
+      }
+      inline void dec() noexcept {
+        if ( *this )
+          node = node->predecessor();
+        else
+          node = tree->root()->maximum();
+      }
+
+    public:
+
+      using iterator_category = std::bidirectional_iterator_tag;
+      using value_type = QualifiedType;
+      using reference  = value_type&;
+      using const_reference = const value_type&;
+      using pointer    = value_type*;
+      using const_pointer = const value_type*;
+
+      using tree_type = std::conditional_t<std::is_const_v<value_type>, const RBTree, RBTree>;
+      using node_type = std::conditional_t<std::is_const_v<value_type>, const RBNode, RBNode>;
+
+      NodeIterator() = default;
+      NodeIterator(tree_type* tree, node_type* node) noexcept
+          : tree(tree), node(node){}
+
+      template <typename OtherT> requires(std::assignable_from<QualifiedType*, OtherT*>)
+      NodeIterator(const NodeIterator<OtherT>& other) noexcept
+          : tree(other.tree), node(other.node){}
+
+
+      reference operator*() const noexcept  {
+        assert( *this );
+        return node->value_;
+      }
+      pointer   operator->() const noexcept {
+        assert( *this );
+        return std::addressof(node->value_);
+      }
+
+      NodeIterator& operator++() noexcept {
+        this->inc();
+        return *this;
+      }
+      NodeIterator  operator++(int) noexcept {
+        NodeIterator copy = *this;
+        this->inc();
+        return copy;
+      }
+      NodeIterator& operator--() noexcept {
+        this->dec();
+        return *this;
+      }
+      NodeIterator  operator--(int) noexcept {
+        NodeIterator copy = *this;
+        this->dec();
+        return copy;
+      }
+
+
+      explicit operator bool() const noexcept {
+        return !tree->isNull(node);
+      }
+
+      friend bool                  operator==(NodeIterator a, NodeIterator b) noexcept {
+        return a.node == b.node;
+      }
+      friend std::partial_ordering operator<=>(NodeIterator a, NodeIterator b) noexcept {
+        if (a.tree != b.tree)
+          return std::partial_ordering::unordered;
+        if ( !(a && b) ) {
+          if ( a )
+            return std::partial_ordering::less;
+          if ( b )
+            return std::partial_ordering::greater;
+          return std::partial_ordering::equivalent;
+        }
+        return a.tree->getOrder()(a.node->value_, b.node->value_);
+      }
+
+      tree_type* tree = nullptr;
+      node_type* node = nullptr;
+    };
+
+
+
+
+    template <typename ...Args> requires(std::constructible_from<T, Args...>)
+    RBNode* newNode(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+      auto&& [addr, allocHint] = nodeAllocator.allocateWithHint();
+      return new(addr) RBNode(allocHint, std::forward<Args>(args)...);
+      //return new(nodeAllocator.)
+    }
+    template <typename ...Args> requires(std::constructible_from<T, Args...>)
+    RBNode* newNode(RBNode* parentNode, typename RBNode::Position pos, Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+      auto&& [addr, allocHint] = nodeAllocator.allocateWithHint();
+      return new(addr) RBNode(parentNode, allocHint, pos, std::forward<Args>(args)...);
+      //return new(nodeAllocator.)
+    }
+
+    void deleteNode(RBNode* pNode) noexcept {
+      pNode->~RBNode();
+      nodeAllocator.deallocate(pNode, pNode->getAllocHint());
+    }
+
+    void destroyTree() noexcept {
+      destroySubTree(root());
+      nodeAllocator.release();
+    }
+    void destroySubTree(RBNode* subRoot) noexcept {
+      if (subRoot != pNull) {
+        destroySubTree(subRoot->leftChild());
+        destroySubTree(subRoot->rightChild());
+        subRoot->~RBNode();
+      }
+    }
+
+    void init() noexcept {
+      ChunkHint nullHint;
+      std::tie((void*&)pNull, nullHint) = nodeAllocator.allocateWithHint();
+      ::new(pNull) RBNodeBase(nullptr, nullHint);
+      pRoot = pNull;
+    }
+
+    /*template <typename F>
+    void invokeForEachNode(F&& func) noexcept {
+
+    }*/
+
+    /*template <typename Ret, typename ...Args>
+    Ret invokeOnRoot(Ret(RBNode::* pfnOp)(Args...), std::type_identity_t<Args>... args) noexcept {
+      return std::forward<Ret>(())
+    }
+    template <typename Ret, typename ...Args>
+    Ret invokeOnRoot(Ret(RBNode::* pfnOp)(Args...) const, std::type_identity_t<Args>... args) noexcept {
+
+    }
+    template <typename Ret, typename ...Args>
+    Ret invokeOnRoot(Ret(RBNode::* pfnOp)(Args...) const, std::type_identity_t<Args>... args) const noexcept {
+
+    }*/
+
+    [[nodiscard]] RBNode* root() const noexcept {
+      return static_cast<RBNode*>(pRoot);
+    }
+    [[nodiscard]] RBNode* null() const noexcept {
+      return static_cast<RBNode*>(pNull);
+    }
+
+
+    template <typename F>
+    inline bool doErase(F&& func) noexcept {
+
+      RBNode* result = root()->find(this, std::forward<F>(func));
+
+      if ( isNull(result) )
+        return false;
+
+      deleteNode(result->remove(this));
+      return true;
+    }
 
 
   public:
-    RBTree() : RBTreeBase(){
 
+    using value_type = T;
+    using allocator_type = FixedSizeAllocator<meta::FixedChunkSize<RBNode>::value>;
+    using iterator = NodeIterator<T>;
+    using const_iterator = NodeIterator<const T>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+
+    RBTree(Order order = {})
+        : RBTreeBase(),
+          nodeAllocator(std::pmr::get_default_resource()),
+          order(order){
+      init();
     }
 
+    RBTree(const RBTree& other);
+
+    explicit RBTree(std::pmr::memory_resource* pMemory, Order order = {}) noexcept
+        : RBTreeBase(),
+          nodeAllocator(pMemory),
+          order(order){
+      init();
+    }
+
+
+    ~RBTree() {
+      destroyTree();
+    }
+
+
+
+    [[nodiscard]] size_t          size() const noexcept {
+      return nodeCount;
+    }
+
+
+    [[nodiscard]] iterator        begin()       noexcept {
+      return iterator{ this, root()->minimum() };
+    }
+    [[nodiscard]] const_iterator  begin() const noexcept {
+      return const_iterator{ this, root()->minimum() };
+    }
+    [[nodiscard]] const_iterator cbegin() const noexcept {
+      return this->begin();
+    }
+
+
+    [[nodiscard]] iterator        end()       noexcept {
+      return iterator{ this, null() };
+    }
+    [[nodiscard]] const_iterator  end() const noexcept {
+      return const_iterator{ this, null() };
+    }
+    [[nodiscard]] const_iterator cend() const noexcept {
+      return this->end();
+    }
+
+
+    [[nodiscard]] reverse_iterator        rbegin()       noexcept {
+      return reverse_iterator(this->end());
+    }
+    [[nodiscard]] const_reverse_iterator  rbegin() const noexcept {
+      return const_reverse_iterator(this->end());
+    }
+    [[nodiscard]] const_reverse_iterator crbegin() const noexcept {
+      return const_reverse_iterator(this->end());
+    }
+
+    [[nodiscard]] reverse_iterator        rend()       noexcept {
+      return reverse_iterator(this->begin());
+    }
+    [[nodiscard]] const_reverse_iterator  rend() const noexcept {
+      return const_reverse_iterator(this->begin());
+    }
+    [[nodiscard]] const_reverse_iterator crend() const noexcept {
+      return const_reverse_iterator(this->cbegin());
+    }
+
+
+    const_iterator find(const T& value) const noexcept {
+      return const_iterator{ this, root()->find(this, [&](const T& other) noexcept { return order(value, other); }) };
+    }
+    template <typename Key, std::strict_weak_order<const Key&, const T&> KeyOrder = Order>
+    const_iterator find(const Key& key, KeyOrder&& keyOrder = {}) const noexcept {
+      return const_iterator{ this, root()->find(this, [&](const T& other) noexcept { return keyOrder(key, other); }) };
+    }
+
+    std::pair<iterator, bool> insert(const T& value) noexcept {
+      if ( isNull(root()) ) {
+        newNode(value)->makeRoot(this);
+        nodeCount = 1;
+        blackDepth = 1;
+        return { begin(), true };
+      }
+      std::pair<iterator, bool> result;
+      RBNode* pResultNode;
+      std::tie(pResultNode, result.second) = root()->insert(this, [&](const T& other) noexcept {
+            return order(value, other);
+          }, value);
+
+      nodeCount += result.second;
+
+      expensive_assert(checkInvariants());
+
+      result.first = iterator(this, pResultNode);
+      return result;
+    }
+    bool                      remove(const T& value) noexcept {
+      bool result = this->doErase([&](const T& other){ return order(value, other); });
+      this->nodeCount -= result;
+      expensive_assert(checkInvariants());
+      return result;
+    }
+
+    const Order& getOrder() const noexcept {
+      return order;
+    }
+
+
+  private:
+    allocator_type              nodeAllocator;
+    [[no_unique_address]] Order order;
   };
 
 
@@ -1306,14 +2070,14 @@ namespace json{
       }
 
       inline Node* getLeftChild() noexcept {
-        assert(isBranch());
+        //assert(isBranch());
         const auto* result = doGetLeftChild();
         assert(result != this);
         assert(result->position == Position::Left);
         return const_cast<Node*>(result);
       }
       inline Node* getRightChild() noexcept {
-        assert(isBranch());
+        //assert(isBranch());
         const auto* result = doGetRightChild();
         assert(result != this);
         assert(result->position == Position::Right);
@@ -1363,6 +2127,54 @@ namespace json{
 }
 
 
+#include <iostream>
+
+
+
+
+int main() {
+  using namespace json;
+
+  using i64 = long long;
+
+  using long_tree = RBTree<i64>;
+  using tree_allocator = typename long_tree::allocator_type;
+
+  tree_allocator allocator{};
+  RBTree<i64> intTree{};
+
+
+  const static auto printTree = [](const RBTree<i64>& tree){
+    auto a = tree.begin();
+    const auto b = tree.end();
+
+    std::cout << "{ " << *a++;
+
+    for (; a != b; ++a)
+      std::cout << ", " << *a;
+
+    std::cout << " }" << std::endl;
+  };
+
+
+  for (auto i : { 1, 6, -2, 30, -22, 0, 1, 3, 10 })
+    intTree.insert(i);
+
+  printTree(intTree);
+
+  for (auto i : { 2, 1, -4, 0, 10 })
+    intTree.remove(i);
+
+  printTree(intTree);
+
+  for (auto i : { 1, -20, -4, 2})
+    intTree.insert(i);
+
+  printTree(intTree);
+}
+
+
+/*
 JSON_BEGIN_C_NAMESPACE
 
 
@@ -1374,5 +2186,6 @@ JSON_BEGIN_C_NAMESPACE
 
 
 JSON_END_C_NAMESPACE
+*/
 
 

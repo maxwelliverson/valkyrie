@@ -179,11 +179,15 @@ target_link_libraries(CudaGraph PUBLIC CUDA::cuda_driver)
 add_executable(DirectedGraph test/DirectedGraph.cpp)
 target_link_libraries(DirectedGraph PUBLIC valkyrie.Core)
 
+add_executable(RBTreeTest src/json/json_interval_tree.cpp)
+
 
 add_executable(vulkan_example src/example.cpp)
 
 add_executable(clangd_debug debug_clangd.cpp)
 
+add_executable(tictactoe test/tictactoe.c)
+add_executable(better_ttt test/better_tictactoe.c)
 
 
 add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h)

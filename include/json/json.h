@@ -52,7 +52,7 @@ typedef struct json_value_pool*        json_value_pool_t;
 typedef struct json_object_pool*       json_object_pool_t;
 typedef struct json_string_pool*       json_string_pool_t;
 typedef struct json_string_pool_entry* json_string_pool_entry_t;
-typedef struct json_context*         json_context_t;
+typedef struct json_context*           json_context_t;
 
 
 
@@ -297,8 +297,12 @@ typedef struct json_document*   json_document_t;
   json_object_t*     p_object;
 } json_document_t;*/
 
+#if defined(__cplusplus)
+#define ASSERT_TYPE_SIZE(type, size) static_assert(sizeof(type) == (size), #type " is not " #size " bytes")
 
+#else
 #define ASSERT_TYPE_SIZE(type, size) _Static_assert(sizeof(type) == (size), #type " is not " #size " bytes")
+#endif
 
 ASSERT_TYPE_SIZE(json_byte_t, 1);
 ASSERT_TYPE_SIZE(json_utf8_t, 1);

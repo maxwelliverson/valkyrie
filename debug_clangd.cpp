@@ -2,6 +2,7 @@
 // Created by Maxwell on 2021-02-07.
 //
 
+/*
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -29,4 +30,22 @@ int main(int argc, char* argv[]){
   output << std::endl;
 
   return -69;
+}*/
+
+#include <iostream>
+
+class Example{
+public:
+  void test() const {
+    if ( (const volatile void*)this )
+      std::cout << "Nonnull: " << this << std::endl;
+    else
+      std::cout << "Null" << std::endl;
+  }
+};
+
+
+int main() {
+  Example* ex = nullptr;
+  std::launder(ex)->test();
 }
