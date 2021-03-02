@@ -128,38 +128,217 @@ namespace valkyrie::Core{
     class PrivateChannel : public Channel{};
   }*/
 
+  /*class Agent{
+  public:
+    virtual AgentSender*   createSender() noexcept = 0;
+    virtual AgentReceiver* createReceiver() noexcept = 0;
+    virtual bool           destroySender(AgentSender* sender) noexcept = 0;
+    virtual bool           destroyReceiver(AgentReceiver* pReceiver) noexcept = 0;
+  };*/
+
+  template <typename T>
+  class Proxy{};
+
+
+  class ChannelReader;
+  class ChannelWriter;
+
+  class Channel{
+  public:
+    virtual ~Channel() = default;
+  };
+
   class Agent{
   public:
-    virtual AgentSender*   createSender() noexcept = 0;
-    virtual AgentReceiver* createReceiver() noexcept = 0;
-    virtual bool           destroySender(AgentSender* sender) noexcept = 0;
-    virtual bool           destroyReceiver(AgentReceiver* pReceiver) noexcept = 0;
+    virtual ~Agent() = default;
+
+    virtual ChannelReader* acquireReader() noexcept = 0;
+    virtual ChannelWriter* acquireWriter() noexcept = 0;
+    virtual void releaseReader(ChannelReader* pReader) noexcept = 0;
+    virtual void releaseWriter(ChannelWriter* pWriter) noexcept = 0;
   };
 
-  class AgentProxy{
+  class ChannelBroker{ };
+
+  class ChannelReader{
+  public:
+    virtual ~ChannelReader() = default;
+  };
+  class ChannelWriter{
+  public:
+    virtual ~ChannelWriter() = default;
+  };
+
+  template <typename T>
+  class Reader{
+    using proxy_type  = Proxy<T>;
+    using reader_type = typename agent_traits<proxy_type>::reader_type;
   public:
 
+    ~Reader() {
+
+    }
+
+  private:
+    reader_type* pReader;
   };
+  template <typename T>
+  class Writer{
+    using proxy_type  = Proxy<T>;
+    using writer_type = typename agent_traits<proxy_type>::writer_type;
 
 
-
-  class AgentInstance{
   public:
-    virtual AgentSender*   createSender() noexcept = 0;
-    virtual AgentReceiver* createReceiver() noexcept = 0;
-    virtual bool           destroySender(AgentSender* sender) noexcept = 0;
-    virtual bool           destroyReceiver(AgentReceiver* pReceiver) noexcept = 0;
+
+  private:
+    writer_type* pWriter;
   };
 
-  template <typename MsgDomain>
-  class Instance : public AgentInstance{};
+  class AutonomousEntityRoot{
+  public:
+    virtual ~AutonomousEntityRoot() = default;
+  };
 
-  template <typename MsgDomain>
-  class SharedInstance  : public Instance<MsgDomain>{};
-  template <typename MsgDomain>
-  class LocalInstance   : public Instance<MsgDomain>{};
-  template <typename MsgDomain>
-  class PrivateInstance : public Instance<MsgDomain>{};
+  template <typename Derived, typename Base = AutonomousEntityRoot>
+  class AutonomousEntity{
+  public:
+  };
+
+
+
+
+  /*
+   *
+   * class RandomGenerator{
+   * public:
+   *   virtual ~RandomGenerator() = default;
+   *
+   *   virtual void generateBatch(Channel* channel, u64 genCount) noexcept = 0;
+   * };
+   *
+   * class CurandRandomGenerator{};
+   * class OpenCLRandomGenerator{};
+   * class CPURandomGenerator{};
+   *
+   *
+   * class RandomEngineState{
+   *   Channel                          channel;
+   *   struct State {
+   *     std::atomic_uint64_t           countConsumed;
+   *     u32                            typeSize;
+   *   } state;
+   *
+   *   std::atomic_uint32_t             refCount;
+   * };
+   *
+   *
+   *
+   *
+   * class RandomEngine{
+   *   RandomEngineState* pState;
+   *
+   *   explicit RandomEngine(RandomEngineState*);
+   *
+   *   public:
+   *   RandomEngine() = default;
+   *
+   *   static RandomEngine create(u64 batchSize, u64 totalBufferSize) noexcept{
+   *     std::thread         adminThread;
+   *     BinarySemaphore    isReady;
+   *     RandomEngineState* pState;
+   *
+   *     isReady.acquire();
+   *
+   *     adminThread = std::thread{[batchSize, totalBufferSize](BinarySemaphore* isReady, RandomEngineState** ppState){
+   *
+   *       using clock = std::chrono::high_precision_clock;
+   *       using self  = std::this_thread;
+   *
+   *       RandomEngineState                state;
+   *       CudaRandomGenerator              generator;
+   *       std::chrono::nanoseconds         sleepTime   = 50us;
+   *       std::chrono::nanoseconds         lastSleepTime = sleepTime;
+   *       uint64_t                         countConsumedDuringPreviousSleep = batchSize;
+   *       std::unique_ptr<RandomGenerator> generator;
+   *
+   *       int64_t countConsumed = batchSize;
+   *
+   *       *ppState = &state;
+   *       state.refCount += 1;
+   *
+   *       generator.generateBatch(&state.channel, batchSize);
+   *
+   *       while ((self::sleep_for(state.sleepTime), true) && state.refCount.load() != 0) {
+   *         auto countConsumed = state.countConsumed.exchange(0);
+   *         generator.generateBatch(&state.channel, batchSize);
+   *       }
+   *     }, &isReady, &pState};
+   *
+   *     threadIsReady.acquire();
+   *
+   *     adminThread.detach();
+   *     return RandomEngine(pState);
+   *   }
+   * };
+   *
+   * template <typename T, typename Dist = UniformDistribution<T>>
+   * class RNG{
+   * public:
+   *   T get() const noexcept {
+   *     T ret;
+   *     pEngine->channel.readMessage([&ret](void* pMsg, void* pState) mutable { ret = *(T*)pMsg; ++((RandomEngine::State*)pState)->countConsumed; });
+   *     return ret;
+   *   }
+   *   inline T operator()() const noexcept {
+   *     return this->get();
+   *   }
+   *   template <size_t N>
+   *   void get(std::span<T, N> output) const noexcept {
+   *     pEngine->channel.readMessage([n = output.size()](void* pMsg){ return n * sizeof(T); }, [output](void* pMsg, auto* pState){ std::memcpy(output.data(), pMsg, output.size() * sizeof(T)); pState->countConsumed += output.size(); });
+   *   }
+   *   template <size_t N>
+   *   void operator()(std::span<T, N> output) const noexcept {
+   *     this->get(output);
+   *   }
+   *   void get(T* pArray, size_t desiredCount) const noexcept {
+   *     this->get(std::span{ pArray, desiredCount });
+   *   }
+   *   void operator()(T* pArray, size_t desiredCount) const noexcept {
+   *     this->get(std::span{ pArray, desiredCount });
+   *   }
+   *
+   *
+   *
+   * private:
+   *   RandomEngine*              pEngine;
+   *   [[no_unique_address]] Dist distribution;
+   * };
+   *
+   *   Channel {  }
+   *
+   *   State { }
+   *
+   *
+   *   Agent {
+   *     Set<Channel>,
+   *     Set<State>
+   *   }
+   *
+   *   Administrator { }
+   *
+   *   Entity {
+   *     Set<Agent>,
+   *     Administrator
+   *   }
+   *
+   *
+   *
+   *
+   *
+   * */
+
+
+
 
 
   class InstructorAgent{

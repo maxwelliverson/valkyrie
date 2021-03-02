@@ -110,6 +110,7 @@ add_object(valkyrie.Core.SystemError)
 add_object(valkyrie.Core.Win32Functions)
 
 add_object(valkyrie.Core.Utility.JSON)
+add_object(valkyrie.Core.Utility.Random)
 
 add_object(valkyrie.Graphics.API.Instance)
 add_object(valkyrie.Graphics.API.PhysicalDevice)
@@ -130,6 +131,7 @@ add_object(valkyrie.GUI.DXGI)
 add_object(valkyrie.Graphics.Engine.Engine)
 add_object(valkyrie.Graphics.Engine.Option)
 add_object(valkyrie.Graphics.Engine.Types)
+
 
 add_object_library(spirv OBJECTS SpirV Shader)
 
