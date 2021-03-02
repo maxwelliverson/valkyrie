@@ -104,7 +104,8 @@ namespace valkyrie::Core{
     EndOfFile                     = 12,
     NoChange                      = 13,
     Changed                       = 14,
-    Unnecessary                   = 15
+    Unnecessary                   = 15,
+    Paused                        = 16
   };
   inline Severity getDefaultSeverity(Code code) noexcept{
 
