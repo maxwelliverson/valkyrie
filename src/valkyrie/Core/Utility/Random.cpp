@@ -201,46 +201,46 @@ namespace {
 
  class RandomEngine{
      RandomEngineState* pState;
-  
+
      explicit RandomEngine(RandomEngineState*);
-  
+
      public:
      RandomEngine() = default;
-  
+
      static RandomEngine create(u64 batchSize, u64 totalBufferSize) noexcept{
          std::thread         adminThread;
          BinarySemaphore    isReady;
          RandomEngineState* pState;
-    
+
              isReady.acquire();
-    
+
              adminThread = std::thread{[batchSize, totalBufferSize](BinarySemaphore* isReady, RandomEngineState** ppState){
-      
+
                  using clock = std::chrono::high_precision_clock;
              using self  = std::this_thread;
-      
+
                  RandomEngineState                state;
              CudaRandomGenerator              generator;
              std::chrono::nanoseconds         sleepTime   = 50us;
              std::chrono::nanoseconds         lastSleepTime = sleepTime;
              uint64_t                         countConsumedDuringPreviousSleep = batchSize;
              std::unique_ptr<RandomGenerator> generator;
-      
+
                  int64_t countConsumed = batchSize;
-      
+
                  *ppState = &state;
              state.refCount += 1;
-      
+
                  generator.generateBatch(&state.channel, batchSize);
-      
+
                  while ((self::sleep_for(state.sleepTime), true) && state.refCount.load() != 0) {
                auto countConsumed = state.countConsumed.exchange(0);
                generator.generateBatch(&state.channel, batchSize);
              }
            }, &isReady, &pState};
-    
+
              threadIsReady.acquire();
-    
+
              adminThread.detach();
          return RandomEngine(pState);
        }
@@ -271,9 +271,9 @@ namespace {
    void operator()(T* pArray, size_t desiredCount) const noexcept {
      this->get(std::span{ pArray, desiredCount });
    }
-  
-  
-  
+
+
+
    private:
      RandomEngine engine;
    };
