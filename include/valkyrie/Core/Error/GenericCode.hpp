@@ -107,130 +107,11 @@ namespace valkyrie::Core{
     Unnecessary                   = 15,
     Paused                        = 16
   };
+
   inline Severity getDefaultSeverity(Code code) noexcept{
 
 
-    /*
-EACCES          Code::PermissionDenied
-*EADDRINUSE     Code::AddressInUse
-*EADDRNOTAVAIL  Code::AddressNotAvailable
-EAGAIN          Code::ResourceUnavailable
-EALREADY       Code::InProgress
-**EBADE           Invalid exchange.
-*EBADF          Code::ResourceDoesNotExist
-*EBADFD         Code::FileCorrupted
-EBADMSG        Code::InvalidResource
-EBUSY          Code::Busy
-ECANCELED      Code::Cancelled
-**ECHILD        No child processes (POSIX.1-2001).
-ECHRNG         Code::OutOfDomain
-**ECOMM           .Communication error on send
-*ECONNABORTED    Code::ConnectionAborted
-*ECONNREFUSED    Code::ConnectionRefused
-*ECONNRESET      Code::ConnectionReset
-*EDEADLK         Code::Deadlock
-**EDESTADDRREQ    Destination address required (POSIX.1-2001).
-EDOM            Code::OutOfDomain
-**EDQUOT          Disk quota exceeded (POSIX.1-2001).
-*EEXIST          File exists (POSIX.1-2001).
-EFAULT           Code::BadAddress
-*EFBIG           Code::FileTooLarge
-**EHOSTDOWN       Host is down.
-**EHOSTUNREACH    Host is unreachable (POSIX.1-2001).
-**EHWPOISON       Memory page has hardware error.
-**EIDRM           Identifier removed (POSIX.1-2001).
-EILSEQ          Code::InvalidFormat
-EINPROGRESS     Code::InProgress
-**EINTR           Interrupted function call (POSIX.1-2001); see
-EINVAL         Code::InvalidArgument
-EIO            Code::IOError
-*EISCONN       Code::SocketIsConnected
-EISDIR         Code::ResourceUnexpectedType
-*EKEYEXPIRED    Code::ResourceExpired
-*EKEYREJECTED   Code::ResourceRejected
-*EKEYREVOKED    Code::AccessRevoked
-**EL2HLT          Level 2 halted.
-**EL2NSYNC        Level 2 not synchronized.
-**EL3HLT          Level 3 halted.
-**EL3RST          Level 3 reset.
-*ELIBACC        Code::LibraryInaccessible
-*ELIBBAD        Code::LibraryCorrupted
-*ELIBMAX        Code::TooManyLibraries
-**ELIBSCN         .lib section in a.out corrupted
-**ELIBEXEC        Cannot exec a shared library directly.
-**ELNRANGE        Link number out of range.
-*ELOOP          Code::RecursionLimitReached
-**EMEDIUMTYPE     Wrong medium type.
-EMFILE          Code::ResourceLimitReached
-EMLINK          Code::ResourceLimitReached
-*EMSGSIZE        Code::MessageTooLong
-**EMULTIHOP       Multihop attempted (POSIX.1-2001).
-*ENAMETOOLONG    Code::FilenameTooLong
-*ENETDOWN        Code::NetworkUnavailable
-*ENETRESET       Code::NetworkUnavailable
-*ENETUNREACH     Code::NetworkUnavailable
-ENFILE           Code::ResourceLimitReached
-**ENOANO          No anode.
-ENOBUFS         Code::InsufficientSize
-*ENODATA        Code::NoMessages
-*ENODEV         Code::NoSuchDevice
-*ENOENT         Code::ResourceDoesNotExist
-*ENOEXEC        Code::ResourceNotExecutable
-**ENOKEY          Required key not available.
-**ENOLCK          No locks available (POSIX.1-2001).
-**ENOLINK         Link has been severed (POSIX.1-2001).
-**ENOMEDIUM       No medium found.
-ENOMEM          Code::OutOfMemory
-*ENOMSG         Code::NoMessages
-*ENONET         Code::NetworkUnavailable
-**ENOPKG          Package not installed.
-**ENOPROTOOPT     Protocol not available (POSIX.1-2001).
-*ENOSPC         Code::DeviceOutOfMemory
-**ENOSR           No STREAM resources (POSIX.1 (XSI STREAMS option)).
-ENOSTR          Code::ResourceUnexpectedType
-ENOSYS          Code::NotImplemented
-**ENOTBLK         Block device required.
-*ENOTCONN       Code::NotConnected
-ENOTDIR       Code::ResourceUnexpectedType
-**ENOTEMPTY       Directory not empty (POSIX.1-2001).
-ENOTRECOVERABLE Code::UnrecoverableState
-ENOTSOCK        Code::ResourceUnexpectedType
-ENOTSUP         Code::OperationNotSupported
-ENOTTY          Code::IOError
-**ENOTUNIQ        Name not unique on network.
-ENXIO           Code::BadAddress
-EOPNOTSUPP      Code::OperationNotSupported
-EOVERFLOW       Code::ArithmeticOverflow
-**EOWNERDEAD      Owner died (POSIX.1-2008).
-EPERM            Code::PermissionDenied
-**EPFNOSUPPORT    Protocol family not supported.
-**EPIPE           Broken pipe (POSIX.1-2001).
-**EPROTO          Protocol error (POSIX.1-2001).
-**EPROTONOSUPPORT Protocol not supported (POSIX.1-2001).
-EPROTOTYPE       Code::ResourceUnexpectedType
-ERANGE           Code::OutOfRange
-**EREMCHG         Remote address changed.
-**EREMOTE         Object is remote.
-**EREMOTEIO       Remote I/O error.
-**ERESTART        Interrupted system call should be restarted.
-**ERFKILL         Operation not possible due to RF-kill.
-**EROFS           Read-only filesystem (POSIX.1-2001).
-**ESHUTDOWN       Cannot send after transport endpoint shutdown.
-**ESPIPE          Invalid seek (POSIX.1-2001).
-ESOCKTNOSUPPORT  Code::ResourceUnexpectedType
-ESRCH            Code::ResourceNotFound
-*ESTALE          Code::ResourceExpired
-**ESTRPIPE        Streams pipe error.
-ETIME           Code::TimedOut
-ETIMEDOUT       Code::TimedOut
-ETOOMANYREFS    Code::ResourceLimitReached
-ETXTBSY         Code::Busy
-**EUCLEAN         Structure needs cleaning.
-**EUNATCH         Protocol driver not attached.
-EUSERS          Code::ResourceLimitReached
-**EWOULDBLOCK     Operation would block (may be same value as EAGAIN)
-**EXDEV           Improper link (POSIX.1-2001).
-     * */
+
 
 
     switch (code) {
@@ -363,5 +244,127 @@ EUSERS          Code::ResourceLimitReached
 
 
 }
+
+/*
+EACCES          Code::PermissionDenied
+*EADDRINUSE     Code::AddressInUse
+*EADDRNOTAVAIL  Code::AddressNotAvailable
+EAGAIN          Code::ResourceUnavailable
+EALREADY       Code::InProgress
+**EBADE           Invalid exchange.
+*EBADF          Code::ResourceDoesNotExist
+*EBADFD         Code::FileCorrupted
+EBADMSG        Code::InvalidResource
+EBUSY          Code::Busy
+ECANCELED      Code::Cancelled
+**ECHILD        No child processes (POSIX.1-2001).
+ECHRNG         Code::OutOfDomain
+**ECOMM           .Communication error on send
+*ECONNABORTED    Code::ConnectionAborted
+*ECONNREFUSED    Code::ConnectionRefused
+*ECONNRESET      Code::ConnectionReset
+*EDEADLK         Code::Deadlock
+**EDESTADDRREQ    Destination address required (POSIX.1-2001).
+EDOM            Code::OutOfDomain
+**EDQUOT          Disk quota exceeded (POSIX.1-2001).
+*EEXIST          File exists (POSIX.1-2001).
+EFAULT           Code::BadAddress
+*EFBIG           Code::FileTooLarge
+**EHOSTDOWN       Host is down.
+**EHOSTUNREACH    Host is unreachable (POSIX.1-2001).
+**EHWPOISON       Memory page has hardware error.
+**EIDRM           Identifier removed (POSIX.1-2001).
+EILSEQ          Code::InvalidFormat
+EINPROGRESS     Code::InProgress
+**EINTR           Interrupted function call (POSIX.1-2001); see
+EINVAL         Code::InvalidArgument
+EIO            Code::IOError
+*EISCONN       Code::SocketIsConnected
+EISDIR         Code::ResourceUnexpectedType
+*EKEYEXPIRED    Code::ResourceExpired
+*EKEYREJECTED   Code::ResourceRejected
+*EKEYREVOKED    Code::AccessRevoked
+**EL2HLT          Level 2 halted.
+**EL2NSYNC        Level 2 not synchronized.
+**EL3HLT          Level 3 halted.
+**EL3RST          Level 3 reset.
+*ELIBACC        Code::LibraryInaccessible
+*ELIBBAD        Code::LibraryCorrupted
+*ELIBMAX        Code::TooManyLibraries
+**ELIBSCN         .lib section in a.out corrupted
+**ELIBEXEC        Cannot exec a shared library directly.
+**ELNRANGE        Link number out of range.
+*ELOOP          Code::RecursionLimitReached
+**EMEDIUMTYPE     Wrong medium type.
+EMFILE          Code::ResourceLimitReached
+EMLINK          Code::ResourceLimitReached
+*EMSGSIZE        Code::MessageTooLong
+**EMULTIHOP       Multihop attempted (POSIX.1-2001).
+*ENAMETOOLONG    Code::FilenameTooLong
+*ENETDOWN        Code::NetworkUnavailable
+*ENETRESET       Code::NetworkUnavailable
+*ENETUNREACH     Code::NetworkUnavailable
+ENFILE           Code::ResourceLimitReached
+**ENOANO          No anode.
+ENOBUFS         Code::InsufficientSize
+*ENODATA        Code::NoMessages
+*ENODEV         Code::NoSuchDevice
+*ENOENT         Code::ResourceDoesNotExist
+*ENOEXEC        Code::ResourceNotExecutable
+**ENOKEY          Required key not available.
+**ENOLCK          No locks available (POSIX.1-2001).
+**ENOLINK         Link has been severed (POSIX.1-2001).
+**ENOMEDIUM       No medium found.
+ENOMEM          Code::OutOfMemory
+*ENOMSG         Code::NoMessages
+*ENONET         Code::NetworkUnavailable
+**ENOPKG          Package not installed.
+**ENOPROTOOPT     Protocol not available (POSIX.1-2001).
+*ENOSPC         Code::DeviceOutOfMemory
+**ENOSR           No STREAM resources (POSIX.1 (XSI STREAMS option)).
+ENOSTR          Code::ResourceUnexpectedType
+ENOSYS          Code::NotImplemented
+**ENOTBLK         Block device required.
+*ENOTCONN       Code::NotConnected
+ENOTDIR       Code::ResourceUnexpectedType
+**ENOTEMPTY       Directory not empty (POSIX.1-2001).
+ENOTRECOVERABLE Code::UnrecoverableState
+ENOTSOCK        Code::ResourceUnexpectedType
+ENOTSUP         Code::OperationNotSupported
+ENOTTY          Code::IOError
+**ENOTUNIQ        Name not unique on network.
+ENXIO           Code::BadAddress
+EOPNOTSUPP      Code::OperationNotSupported
+EOVERFLOW       Code::ArithmeticOverflow
+**EOWNERDEAD      Owner died (POSIX.1-2008).
+EPERM            Code::PermissionDenied
+**EPFNOSUPPORT    Protocol family not supported.
+**EPIPE           Broken pipe (POSIX.1-2001).
+**EPROTO          Protocol error (POSIX.1-2001).
+**EPROTONOSUPPORT Protocol not supported (POSIX.1-2001).
+EPROTOTYPE       Code::ResourceUnexpectedType
+ERANGE           Code::OutOfRange
+**EREMCHG         Remote address changed.
+**EREMOTE         Object is remote.
+**EREMOTEIO       Remote I/O error.
+**ERESTART        Interrupted system call should be restarted.
+**ERFKILL         Operation not possible due to RF-kill.
+**EROFS           Read-only filesystem (POSIX.1-2001).
+**ESHUTDOWN       Cannot send after transport endpoint shutdown.
+**ESPIPE          Invalid seek (POSIX.1-2001).
+ESOCKTNOSUPPORT  Code::ResourceUnexpectedType
+ESRCH            Code::ResourceNotFound
+*ESTALE          Code::ResourceExpired
+**ESTRPIPE        Streams pipe error.
+ETIME           Code::TimedOut
+ETIMEDOUT       Code::TimedOut
+ETOOMANYREFS    Code::ResourceLimitReached
+ETXTBSY         Code::Busy
+**EUCLEAN         Structure needs cleaning.
+**EUNATCH         Protocol driver not attached.
+EUSERS          Code::ResourceLimitReached
+**EWOULDBLOCK     Operation would block (may be same value as EAGAIN)
+**EXDEV           Improper link (POSIX.1-2001).
+     * */
 
 #endif //VALKYRIE_GENERIC_STATUS_CODE_HPP

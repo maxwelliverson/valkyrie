@@ -4,8 +4,14 @@
 
 #include <valkyrie/Core/Error/GenericCode.hpp>
 #include <valkyrie/Core/Agent/Agent.hpp>
+#include <valkyrie/Core/Agent/Mailbox.hpp>
+#include <valkyrie/Core/Utility/FunctionRef.hpp>
 
 #include <thread>
+#include <csetjmp>
+
+#include <curand_kernel.h>
+#include <boost/pfr/detail/core17_generated.hpp>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -13,6 +19,7 @@
 #include <windows.h>
 #include <synchapi.h>
 #include <processthreadsapi.h>
+
 
 
 
@@ -32,74 +39,121 @@ namespace {
   template <std::derived_from<AutonomousTask> T>
   class Task;
 
-  template <std::derived_from<AutonomousTask> T, typename ...Args> requires(ConstructibleFrom<T, Args...>)
-  Task<T> start(Args&& ...args) noexcept;
+#define STD_CALLCONV VK_if(VK_compiler_msvc(__stdcall))
 
-  using PFN_threadProc = unsigned long(__stdcall *)(void*) noexcept;
+  using PFN_threadProc = unsigned(STD_CALLCONV *)(void*) noexcept;
 
   class AutonomousTask{
+
+    template <std::derived_from<AutonomousTask> T>
+    friend class Task;
+
     Status threadStatus = Core::Code::NotReady;
     std::atomic_uint32_t refCount;
 
     virtual Status           begin() = 0;
-    virtual Status           onExit(Status exitStatus) noexcept {
-      return exitStatus;
-    }
-    virtual Core::StringView getName() const noexcept {
-      return "Anonymous Task";
+    virtual void             onExit(const Core::StatusCode<void>& exitStatus) noexcept {
+      //return exitStatus;
     }
 
 
+    enum {
+      BeginTask,
+      NormalExit,
+      FastExit
+    };
 
 
     template <typename T, typename ...Args>
-    inline static __stdcall unsigned long threadProcess(void* pParams) noexcept {
-      using ParamType = std::tuple<AutonomousTask**, BinarySemaphore*, std::tuple<Args...>>;
+    inline static __stdcall unsigned threadProcess(void* pParams) noexcept {
+      using ParamType = std::tuple<AutonomousTask**, BinarySemaphore*, std::tuple<Args&&...>>;
       auto& params = *static_cast<ParamType*>(pParams);
       T task{ std::make_from_tuple<T>(std::get<2>(params)) };
       (*std::get<0>(params)) = &task;
+      AutonomousTask* pTask = &task;
+      pThisTask = pTask;
       std::get<1>(params)->release();
-      pThisTask = &task;
-      pThisTask->threadStatus = pThisTask->begin();
 
-      uint32_t refCount;
-      while ((refCount = pThisTask->refCount.load(std::memory_order_acquire)))
-        pThisTask->refCount.wait(refCount);
+      switch (setjmp(ExitBuffer)) {
+        case BeginTask:
+          pTask->threadStatus = pTask->begin();
+          break;
+        case NormalExit: {
+          uint32_t refCount_;
+          while ((refCount_ = pTask->refCount.load(std::memory_order_acquire)))
+            pTask->refCount.wait(refCount_);
+        }
+        case FastExit:
+          break;
+
+        VK_no_default;
+      }
+
+      pTask->onExit(pTask->threadStatus);
 
       return 0;
     }
 
     static thread_local AutonomousTask* pThisTask;
+    static thread_local std::jmp_buf    ExitBuffer;
 
 
   protected:
+
+    ~AutonomousTask() = default;
 
 
 
     template <typename Rep, typename Period>
     void sleepFor(std::chrono::duration<Rep, Period> duration) noexcept {
-      this->sleepUntil(duration + Clock::now());
+      const std::chrono::time_point timePoint = duration + Clock::now();
+      do {
+        this->yield();
+      } while( Clock::now() < timePoint );
     }
     template <typename Clk, typename Duration>
     void sleepUntil(std::chrono::time_point<Clk, Duration> timePoint) noexcept {
-      while(Clock::now() < timePoint)
+      while( Clock::now() < timePoint )
         this->yield();
+    }
+
+    template <typename Dom>
+    VK_noreturn void kill(Core::StatusCode<Dom> status) noexcept {
+      pThisTask->threadStatus = std::move(status);
+      std::longjmp(ExitBuffer, FastExit);
+    }
+    template <typename Dom>
+    VK_noreturn void exit(Core::StatusCode<Dom> status) noexcept {
+      pThisTask->threadStatus = std::move(status);
+      std::longjmp(ExitBuffer, NormalExit);
     }
 
     void yield() {
       SwitchToThread();
     }
-    void suspend();
 
   public:
 
-    template <std::derived_from<AutonomousTask> T, typename ...Args> requires(ConstructibleFrom<T, Args...>)
-    friend Task<T> launch(Args&& ...args) noexcept;
+    virtual Core::StringView getDescription() const noexcept {
+      return "Anonymous Task";
+    }
+
+    template <typename T, typename ...Args>
+    inline constexpr static auto ThreadProcess = &threadProcess<T, Args...>;
+
   };
 
   template <std::derived_from<AutonomousTask> T>
   class Task{
   public:
+    Task() = default;
+    explicit Task(T* pTask, void* handle, u32 id) noexcept
+        : pTask(pTask),
+          threadHandle(handle),
+          threadId(id){}
+
+
+
   private:
     T*    pTask        = nullptr;
     void* threadHandle = nullptr;
@@ -109,72 +163,401 @@ namespace {
     friend Task<T> launch(Args&& ...args) noexcept;
   };
 
-  template <std::derived_from<AutonomousTask> T, typename ...Args> requires(ConstructibleFrom<T, Args...>)
-  Task<T> launch(Args&& ...args);
-
-
-
-
-
-  void launchThread(PFN_threadProc threadProc, void* pParams){}
-
-  template <std::derived_from<AutonomousTask> T, typename ...Args> requires(ConstructibleFrom<T, Args...>)
-  Task<T> launch(Args&& ...args) noexcept {
+  std::pair<void*, unsigned> launchThread_(size_t stackSize, PFN_threadProc threadProc, void* pParams) noexcept {
     SECURITY_ATTRIBUTES secAttr{
-      .nLength = sizeof(SECURITY_ATTRIBUTES),
-      .lpSecurityDescriptor = nullptr,
-      .bInheritHandle = true
+        .nLength = sizeof(SECURITY_ATTRIBUTES),
+        .lpSecurityDescriptor = nullptr,
+        .bInheritHandle = true
     };
+    std::pair<void*, unsigned> results;
+
+    results.first = reinterpret_cast<void*>(_beginthreadex(
+        &secAttr,
+        static_cast<unsigned>(stackSize),
+        threadProc,
+        pParams,
+        0,
+        &results.second));
+
+    return results;
+  }
+  void                       setTaskDesc_(void* handle, AutonomousTask* pTask) noexcept {
+
+    static constexpr int DescBufferLength = 4096 * 2;
+    wchar_t descriptionBuffer[DescBufferLength];
+
+    auto desc = pTask->getDescription();
+    int result = MultiByteToWideChar(CP_UTF8,
+                                     0,
+                                     desc.c_str(),
+                                     (int)desc.size(),
+                                     descriptionBuffer,
+                                     DescBufferLength);
+    assert(result);
+    descriptionBuffer[result] = L'\0';
+
+    auto descResult = SetThreadDescription(handle, descriptionBuffer);
+
+    assert(SUCCEEDED(descResult));
+  }
+
+  template <std::derived_from<AutonomousTask> T, typename ...Args>
+  Task<T> launch(Args&& ...args) noexcept requires(ConstructibleFrom<T, Args...>) {
+
+    T*    pTask;
+    void* handle;
+    u32   id;
+
+    BinarySemaphore isReady{0};
+
+    auto paramTuple = std::tuple{
+      &pTask,
+      &isReady,
+      std::forward_as_tuple(std::forward<Args>(args)...)
+    };
+
     size_t stackSize;
     if constexpr (requires{ { T::stackSize() } -> std::convertible_to<size_t>; })
       stackSize = T::stackSize();
     else
       stackSize = 0;
 
-    Task<T> task;
-
-    BinarySemaphore isReady{0};
-
-    auto paramTuple = std::tuple{
-        std::ref(task.pTask),
-        std::ref(isReady),
-        std::forward_as_tuple(std::forward<Args>(args)...)
-    };
-
-    using ParamType = decltype(paramTuple);
-
-    constexpr static LPTHREAD_START_ROUTINE threadProcess = [](LPVOID pParams) -> DWORD {
-      auto& params = *static_cast<ParamType*>(pParams);
-      T task{ std::make_from_tuple<T>(std::get<2>(params)) };
-      std::get<0>(params).get().pTask = &task;
-      std::get<1>(params).get().release();
-      AutonomousTask* pTask = &task;
-      pTask->threadStatus = pTask->begin();
-    };
-
-    task.threadHandle = CreateThread(&secAttr,
-                                     stackSize,
-                                     threadProcess,
-                                     &paramTuple,
-                                     0,
-                                     &task.threadId);
+    std::tie(handle, id) = launchThread_(stackSize, AutonomousTask::ThreadProcess<T, Args...>, &paramTuple);
 
     isReady.acquire();
-    return std::move(task);
+
+    return Task<T>(pTask, handle, id);
   }
 
 
+  using Core::FunctionRef;
 
   class Channel{
 
+  };
+
+  class BroadcastChannel{
+    void* pBuffer;
+    u32   bufferSize;
+
+    std::atomic_uint32_t writeOffset;
+    std::atomic_uint32_t nextReadOffset;
+    std::atomic_uint32_t writeEndOffset;
+
+  public:
+
+    inline Status writeMessage(  FunctionRef<void(void*)> fnCtor, u64 msgSize) noexcept;
+    inline Status readMessage(   FunctionRef<Status(void*)> msgProc)       noexcept;
+    inline Status tryReadMessage(FunctionRef<Status(void*)> msgProc)    noexcept;
   };
 
   class RandomGenerator{
   public:
     virtual ~RandomGenerator() = default;
 
-    virtual void generateBatch(Channel* channel, u64 genCount) noexcept = 0;
+    virtual void generateBatch(BroadcastChannel& channel, u64 genCount) noexcept = 0;
   };
+
+  /*template <typename T>
+  struct AtomicSListNode{
+    Core::Atomic<AtomicSListNode<T>*> pNext;
+    T value;
+  };
+  template <typename T, typename Alloc = std::allocator<AtomicSListNode<T>>>
+  class AtomicSList{
+
+  public:
+
+    using node_type = AtomicSListNode<T>;
+    using atomic_node_type = Core::Atomic<node_type*>;
+    using value_type = T;
+    using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>;
+
+    using reference = value_type&;
+
+
+    AtomicSList() = default;
+    AtomicSList(const AtomicSList& other);
+    AtomicSList(AtomicSList&& other) noexcept;
+
+    template <std::ranges::range Rng> requires(std::constructible_from<T, std::ranges::range_reference_t<Rng>>)
+    explicit AtomicSList(Rng&& rng) noexcept {
+      auto beg = std::ranges::begin(rng);
+      const auto end = std::ranges::end(rng);
+
+      node_type* nextNode;
+
+      if ( beg != end ) {
+
+        nextNode = makeNode(*beg);
+        pHead.store(nextNode);
+        pTail.store(nextNode);
+
+        ++beg;
+      }
+
+      for ( ; beg != end; ++beg ) {
+        nextNode = makeNode(*beg);
+        pTail.exchange(nextNode)->pNext.store(nextNode);
+      }
+    }
+
+
+    template<typename ...Args>
+    T& emplaceBack(Args&& ...args) noexcept {
+
+    }
+
+  private:
+
+    using alloc_traits = std::allocator_traits<allocator_type>;
+
+
+    inline void removeNextNode(atomic_node_type* node) noexcept {
+      node_type* lastHead = node->load( std::memory_order_acquire );
+      node_type* nextNode;
+      do {
+        nextNode = lastHead->pNext.load( std::memory_order_acquire );
+      } while( !node->compare_exchange_weak( lastHead, nextNode, std::memory_order_acq_rel ) );
+
+      destroyNode(lastHead);
+    }
+
+    template <typename ...Args>
+    node_type* makeNode(Args&& ...args) noexcept {
+      auto* pObj = alloc_traits::allocate(alloc, 1);
+      alloc_traits::construct(alloc, pObj, std::forward<Args>(args)... );
+      return pObj;
+    }
+    void destroyNode(node_type* pNode) noexcept {
+
+    }
+
+    Core::Atomic<AtomicSListNode<T>*>    pHead  = nullptr;
+    Core::Atomic<AtomicSListNode<T>*>    pTail  = nullptr;
+    u64                                  length = 0;
+    [[no_unique_address]] allocator_type alloc;
+
+  };*/
+
+
+  class CudaRingBuffer{
+    u64                          bufferLength = 0;
+    CUmemGenericAllocationHandle memHandle    = 0;
+    CUdeviceptr                  memAddr      = 0;
+
+    std::atomic_uint64_t         nextReadOffset  = 0;
+    std::atomic_uint64_t         lastReadOffset  = 0;
+    std::atomic_uint64_t         nextWriteOffset = 0;
+    std::atomic_uint64_t         lastWriteOffset = 0;
+
+
+    void createHandle(const CUmemAllocationProp& props) noexcept {
+      auto result = cuMemCreate(&memHandle, bufferLength, &props, 0);
+      assert(result == CUDA_SUCCESS);
+    }
+    void reserveRange(size_t align) noexcept {
+      auto result = cuMemAddressReserve(&memAddr, bufferLength * 2, align, 0, 0);
+      assert( result == CUDA_SUCCESS);
+    }
+    void mapRange() const noexcept {
+      auto result = cuMemMap(memAddr, bufferLength, 0, memHandle, 0);
+      assert( result == CUDA_SUCCESS );
+      result      = cuMemMap(memAddr + bufferLength, bufferLength, 0, memHandle, 0);
+      assert( result == CUDA_SUCCESS );
+    }
+    void setMemAccess(const CUmemAccessDesc& accessDesc) const noexcept {
+      auto result = cuMemSetAccess(memAddr, bufferLength * 2, &accessDesc, 1);
+      assert( result == CUDA_SUCCESS );
+    }
+
+    void destroyHandle() noexcept {
+      if ( memHandle ) {
+        auto result = cuMemRelease(memHandle);
+        assert( result == CUDA_SUCCESS );
+        memHandle = 0;
+      }
+    }
+    void freeRange() noexcept {
+      if ( memAddr ) {
+        auto result = cuMemAddressFree(memAddr, bufferLength * 2);
+        assert( result == CUDA_SUCCESS );
+        memAddr = 0;
+      }
+    }
+    void unmapRange() const noexcept {
+      if ( memAddr ) {
+        auto result = cuMemUnmap(memAddr, bufferLength * 2);
+        assert( result == CUDA_SUCCESS );
+      }
+    }
+
+    static void fillAccessDesc(CUmemAccessDesc& accessDesc, CUdevice dev) noexcept {
+      accessDesc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+      accessDesc.location = {
+          .type = CU_MEM_LOCATION_TYPE_DEVICE,
+          .id = dev
+      };
+    }
+    static void fillProperties(CUmemAllocationProp& props, CUdevice dev) noexcept {
+      props.type = CU_MEM_ALLOCATION_TYPE_PINNED;
+      props.requestedHandleTypes = CU_MEM_HANDLE_TYPE_WIN32;
+      props.location = {
+          .type = CU_MEM_LOCATION_TYPE_DEVICE,
+          .id   = dev
+      };
+      props.win32HandleMetaData = nullptr;
+      props.allocFlags = {};
+    }
+    static size_t getMinGranularity(const CUmemAllocationProp& props) noexcept {
+      size_t allocGranularity;
+
+      auto allocGranResult = cuMemGetAllocationGranularity(&allocGranularity,
+                                                           &props,
+                                                           CU_MEM_ALLOC_GRANULARITY_MINIMUM);
+      assert(allocGranResult == CUDA_SUCCESS);
+      return allocGranularity;
+    }
+    static size_t alignLength(u64 length, u64 align) noexcept {
+      const size_t allocGranMask = align - 1;
+      const size_t maskedLength = allocGranMask & length;
+      return length + (static_cast<bool>(maskedLength) * ((allocGranMask & ~maskedLength ) + 1));
+    }
+
+    CudaRingBuffer() = default;
+
+  public:
+
+    explicit CudaRingBuffer(CUdevice dev, u64 length) noexcept{
+
+      CUmemAccessDesc accessDesc;
+      CUmemAllocationProp properties;
+
+      fillAccessDesc(accessDesc, dev);
+      fillProperties(properties, dev);
+
+
+      const size_t allocGranularity = getMinGranularity(properties);
+      bufferLength                  = alignLength(length, allocGranularity);
+
+      createHandle(properties);
+      reserveRange(allocGranularity);
+      mapRange();
+      setMemAccess(accessDesc);
+
+
+    }
+    CudaRingBuffer(const CudaRingBuffer& other) = delete;
+    CudaRingBuffer(CudaRingBuffer&& other) noexcept
+        : nextReadOffset(other.nextReadOffset.load()),
+          lastReadOffset(other.lastReadOffset.load()),
+          nextWriteOffset(other.nextWriteOffset.load()),
+          lastWriteOffset(other.lastWriteOffset.load()){
+      std::swap(bufferLength, other.bufferLength);
+      std::swap(memHandle, other.memHandle);
+      std::swap(memAddr, other.memAddr);
+    }
+
+
+    ~CudaRingBuffer() {
+      unmapRange();
+      freeRange();
+      destroyHandle();
+    }
+
+
+    std::span<std::byte> read(std::span<std::byte>& byteSpan, CUstream stream) noexcept {
+
+      const auto spanLength = byteSpan.size();
+      u64 readLength = spanLength;
+      u64 readOffset = nextReadOffset.load(std::memory_order_acquire);
+      u64 nextOffset;
+
+      do {
+        const auto availLength = [&]{
+          const i64 diff = static_cast<i64>(lastReadOffset.load(std::memory_order_acquire)) -
+                           static_cast<i64>(readOffset);
+          if ( diff < 0 )
+            return bufferLength + diff;
+          return static_cast<u64>(diff);
+        }();
+        readLength = std::max(readLength, availLength);
+        nextOffset = readOffset + readLength;
+        nextOffset -= static_cast<bool>(nextOffset >= bufferLength) * bufferLength;
+      } while (!nextReadOffset.compare_exchange_strong(readOffset, nextOffset, std::memory_order_acq_rel));
+
+      if ( !readLength )
+        return {};
+
+      cuMemcpyDtoHAsync(byteSpan.data(), memAddr + readOffset, readLength, stream);
+      cuLaunchHostFunc(stream, [](void* pParams){
+            auto* params = static_cast<std::tuple<CudaRingBuffer*, u64, u64>*>(pParams);
+            auto [ pThis, readLength, readOffset ] = *params;
+            u64 writeOffset = readOffset;
+            const u64 nextOffset = readOffset + readLength;
+            while ( !pThis->lastWriteOffset.compare_exchange_strong(writeOffset, nextOffset) ) {
+              pThis->lastWriteOffset.wait(writeOffset);
+              writeOffset = readOffset;
+            }
+            pThis->lastWriteOffset.notify_all();
+            delete params;
+          }, new std::tuple{ this, readLength, readOffset });
+
+      byteSpan = byteSpan.subspan(readLength);
+      return { byteSpan.data(), readLength };
+    }
+    void write(std::span<const std::byte>& byteSpan, CUstream stream) noexcept {
+
+    }
+  };
+
+  class CurandRandomGenerator : public RandomGenerator{
+    CudaRingBuffer   deviceBuffer;
+    CUstream         stream;
+    CUgraphExec      graphExec;
+    std::atomic_bool isExecuting;
+
+    void initStream() noexcept {
+      auto strResult = cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING);
+      assert(strResult == CUDA_SUCCESS);
+    }
+    void initGraph()  noexcept {
+
+      CUgraph tmpGraph;
+
+      auto captureBeginResult = cuStreamBeginCapture(stream, CU_STREAM_CAPTURE_MODE_RELAXED);
+
+
+      auto captureEndResult = cuStreamEndCapture(stream, &tmpGraph);
+
+
+    }
+
+    void init() noexcept {
+      initStream();
+      initGraph();
+    }
+    void destroy() noexcept {
+      auto execDestroy = cuGraphExecDestroy(graphExec);
+      auto streamDestroy = cuStreamDestroy(stream);
+    }
+
+
+
+
+  public:
+
+    CurandRandomGenerator(CUdevice device, u64 maxConsumeAtOnce)
+        : deviceBuffer(device, maxConsumeAtOnce * sizeof(u64)){}
+
+    void generateBatch(BroadcastChannel& channel, u64 genCount) noexcept override {
+      isExecuting.wait(true);
+      auto result = cuGraphLaunch(graphExec, stream);
+      assert(result == CUDA_SUCCESS);
+    }
+  };
+
+
 
   class RandomEngineState{
     Channel              channel;
@@ -183,7 +566,6 @@ namespace {
     std::atomic_uint32_t refCount;
   };
 
-  class CurandRandomGenerator{};
   class OpenCLRandomGenerator{};
   class CPURandomGenerator{};
 
