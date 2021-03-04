@@ -5,6 +5,8 @@
 #ifndef VALKYRIE_CORE_AGENT_BACKEND_HPP
 #define VALKYRIE_CORE_AGENT_BACKEND_HPP
 
+#include <valkyrie/Core/Traits.hpp>
+
 namespace valkyrie::Core{
   class Backend{};
 
@@ -15,6 +17,7 @@ namespace valkyrie::Core{
 
   template <typename T>
   class Autonomous{
+
 
 
 

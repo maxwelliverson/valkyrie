@@ -86,6 +86,7 @@ add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
 add_object(valkyrie.Core.Agent.Mailbox)
+add_object(valkyrie.Core.Agent.Backend)
 add_object(valkyrie.Core.Agent.Registry)
 add_object(valkyrie.Core.Agent.PrivateAgent)
 add_object(valkyrie.Core.Agent.LocalAgent)
