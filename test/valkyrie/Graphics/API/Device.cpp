@@ -2,11 +2,9 @@
 // Created by Maxwell on 2020-11-15.
 //
 
-#include <valkyrie/Graphics/API/Device.hpp>
-
-
+#include <valkyrie/graphics/api/device.hpp>
 
 
 int main(){
-  valkyrie::Graphics::API::printFunctionTypeName();
+  valkyrie::graphics::api::printFunctionTypeName();
 }

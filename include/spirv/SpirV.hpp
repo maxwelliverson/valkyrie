@@ -5,11 +5,11 @@
 #ifndef VALKYRIE_SPIRV_HPP
 #define VALKYRIE_SPIRV_HPP
 
-#include <spirv/Enums.hpp>
-#include <valkyrie/Core/ADT/Arrays.hpp>
-#include <valkyrie/Core/Types.hpp>
-#include <valkyrie/Core/Utility/Enums.hpp>
-#include <valkyrie/Core/Utility/StringView.hpp>
+#include <spirv/enums.hpp>
+#include <valkyrie/ADT/arrays.hpp>
+#include <valkyrie/utility/enums.hpp>
+#include <valkyrie/adt/string_view.hpp>
+#include <valkyrie/primitives.hpp>
 
 #define VK_spv_version 0x10500
 #define VK_spv_revision 3
@@ -264,7 +264,7 @@ namespace valkyrie::Spv {
 
     template <typename T>
     class Expected;
-    template <typename T> requires(sizeof(T) <= sizeof(void*) && IsRegisterCopyable<T>)
+    template <typename T> requires(sizeof(T) <= sizeof(void*) && is_register_copyable<T>)
     class Expected<T>{
       Result result_ = Result::Unknown;
       T value_;
@@ -333,53 +333,53 @@ namespace valkyrie::Spv {
 
       ShaderModule() = default;
       ShaderModule(size_t size, const void* p_code) noexcept;
-      ShaderModule(Core::Span<u8> code) noexcept : ShaderModule(code.size(), code.data()){}
-      ShaderModule(Core::Span<u32> code) noexcept : ShaderModule(code.size() * sizeof(u32), code.data()){}
+      ShaderModule(Span<u8> code) noexcept : ShaderModule(code.size(), code.data()){}
+      ShaderModule(Span<u32> code) noexcept : ShaderModule(code.size() * sizeof(u32), code.data()){}
       ~ShaderModule();
 
       Result getStatus() const noexcept;
 
-      Core::Span<const u32> getCode() const noexcept;
+      Span<const u32> getCode() const noexcept;
 
       /*u32        getCodeSize() const;
       const u32* getCode() const;*/
 
-      Core::StringView getEntryPointName() const noexcept;
+      string_view getEntryPointName() const noexcept;
 
-      Core::StringView getSourceFile() const noexcept;
+      string_view getSourceFile() const noexcept;
 
       u32         getEntryPointCount() const noexcept;
-      Core::StringView getEntryPointName(u32 index) const;
+      string_view getEntryPointName(u32 index) const;
 
       ShaderStage getShaderStage() const noexcept;
 
       ResultSpan<const DescriptorBinding> enumerateDescriptorBindings() const;
-      ResultSpan<const DescriptorBinding> enumerateEntryPointDescriptorBindings(Core::StringView entry_point) const;
+      ResultSpan<const DescriptorBinding> enumerateEntryPointDescriptorBindings(string_view entry_point) const;
       ResultSpan<const DescriptorSet>     enumerateDescriptorSets() const ;
-      ResultSpan<const DescriptorSet>     enumerateEntryPointDescriptorSets(Core::StringView entry_point) const ;
+      ResultSpan<const DescriptorSet>     enumerateEntryPointDescriptorSets(string_view entry_point) const ;
       ResultSpan<const InterfaceVariable> enumerateInputVariables() const;
-      ResultSpan<const InterfaceVariable> enumerateEntryPointInputVariables(Core::StringView entry_point) const;
+      ResultSpan<const InterfaceVariable> enumerateEntryPointInputVariables(string_view entry_point) const;
       ResultSpan<const InterfaceVariable> enumerateOutputVariables() const;
-      ResultSpan<const InterfaceVariable> enumerateEntryPointOutputVariables(Core::StringView entry_point) const;
+      ResultSpan<const InterfaceVariable> enumerateEntryPointOutputVariables(string_view entry_point) const;
       ResultSpan<const BlockVariable>     enumeratePushConstantBlocks() const;
-      ResultSpan<const BlockVariable>     enumerateEntryPointPushConstantBlocks(Core::StringView entry_point) const;
+      ResultSpan<const BlockVariable>     enumerateEntryPointPushConstantBlocks(string_view entry_point) const;
 
       Expected<const DescriptorBinding*>  getDescriptorBinding(u32 binding_number, u32 set_number) const;
-      Expected<const DescriptorBinding*>  getEntryPointDescriptorBinding(Core::StringView entry_point, u32 binding_number, u32 set_number) const;
+      Expected<const DescriptorBinding*>  getEntryPointDescriptorBinding(string_view entry_point, u32 binding_number, u32 set_number) const;
       Expected<const DescriptorSet*>      getDescriptorSet(u32 set_number) const;
-      Expected<const DescriptorSet*>      getEntryPointDescriptorSet(Core::StringView entry_point, u32 set_number) const;
+      Expected<const DescriptorSet*>      getEntryPointDescriptorSet(string_view entry_point, u32 set_number) const;
       Expected<const InterfaceVariable*>  getInputVariableByLocation(u32 location) const;
 
-      Expected<const InterfaceVariable*>  getEntryPointInputVariableByLocation(Core::StringView entry_point, u32 location) const;
-      Expected<const InterfaceVariable*>  getInputVariableBySemantic(Core::StringView semantic) const;
-      Expected<const InterfaceVariable*>  getEntryPointInputVariableBySemantic(Core::StringView entry_point, Core::StringView semantic) const;
+      Expected<const InterfaceVariable*>  getEntryPointInputVariableByLocation(string_view entry_point, u32 location) const;
+      Expected<const InterfaceVariable*>  getInputVariableBySemantic(string_view semantic) const;
+      Expected<const InterfaceVariable*>  getEntryPointInputVariableBySemantic(string_view entry_point, string_view semantic) const;
       Expected<const InterfaceVariable*>  getOutputVariableByLocation(u32 location) const;
 
-      Expected<const InterfaceVariable*>  getEntryPointOutputVariableByLocation(Core::StringView entry_point, u32 location) const;
-      Expected<const InterfaceVariable*>  getOutputVariableBySemantic(Core::StringView semantic) const;
-      Expected<const InterfaceVariable*>  getEntryPointOutputVariableBySemantic(Core::StringView entry_point, Core::StringView semantic) const;
+      Expected<const InterfaceVariable*>  getEntryPointOutputVariableByLocation(string_view entry_point, u32 location) const;
+      Expected<const InterfaceVariable*>  getOutputVariableBySemantic(string_view semantic) const;
+      Expected<const InterfaceVariable*>  getEntryPointOutputVariableBySemantic(string_view entry_point, string_view semantic) const;
       Expected<const BlockVariable*>      getPushConstantBlock(u32 index) const;
-      Expected<const BlockVariable*>      getEntryPointPushConstantBlock(Core::StringView entry_point) const;
+      Expected<const BlockVariable*>      getEntryPointPushConstantBlock(string_view entry_point) const;
 
       Result ChangeDescriptorBindingNumbers(const DescriptorBinding* p_binding,
                                             u32 new_binding_number = bindingNumberDontChange,

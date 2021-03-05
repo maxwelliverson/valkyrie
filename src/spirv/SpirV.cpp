@@ -3370,20 +3370,20 @@ Reflect::ShaderModule::~ShaderModule() {
 Reflect::Result Reflect::ShaderModule::getStatus() const noexcept {
   return m_result;
 }
-valkyrie::Core::Span<const u32> Reflect::ShaderModule::getCode() const noexcept{
+valkyrie::Span<const u32> Reflect::ShaderModule::getCode() const noexcept{
   return {m_module._internal->spirv_code, m_module._internal->spirv_size};
 }
 
 u32 Reflect::ShaderModule::getEntryPointCount() const noexcept {
   return m_module.entry_point_count;
 }
-valkyrie::Core::StringView Reflect::ShaderModule::getEntryPointName() const noexcept {
+valkyrie::string_view Reflect::ShaderModule::getEntryPointName() const noexcept {
   return this->getEntryPointName(0);
 }
-valkyrie::Core::StringView Reflect::ShaderModule::getEntryPointName(u32 index) const {
+valkyrie::string_view Reflect::ShaderModule::getEntryPointName(u32 index) const {
   return m_module.entry_points[index].name;
 }
-valkyrie::Core::StringView Reflect::ShaderModule::getSourceFile() const noexcept {
+valkyrie::string_view Reflect::ShaderModule::getSourceFile() const noexcept {
   return m_module.source_file;
 }
 Reflect::ShaderStage Reflect::ShaderModule::getShaderStage() const noexcept {
@@ -3393,7 +3393,7 @@ Reflect::ShaderStage Reflect::ShaderModule::getShaderStage() const noexcept {
 Reflect::ResultSpan<const Reflect::DescriptorBinding> Reflect::ShaderModule::enumerateDescriptorBindings() const {
   return {m_module.descriptor_bindings, m_module.descriptor_binding_count};
 }
-Reflect::ResultSpan<const Reflect::DescriptorBinding> Reflect::ShaderModule::enumerateEntryPointDescriptorBindings(Core::StringView entry_point) const {
+Reflect::ResultSpan<const Reflect::DescriptorBinding> Reflect::ShaderModule::enumerateEntryPointDescriptorBindings(string_view entry_point) const {
 
   /*for (u32 entryIndex = 0; entryIndex < m_module.entry_point_count; ++entryIndex) {
     if (m_module.entry_points[entryIndex].name == entry_point)

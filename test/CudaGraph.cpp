@@ -2,11 +2,11 @@
 // Created by Maxwell on 2021-01-29.
 //
 
-#include <valkyrie/Core/Config.hpp>
-#include <valkyrie/Core/Utility/Version.hpp>
-#include <valkyrie/Core/Utility/Shapes.hpp>
-#include <valkyrie/Core/Utility/Interval.hpp>
-#include <valkyrie/Core/Utility/StringView.hpp>
+#include <valkyrie/utility/interval.hpp>
+#include <valkyrie/utility/shapes.hpp>
+#include <valkyrie/utility/version.hpp>
+#include <valkyrie/adt/string_view.hpp>
+#include <valkyrie/preprocessor.hpp>
 
 #include <cuda.h>
 #include <curand_discrete2.h>
@@ -146,7 +146,7 @@ private:
   size_type                   size_ = 0;
 };
 
-namespace Detail{
+namespace detail{
   class AnyPointerProxy{
   public:
     template <typename T>
@@ -257,14 +257,14 @@ concept Spanish = requires(S&& s){
 namespace cu {
 
   using
-  valkyrie::Core::Box2D,
-  valkyrie::Core::Box3D,
-  valkyrie::Core::Extent2D,
-  valkyrie::Core::Extent3D,
-  valkyrie::Core::Position2D,
-  valkyrie::Core::Position3D,
-  valkyrie::Core::Version,
-  valkyrie::Core::Interval;
+  valkyrie::Box2D,
+  valkyrie::Box3D,
+  valkyrie::Extent2D,
+  valkyrie::Extent3D,
+  valkyrie::Position2D,
+  valkyrie::Position3D,
+  valkyrie::version,
+  valkyrie::interval;
 
   class cuda_driver_error : public std::runtime_error {
     CUresult result_;
@@ -508,7 +508,7 @@ namespace cu {
 
   class ResourcePlaceholder{
   public:
-    valkyrie::Core::StringView name() const noexcept;
+    valkyrie::string_view name() const noexcept;
     uint64_t                   id() const noexcept;
   };
   class Resource{
@@ -597,11 +597,10 @@ namespace cu {
   protected:
     using Handle<Context, CUcontext>::Handle;
   public:
-
-    Version apiVersion() const noexcept {
+    version apiVersion() const noexcept {
       uint32_t verNum;
       CU_ctxGetApiVersion(handle_, &verNum);
-      return Version{ verNum / 1000, (verNum % 1000) / 10 };
+      return version{ verNum / 1000, (verNum % 1000) / 10 };
     }
   };
 
@@ -682,8 +681,8 @@ namespace cu {
       CU_ctxSetLimit(CU_LIMIT_PERSISTING_L2_CACHE_SIZE, size);
     }
 
-    inline static Interval<int32_t>    streamPriorityRange() noexcept {
-      Interval<int32_t> result;
+    inline static interval<int32_t>    streamPriorityRange() noexcept {
+      interval<int32_t> result;
       CU_ctxGetStreamPriorityRange(&result.min, &result.max);
       return result;
     }
@@ -835,7 +834,7 @@ namespace cu {
       CurrentContext::setPersistingL2CacheSize(size);
     }
 
-    Interval<int32_t> streamPriorityRange() const noexcept {
+    interval<int32_t> streamPriorityRange() const noexcept {
       VK_assert(CurrentContext::get() == *this);
       return CurrentContext::streamPriorityRange();
     }
@@ -945,7 +944,7 @@ namespace cu {
     b = tmp;
   }
 
-  namespace Detail{
+  namespace detail{
     struct GraphEdgeRef{
       GraphNode& from;
       GraphNode& to;
@@ -1161,8 +1160,8 @@ namespace cu {
     using value_type = GraphEdge;
     using typename Base_::size_type;
     using typename Base_::difference_type;
-    using iterator = Detail::GraphEdgeIterator;
-    using const_iterator = Detail::GraphEdgeConstIterator;
+    using iterator = detail::GraphEdgeIterator;
+    using const_iterator = detail::GraphEdgeConstIterator;
     using sentinel = iterator;
     using const_sentinel = const_iterator;
     using reverse_iterator = std::reverse_iterator<iterator>;

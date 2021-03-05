@@ -528,7 +528,7 @@ namespace Vk{
 
       using Variant = std::variant<T*...>;
 
-      FlatSet<Variant> owners_{};
+      flat_set<Variant> owners_{};
   public:
       void giveTo(Variant pOwner) {
           if (!owners_.insert(pOwner))
@@ -558,7 +558,7 @@ namespace Vk{
 
   template <typename Derived, typename T>
   class OwnedByImpl<Derived, AFew<T>> {
-      FlatSet<T*> owners_{};
+      flat_set<T*> owners_{};
   public:
       void giveTo(T* pOwner) noexcept {
           if (!owners_.insert(pOwner))
@@ -640,7 +640,7 @@ namespace Vk{
   };
   template <typename T>
   class OwnsImpl<AFew<T>> {
-      FlatSet<T*> instances_;
+      flat_set<T*> instances_;
   public:
       void retain(T* pInstance) noexcept {
           if (instances_.insert(pInstance))
@@ -656,7 +656,7 @@ namespace Vk{
       }
 
   protected:
-      const FlatSet<T*>& get() const noexcept { return instances_; }
+      const flat_set<T*>& get() const noexcept { return instances_; }
   };
   template <typename T>
   class OwnsImpl<Many<T>> {
@@ -714,9 +714,9 @@ namespace Vk{
   };*/
 
   template <typename T>
-  inline constexpr bool IsRegisterCopyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
+  inline constexpr bool is_register_copyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
   template <typename T>
-  using param_t = std::conditional_t<IsRegisterCopyable<T>, T, const T&>;
+  using param_t = std::conditional_t<is_register_copyable<T>, T, const T&>;
 
   template <typename Comp, typename T>
   concept order_on = requires(Comp&& comp, const T& a, const T& b){

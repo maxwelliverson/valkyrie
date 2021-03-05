@@ -100,7 +100,7 @@ namespace Vk{
   inline static constexpr ValidationFeatures ThreadSafetyValidation = ValidationFeatures::ThreadSafety;
   inline static constexpr ValidationFeatures ApiParameterValidation = ValidationFeatures::ApiParameters;
   inline static constexpr ValidationFeatures ObjectLifetimeValidation = ValidationFeatures::ObjectLifetimes;
-  inline static constexpr ValidationFeatures CoreValidation = ValidationFeatures::CoreChecks;
+  inline static constexpr ValidationFeatures CoreValidation = ValidationFeaturesChecks;
   inline static constexpr ValidationFeatures HandleUniquenessValidation = ValidationFeatures::UniqueHandles;
 
   class Version {

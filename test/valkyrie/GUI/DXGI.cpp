@@ -2,14 +2,14 @@
 // Created by Maxwell on 2020-12-03.
 //
 
-#include "../../../src/valkyrie/GUI/DXGI.hpp"
+#include "../../../src/valkyrie/GUI/dxgi.hpp"
 
 
 #include <iostream>
 
 namespace dxgi = valkyrie::GUI::Internal::DXGI;
 
-using valkyrie::Core::panic;
+using valkyrie::panic;
 
 int main() {
   auto factory = *dxgi::createFactory();
@@ -30,5 +30,5 @@ int main() {
   std::cout << "FFLuminance: { min: " << ffLuminance.min << ", max: " << ffLuminance.max << " }\n";
 
   /*if (!LoadLibrary("SOMELIBRARYLMAO"))
-    panic(valkyrie::Core::System::Win32::getLastError());*/
+    panic(valkyrie::system::win32::getLastError());*/
 }

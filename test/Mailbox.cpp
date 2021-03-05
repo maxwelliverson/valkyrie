@@ -385,7 +385,7 @@ public:
   }
 
   template <typename T> requires(requires(T&& t){
-    { outStream << std::forward<T>(t) } -> std::same_as<decltype(outStream)>;
+    { outStream << std::forward<T>(t) } -> exact_same_as<decltype(outStream)>;
   })
   IndentedOS& write(T&& t) noexcept {
     outStream << std::forward<T>(t);
@@ -396,7 +396,7 @@ public:
 
 template <typename T>
 IndentedOS& operator<<(IndentedOS& os, T&& t) noexcept requires(requires{
-  { os.write(std::forward<T>(t)) } -> std::same_as<IndentedOS&>;
+  { os.write(std::forward<T>(t)) } -> exact_same_as<IndentedOS&>;
 }){
   return os.write(std::forward<T>(t));
 }

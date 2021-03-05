@@ -4,8 +4,8 @@
 
 #include <utility>
 
-#include <json/json.h>
 #include "jsonmm.h"
+#include <json/json.h>
 
 #include <any>
 #include <bit>
@@ -986,7 +986,7 @@ namespace json{
           tree->pRoot->setBlack();
         }
       }
-      inline Node* doDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
+      /*inline Node* doDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
         Node* removedNode;
         Node* subTree;
         Node* subTreeParent;
@@ -1027,7 +1027,7 @@ namespace json{
         subTree = removedNode->getChild(subTreePos);
         subTreeParent->setChild(subTree, subTreePos);
 
-        /*if (leftOffset && rightOffset) {
+        *//*if (leftOffset && rightOffset) {
           removedNode = getRightChild()->getMinimum();
           subTree     = removedNode->getRightChild();
           subTreePos  = Position::Right;
@@ -1047,13 +1047,13 @@ namespace json{
             subTreeParent->setChild(subTree, position);
           }
 
-        }*/
+        }*//*
 
         if (removedNode->isBlack())
           doPostDeleteRebalance(tree, subTreeParent, subTreePos);
 
         return removedNode;
-      }
+      }*/
       inline static void doPostDeleteRebalance(RBTreeBase* tree, Node* node) noexcept {
 
         Node* parent;
@@ -1250,8 +1250,14 @@ namespace json{
           node->setBlack();
       }
 
-      inline Node* doDelete(RBTreeBase* tree) noexcept {
-        if (position)
+      inline Node* doDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
+        switch ( position ) {
+          case Position::Root:
+            tree->
+          case Position::Right:
+          case Position::Left:
+          VK_no_default;
+        }
       }
       inline Node* doLeftDelete(RBTreeBase* tree, void(* pfnMoveAssign)(void* to, void* from) noexcept) noexcept {
 

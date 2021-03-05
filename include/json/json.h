@@ -97,7 +97,7 @@ typedef struct json_utf8 {
 
 
 
-// API Types
+// api Types
 
 struct json_document;
 
@@ -376,7 +376,7 @@ typedef struct json_context_setup_params{
 
 /*
  *
- * API Declarations
+ * api Declarations
  *
  * */
 

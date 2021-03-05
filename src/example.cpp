@@ -2,7 +2,7 @@
 // Created by Maxwell on 2021-01-17.
 //
 
-#include <valkyrie/Core/ADT/Handle.hpp>
+#include <valkyrie/ADT/handle.hpp>
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 

@@ -1,0 +1,384 @@
+{
+  "structures": [
+    {
+      "name": "VkPhysicalDeviceAccelerationStructureFeaturesKHR",
+      "category": "out",
+      "enum_value": "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR",
+      "enabled_by": "VK_KHR_acceleration_structure",
+      "extends": [
+        "VkPhysicalDeviceFeatures2",
+        "VkDeviceCreateInfo"
+      ]
+    },
+    {
+      "name": "VkPhysicalDeviceAccelerationStructurePropertiesKHR",
+      "category": "out",
+      "enum_value": "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR",
+      "enabled_by": "VK_KHR_acceleration_structure",
+      "extends": [
+        "VkPhysicalDeviceProperties2"
+      ]
+    }
+  ],
+  "instance_extensions": [
+    {
+
+    },
+    {
+
+    },
+    {
+
+    }
+  ],
+  "device_extensions": [
+    {
+      "name": "VK_KHR_acceleration_structure",
+      "vendor": "KHR",
+      "revision": 11,
+      "requires": [
+        {
+          "type": "vulkan_version",
+          "version": 1.1
+        }, {
+          "type": "device_extension",
+          "name": "VK_EXT_descriptor_indexing"
+        }, {
+          "type": "device_extension",
+          "name": "VK_KHR_buffer_device_address"
+        }, {
+          "type": "device_extension",
+          "name": "VK_KHR_deferred_host_operations"
+        }
+      ],
+      "features": {
+        "vulkan_type": "VkPhysicalDeviceAccelerationStructureFeaturesKHR",
+        "fields": [
+          {
+            "valkyrie": "accelerationStructure",
+            "vulkan": "accelerationStructure",
+            "tags": [
+              "Ray Tracing",
+              "Acceleration Structure"
+            ]
+          }, {
+            "valkyrie": "accelerationStructure.captureReplay",
+            "vulkan": "accelerationStructureCaptureReplay",
+            "tags": [
+              "Ray Tracing",
+              "Acceleration Structure",
+              "Capture Replay"
+            ]
+          }, {
+            "valkyrie": "accelerationStructure.indirectBuild",
+            "vulkan":   "accelerationStructureIndirectBuild",
+            "tags": [
+              "Ray Tracing",
+              "Acceleration Structure",
+              "Indirect"
+            ]
+          }, {
+            "valkyrie": "accelerationStructure.hostCommands",
+            "vulkan": "accelerationStructureHostCommands",
+            "tags": [
+              "Ray Tracing",
+              "Acceleration Structure",
+              "Host Commands"
+            ]
+          }, {
+            "valkyrie": "accelerationStructure.updateAfterBind",
+            "vulkan": "descriptorBindingAccelerationStructureUpdateAfterBind",
+            "tags": [
+              "Ray Tracing",
+              "Acceleration Structure",
+              "Descriptor",
+              "Update After Bind"
+            ]
+          }
+        ]
+      },
+      "properties": {
+        "vulkan_type": "VkPhysicalDeviceAccelerationStructurePropertiesKHR",
+        "fields": [
+          {
+            "valkyrie": {
+              "type": "valkyrie::MaxU64",
+              "name": "accelerationStructure.geometryCount"
+            },
+            "vulkan": {
+              "type": "u64",
+              "name": "maxGeometryCount"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU64",
+              "name": "accelerationStructure.instanceCount"
+            },
+            "vulkan": {
+              "type": "u64",
+              "name": "maxInstanceCount"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU64",
+              "name": "accelerationStructure.primitiveCount"
+            },
+            "vulkan": {
+              "type": "u64",
+              "name": "maxPrimitiveCount"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "accelerationStructure.perStageDescriptors"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxPerStageDescriptorAccelerationStructures"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "accelerationStructure.updateAfterBind.perStageDescriptors"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxPerStageDescriptorUpdateAfterBindAccelerationStructures"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "accelerationStructure.perDescriptorSet"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxDescriptorSetAccelerationStructures"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "accelerationStructure.updateAfterBind.perDescriptorSet"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxDescriptorSetUpdateAfterBindAccelerationStructures"
+            }
+          }, {
+            "valkyrie": {
+              "type": "valkyrie::MinU32",
+              "name": "accelerationStructure.scratchOffsetAlignment"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "minAccelerationStructureScratchOffsetAlignment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VK_KHR_ray_tracing_pipeline",
+      "vendor": "KHR",
+      "revision": 1,
+      "requires": [
+        {
+          "type": "vulkan_version",
+          "version": 1.1
+        },
+        {
+          "type": "device_extension",
+          "name": "VK_KHR_spirv_1_4"
+        },
+        {
+          "type": "device_extension",
+          "name": "VK_KHR_acceleration_structure"
+        }
+      ],
+      "features": {
+        "vulkan_type": "VkPhysicalDeviceRayTracingPipelineFeaturesKHR",
+        "fields": [
+          {
+            "valkyrie": "rayTracingPipeline",
+            "vulkan": "rayTracingPipeline",
+            "tags": [
+              "Ray Tracing",
+              "Pipeline"
+            ]
+          },
+          {
+            "valkyrie": "rayTracingPipeline.shaderGroupHandleCaptureReplay",
+            "vulkan": "rayTracingPipelineShaderGroupHandleCaptureReplay",
+            "tags": [
+              "Ray Tracing",
+              "Pipeline",
+              "Shaders",
+              "Capture Replay"
+            ]
+          },
+          {
+            "valkyrie": "rayTracingPipeline.shaderGroupHandleCaptureReplay.mixed",
+            "vulkan": "rayTracingPipelineShaderGroupHandleCaptureReplayMixed",
+            "requires": [
+              "rayTracingPipeline.shaderGroupHandleCaptureReplay"
+            ],
+            "tags": [
+              "Ray Tracing",
+              "Pipeline",
+              "Shaders",
+              "Capture Replay"
+            ]
+          },
+          {
+            "valkyrie": "rayTracingPipeline.traceRaysIndirect",
+            "vulkan": "rayTracingPipelineTraceRaysIndirect",
+            "tags": [
+              "Ray Tracing",
+              "Pipeline",
+              "Indirect"
+            ]
+          },
+          {
+            "valkyrie": "rayTracingPipeline.primitiveCulling",
+            "vulkan": "rayTraversalPrimitiveCulling",
+            "tags": [
+              "Ray Tracing",
+              "Pipeline"
+            ]
+          }
+        ]
+      },
+      "properties": {
+        "vulkan_type": "VkPhysicalDeviceRayTracingPipelinePropertiesKHR",
+        "fields": [
+          {
+            "valkyrie": {
+              "type": "u32",
+              "name": "rayTracing.shaderGroup.handle.size"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "shaderGroupHandleSize"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "rayTracing.recursionDepth"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxRayRecursionDepth"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "rayTracing.shaderGroup.stride"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxShaderGroupStride"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "u32",
+              "name": "rayTracing.shaderGroup.baseAlignment"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "shaderGroupBaseAlignment"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "u32",
+              "name": "rayTracing.shaderGroup.handle.captureReplay.size"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "shaderGroupHandleCaptureReplaySize"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "rayTracing.dispatch.invocationCount"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxRayDispatchInvocationCount"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "u32",
+              "name": "rayTracing.shaderGroup.handle.alignment"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "shaderGroupHandleAlignment"
+            }
+          },
+          {
+            "valkyrie": {
+              "type": "valkyrie::MaxU32",
+              "name": "rayTracing.hit.attribute.size"
+            },
+            "vulkan": {
+              "type": "u32",
+              "name": "maxRayHitAttributeSize"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VK_KHR_ray_query",
+      "vendor": "KHR",
+      "revision": 1,
+      "requires": [
+        {
+          "type": "vulkan_version",
+          "version": 1.1
+        }, {
+          "type": "device_extension",
+          "name": "VK_KHR_spirv_1_4"
+        }, {
+          "type": "device_extension",
+          "name": "VK_KHR_acceleration_structure"
+        }
+      ],
+      "features": {
+        "vulkan_type": "VkPhysicalDeviceRayQueryFeaturesKHR",
+        "fields": [
+          {
+            "valkyrie": "rayTracing.query",
+            "vulkan": "rayQuery",
+            "tags": [
+              "Ray Tracing",
+              "Query"
+            ]
+          }
+        ]
+      },
+      "properties": null
+    },
+    {
+      "name": "VK_KHR_pipeline_library",
+      "vendor": "KHR",
+      "revision": 1,
+      "requires": null,
+      "features": null,
+      "properties": null
+    },
+    {
+      "name": "VK_KHR_deferred_host_operations",
+      "vendor": "KHR",
+      "revision": 4,
+      "requires": null,
+      "features": null,
+      "properties": null
+    }
+  ]
+}

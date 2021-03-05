@@ -1464,7 +1464,7 @@ namespace {
 
       };
       struct FragmentDensity {
-        Interval<Vk::Extent2D> texelSize;
+        interval<Vk::Extent2D> texelSize;
         struct {
           MaxU32 descriptorSetSamplers;
           MaxU32 arrayLayers;
@@ -2816,7 +2816,7 @@ void Vk::Debugger::enable(ValidationFeatures feature) noexcept
     case ValidationFeatures::ObjectLifetimes:
       pState->validation.objectLifetimes = false;
       break;
-    case ValidationFeatures::CoreChecks:
+    case ValidationFeaturesChecks:
       pState->validation.coreChecks = false;
       break;
     case ValidationFeatures::UniqueHandles:
@@ -2857,7 +2857,7 @@ void Vk::Debugger::disable(ValidationFeatures feature) noexcept
     case ValidationFeatures::ObjectLifetimes:
       pState->validation.objectLifetimes = true;
       break;
-    case ValidationFeatures::CoreChecks:
+    case ValidationFeaturesChecks:
       pState->validation.coreChecks = true;
       break;
     case ValidationFeatures::UniqueHandles:
@@ -2891,7 +2891,7 @@ bool Vk::Debugger::isEnabled(ValidationFeatures feature) const noexcept
       return !pState->validation.apiParameters;
     case ValidationFeatures::ObjectLifetimes:
       return !pState->validation.objectLifetimes;
-    case ValidationFeatures::CoreChecks:
+    case ValidationFeaturesChecks:
       return !pState->validation.coreChecks;
     case ValidationFeatures::UniqueHandles:
       return !pState->validation.uniqueHandles;

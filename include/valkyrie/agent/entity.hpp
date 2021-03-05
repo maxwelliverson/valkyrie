@@ -1,0 +1,8 @@
+//
+// Created by maxwe on 2021-03-04.
+//
+
+#ifndef VALKYRIE_AGENT_ENTITY_HPP
+#define VALKYRIE_AGENT_ENTITY_HPP
+
+#endif//VALKYRIE_AGENT_ENTITY_HPP

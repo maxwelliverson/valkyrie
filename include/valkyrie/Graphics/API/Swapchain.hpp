@@ -1,8 +1,0 @@
-//
-// Created by Maxwell on 2020-11-30.
-//
-
-#ifndef VALKYRIE_SWAPCHAIN_HPP
-#define VALKYRIE_SWAPCHAIN_HPP
-
-#endif//VALKYRIE_SWAPCHAIN_HPP

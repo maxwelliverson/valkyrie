@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_SPIRV_SHADER_HPP
 #define VALKYRIE_SPIRV_SHADER_HPP
 
-#include <spirv/Enums.hpp>
+#include <spirv/enums.hpp>
 
 namespace valkyrie::Spv{
 

@@ -8,6 +8,4 @@
 #include <json/json.h>
 
 
-
-
 #endif//VALKYRIE_JSONSTRING_H

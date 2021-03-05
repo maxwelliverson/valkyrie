@@ -2,8 +2,8 @@
 // Created by Maxwell on 2020-11-30.
 //
 
-#include <valkyrie/GUI/Monitor.hpp>
-#include <valkyrie/Core/Utility/Uuid.hpp>
+#include <valkyrie/GUI/monitor.hpp>
+#include <valkyrie/utility/uuid.hpp>
 
 #include <iostream>
 
@@ -11,9 +11,9 @@
 using namespace valkyrie::GUI;
 
 int main(){
-  auto monitors = Monitor::enumerate();
+  auto monitors = monitor::enumerate();
   std::cout << "\n\n\n\n ======[ int main() ]======\n\n";
-  for (Monitor monitor : monitors)
+  for (monitor monitor : monitors)
     std::cout << monitor.name() << ": " << "{ w: " << monitor.width() << ", h: " << monitor.height() << ", fps: " << monitor.frequency() << " }\n";
   /*CUdevice device;
   CUcontext ctx;
@@ -71,10 +71,10 @@ int main(){
 
 
 
-  auto bufferEnd = (char*)writeToBuffer((char8_t*)&cudaUuidBuffer[1], sizeof(cudaUuidBuffer), *reinterpret_cast<const valkyrie::Core::Uuid*>(&uuid));
+  auto bufferEnd = (char*)writeToBuffer((char8_t*)&cudaUuidBuffer[1], sizeof(cudaUuidBuffer), *reinterpret_cast<const valkyrie::uuid*>(&uuid));
   bufferEnd[0] = '}';
   auto cudaUuid = std::string_view(cudaUuidBuffer, bufferEnd - cudaUuidBuffer + 1);
-  bufferEnd = (char*)writeToBuffer((char8_t*)&vulkanUuidBuffer[1], sizeof(vulkanUuidBuffer), *reinterpret_cast<const valkyrie::Core::Uuid*>(&idProperties.deviceUUID));
+  bufferEnd = (char*)writeToBuffer((char8_t*)&vulkanUuidBuffer[1], sizeof(vulkanUuidBuffer), *reinterpret_cast<const valkyrie::uuid*>(&idProperties.deviceUUID));
   bufferEnd[0] = '}';
   auto vulkanUuid = std::string_view(vulkanUuidBuffer, bufferEnd - vulkanUuidBuffer + 1);
 

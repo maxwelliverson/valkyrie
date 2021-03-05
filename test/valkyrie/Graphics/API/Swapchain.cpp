@@ -2,8 +2,8 @@
 // Created by Maxwell on 2021-01-10.
 //
 
-#include <valkyrie/Graphics/API/Swapchain.hpp>
-#include "../../../../src/valkyrie/Graphics/API/InternalStructures.hpp"
+#include "../../../../src/valkyrie/graphics/api/internal_structures.hpp"
+#include <valkyrie/graphics/api/swapchain.hpp>
 
 #include <vulkan/vulkan_win32.h>
 
@@ -192,7 +192,7 @@ int main(){
   auto registrationAtom = RegisterClass(&wndClass);
 
   if (!registrationAtom)
-    panic(valkyrie::Core::System::Win32::getLastError());
+    panic(valkyrie::sys::win32::getLastError());
 
 
   hwnd = CreateWindow(
@@ -389,7 +389,7 @@ int main(){
 
 
 
-  namespace Internal = valkyrie::Graphics::API::Internal;
+  namespace Internal = valkyrie::graphics::api::Internal;
 
 
   Internal::PhysicalDeviceFeatures deviceFeatures{};
@@ -802,14 +802,14 @@ int main(){
   ShowWindow(hwnd, SW_SHOW);
 
   using namespace std::chrono_literals;
-  namespace Win32 = valkyrie::Core::System::Win32;
+  namespace win32 = valkyrie::sys::win32;
 
   MSG msg;
   BOOL bRet;
 
   while( (bRet = GetMessage( &msg, NULL, 0, 0 )) ) {
     if (bRet == -1) {
-      panic(Win32::getLastError());
+      panic(win32::getLastError());
       // handle the error and possibly exit
     } else {
       TranslateMessage(&msg);

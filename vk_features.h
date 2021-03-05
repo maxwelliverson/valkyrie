@@ -302,10 +302,10 @@ namespace Vk{
     };
     template <auto ...Comp>
     using component_set_dropped_end_t = typename PruneLastComponent<Comp...>::type::type;
-    static_assert(std::same_as<component_set_dropped_end_t<>, ComponentSet<>>);
-    static_assert(std::same_as<component_set_dropped_end_t<discardThisValue>, ComponentSet<>>);
-    static_assert(std::same_as<component_set_dropped_end_t<0>, ComponentSet<0>>);
-    static_assert(std::same_as<component_set_dropped_end_t<0, discardThisValue>, ComponentSet<0>>);
+    static_assert(exact_same_as<component_set_dropped_end_t<>, ComponentSet<>>);
+    static_assert(exact_same_as<component_set_dropped_end_t<discardThisValue>, ComponentSet<>>);
+    static_assert(exact_same_as<component_set_dropped_end_t<0>, ComponentSet<0>>);
+    static_assert(exact_same_as<component_set_dropped_end_t<0, discardThisValue>, ComponentSet<0>>);
   }
   /*class object;
 

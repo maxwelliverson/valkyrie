@@ -85,82 +85,77 @@ endfunction()
 add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
-add_object(valkyrie.Core.Agent.Mailbox)
-add_object(valkyrie.Core.Agent.Backend)
-add_object(valkyrie.Core.Agent.Registry)
-add_object(valkyrie.Core.Agent.PrivateAgent)
-add_object(valkyrie.Core.Agent.LocalAgent)
-add_object(valkyrie.Core.Agent.SharedAgent)
-add_object(valkyrie.Core.Agent.Sender)
-add_object(valkyrie.Core.Agent.Receiver)
-add_object(valkyrie.Core.Agent.Agent)
-add_object(valkyrie.Core.Agent.Message)
+add_object(valkyrie.agent.mailbox)
+add_object(valkyrie.agent.backend)
+add_object(valkyrie.agent.registry)
+add_object(valkyrie.agent.private_agent)
+add_object(valkyrie.agent.local_agent)
+add_object(valkyrie.agent.shared_agent)
+add_object(valkyrie.agent.sender)
+add_object(valkyrie.agent.receiver)
+add_object(valkyrie.agent.agent)
+add_object(valkyrie.agent.message)
 
-add_object(valkyrie.Core.Async.Semaphore)
-add_object(valkyrie.Core.Async.Agent)
+add_object(valkyrie.async.semaphore)
+add_object(valkyrie.async.agent)
 
-add_object(valkyrie.Core.Log.Serialize)
-add_object(valkyrie.Core.Log.Logger)
+add_object(valkyrie.memory.manager)
+add_object(valkyrie.memory)
+add_object(valkyrie.utility)
+add_object(valkyrie.error)
+add_object(valkyrie.system_error)
 
-add_object(valkyrie.Core.Memory.Manager)
-add_object(valkyrie.Core.Memory)
-add_object(valkyrie.Core.Utility)
-add_object(valkyrie.Core.Error)
-add_object(valkyrie.Core.SystemError)
+add_object(valkyrie.win32_functions)
 
-add_object(valkyrie.Core.Win32Functions)
+add_object(valkyrie.utility.json)
+add_object(valkyrie.utility.random)
 
-add_object(valkyrie.Core.Utility.JSON)
-add_object(valkyrie.Core.Utility.Random)
+add_object(valkyrie.graphics.api.instance)
+add_object(valkyrie.graphics.api.physical_device)
+add_object(valkyrie.graphics.api.device)
+add_object(valkyrie.graphics.api.queue)
+add_object(valkyrie.graphics.api.command_buffer)
+add_object(valkyrie.graphics.api.command_pool)
+add_object(valkyrie.graphics.api.pipeline)
+add_object(valkyrie.graphics.api.loader)
+add_object(valkyrie.graphics.api.surface)
+add_object(valkyrie.graphics.api.swapchain)
+add_object(valkyrie.graphics.api.display)
 
-add_object(valkyrie.Graphics.API.Instance)
-add_object(valkyrie.Graphics.API.PhysicalDevice)
-add_object(valkyrie.Graphics.API.Device)
-add_object(valkyrie.Graphics.API.Queue)
-add_object(valkyrie.Graphics.API.CommandBuffer)
-add_object(valkyrie.Graphics.API.CommandPool)
-add_object(valkyrie.Graphics.API.Pipeline)
-add_object(valkyrie.Graphics.API.Loader)
-add_object(valkyrie.Graphics.API.Surface)
-add_object(valkyrie.Graphics.API.Swapchain)
-add_object(valkyrie.Graphics.API.Display)
+add_object(valkyrie.gui.window)
+add_object(valkyrie.gui.monitor)
+add_object(valkyrie.gui.dxgi)
 
-add_object(valkyrie.GUI.Window)
-add_object(valkyrie.GUI.Monitor)
-add_object(valkyrie.GUI.DXGI)
-
-add_object(valkyrie.Graphics.Engine.Engine)
-add_object(valkyrie.Graphics.Engine.Option)
-add_object(valkyrie.Graphics.Engine.Types)
+add_object(valkyrie.graphics.engine.engine)
+add_object(valkyrie.graphics.engine.option)
 
 
 add_object_library(spirv OBJECTS SpirV Shader)
 
-add_object_library(valkyrie.Core.Agent OBJECTS Agent LocalAgent Mailbox Message PrivateAgent Receiver Registry Sender SharedAgent)
-add_object_library(valkyrie.Core.Async OBJECTS Semaphore Agent)
-add_object_library(valkyrie.Core OBJECTS #[[Log.Messages]] Log.Serialize Log.Logger Memory Utility Error SystemError Utility.JSON Win32Functions)
-add_object_library(valkyrie.Graphics.API OBJECTS Instance PhysicalDevice Device Queue CommandBuffer Loader Surface Display CommandPool)
-add_object_library(valkyrie.Graphics.Engine OBJECTS Engine Option Types)
-add_object_library(valkyrie.GUI OBJECTS Window Monitor)
+add_object_library(valkyrie.agent           OBJECTS agent backend local_agent mailbox message private_agent receiver registry sender shared_agent)
+add_object_library(valkyrie.async           OBJECTS semaphore agent)
+add_object_library(valkyrie.graphics.api    OBJECTS instance physical_device device queue command_buffer loader surface display command_pool)
+add_object_library(valkyrie.graphics.engine OBJECTS engine option)
+add_object_library(valkyrie.gui             OBJECTS window monitor)
 
-target_link_libraries(valkyrie.GUI PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
+target_link_libraries(valkyrie.gui PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
 
 
 add_library(valkyrie src/valkyrie/valkyrie.cpp)
-target_link_libraries(valkyrie PUBLIC valkyrie.Core valkyrie.Graphics.API)
+#target_link_libraries(valkyrie PUBLIC valkyrie.Core valkyrie.graphics.api)
 
 
-add_executable(valk_main main.cpp vk_object.h vk_util.h vk_object.cpp vk_pp.h vk_features.h include/spirv/Enums.hpp)
+add_executable(valk_main main.cpp vk_object.h vk_util.h vk_object.cpp vk_pp.h vk_features.h include/spirv/enums.hpp)
 
-add_dummy_target(include/valkyrie.hpp include/valkyrie/Graphics.hpp include/valkyrie/Graphics/Image.hpp include/valkyrie/Graphics/Pixel.hpp)
+add_dummy_target(include/valkyrie/graphics/image.hpp include/valkyrie/graphics/pixel.hpp)
 
-#[[valkyrie_test(valkyrie.Core.Utility.Arrays)
-valkyrie_test(valkyrie.Graphics.API.Device)
-valkyrie_test(valkyrie.Core.Utility.Enums)
+#[[valkyrie_test(valkyrie.utility.Arrays)
+valkyrie_test(valkyrie.graphics.api.Device)
+valkyrie_test(valkyrie.utility.Enums)
 valkyrie_test(valkyrie.GUI.Monitor)
 valkyrie_test(valkyrie.GUI.DXGI)]]
-valkyrie_test(valkyrie.Core.Memory)
-valkyrie_test(valkyrie.Graphics.API.Swapchain)
+valkyrie_test(valkyrie.memory)
+valkyrie_test(valkyrie.graphics.api.swapchain)
 
 add_executable(test.Mailbox test/Mailbox.cpp)
 add_executable(test.VirtualFuncPtr test/VirtualFuncPtr.cpp)
@@ -169,26 +164,22 @@ target_compile_options(test.Mailbox PUBLIC -EHsc)
 
 add_executable(catch
         test/valkyrie.cpp
-        test/valkyrie/Core/Utility/Arrays.cpp
-        test/valkyrie/Core/Utility/Enums.cpp
-        test/valkyrie/Core/Async/Agent.cpp
-        test/valkyrie/Graphics/API/Device.cpp
+        test/valkyrie/utility/Arrays.cpp
+        test/valkyrie/utility/Enums.cpp
+        test/valkyrie/Async/Agent.cpp
+        test/valkyrie/graphics/api/Device.cpp
         test/valkyrie/GUI/DXGI.cpp
         test/valkyrie/GUI/Monitor.cpp)
 
 add_executable(CudaGraph test/CudaGraph.cpp)
 target_link_libraries(CudaGraph PUBLIC CUDA::cuda_driver)
 
-add_executable(DirectedGraph test/DirectedGraph.cpp)
-target_link_libraries(DirectedGraph PUBLIC valkyrie.Core)
+add_executable(DirectedGraph test/directed_graph.cpp)
+#target_link_libraries(directed_graph PUBLIC valkyrie.Core)
 
 add_executable(RBTreeTest src/json/json_interval_tree.cpp)
-
-
 add_executable(vulkan_example src/example.cpp)
-
 add_executable(clangd_debug debug_clangd.cpp)
-
 add_executable(tictactoe test/tictactoe.c)
 add_executable(better_ttt test/better_tictactoe.c)
 
@@ -200,7 +191,7 @@ add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/js
 
 #target_link_libraries(test.valkyrie.GUI.Monitor PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:Dxva2> #[[CUDA::cuda_driver Vulkan::Vulkan]])
 #target_link_libraries(test.valkyrie.GUI.DXGI PUBLIC valkyrie.Core $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
-target_link_libraries(test.valkyrie.Graphics.API.Swapchain PUBLIC valkyrie.Core valkyrie.Graphics.API.Loader $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
+#target_link_libraries(test.valkyrie.graphics.api.Swapchain PUBLIC valkyrie.Core valkyrie.graphics.api.Loader $<$<CXX_COMPILER_ID:MSVC>:DXGI>)
 
 
 function(preprocess file path)
@@ -208,4 +199,4 @@ function(preprocess file path)
     add_custom_target(${file}.preprocess COMMAND "cl.exe /std:c++latest /E ${path}/${file}")
 endfunction()
 
-preprocess(Traits.hpp include/valkyrie/Core/Utility)
+preprocess(traits.hpp include/valkyrie/utility)
