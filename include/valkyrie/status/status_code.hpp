@@ -577,8 +577,8 @@ namespace valkyrie{
   };
 
 
-  using Error         = error_code<erased<u64>>;
-  using Status        = status_code<erased<u64>>;
+  using error         = error_code<erased<u64>>;
+  using status        = status_code<erased<u64>>;
 
   template <typename Dom>
   inline void error_code<Dom>::_checkIfSuccess() const {

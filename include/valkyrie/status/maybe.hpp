@@ -80,10 +80,10 @@ namespace valkyrie{
           : is_valid_{true}, value_(value){}
       maybe_storage(T&& value) noexcept(std::is_nothrow_move_constructible_v<T>) requires(std::move_constructible<T>)
           : is_valid_{true}, value_(std::move(value)){}
-      maybe_storage(const status_type& Status) noexcept
-          : status_(Status){}
-      maybe_storage(status_type&& Status) noexcept
-          : status_(std::move(Status)){}
+      maybe_storage(const status_type& status) noexcept
+          : status_(status){}
+      maybe_storage(status_type&& status) noexcept
+          : status_(std::move(status)){}
 
 
       template <typename U, typename D2>
@@ -197,10 +197,10 @@ namespace valkyrie{
       this->is_valid_ = true;
       new(&this->value_) T{std::move(value)};
     }
-    maybe(const status_type& Status) noexcept
-        : Base{ Status }{}
-    maybe(status_type&& Status) noexcept
-        : Base{ std::move(Status) }{}*/
+    maybe(const status_type& status) noexcept
+        : Base{ status }{}
+    maybe(status_type&& status) noexcept
+        : Base{ std::move(status) }{}*/
 
 
     ~maybe() = default;
@@ -296,10 +296,10 @@ namespace valkyrie{
         : Base{ .is_valid_ = true, .value_ = value }{}
     constexpr maybe(T&& value) noexcept(std::is_nothrow_move_constructible_v<T>) requires(std::move_constructible<T>)
         : Base{ .is_valid_ = true, .value_ = std::move(value) }{}
-    constexpr maybe(const status_type& Status) noexcept
-        : Base{ .status_ = Status.clone() }{}
-    constexpr maybe(status_type&& Status) noexcept
-        : Base{ .status_ = std::move(Status) }{}
+    constexpr maybe(const status_type& status) noexcept
+        : Base{ .status_ = status.clone() }{}
+    constexpr maybe(status_type&& status) noexcept
+        : Base{ .status_ = std::move(status) }{}
 
 
     constexpr maybe& operator=(const maybe& other) {

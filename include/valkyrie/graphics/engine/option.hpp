@@ -120,14 +120,14 @@ namespace valkyrie::graphics::engine{
     StringView name_;
     bool isSupported_ = false;
     bool isEnabled_ = false;
-    virtual Status doSetEnabled(bool enabled) noexcept = 0;
+    virtual status doSetEnabled(bool enabled) noexcept = 0;
   protected:
     constexpr explicit EnabledOption(StringView name) noexcept : name_(name){}
   public:
     inline StringView name() const noexcept {
       return {name_.data(), u32(name_.size())};
     }
-    inline Status enable(bool b = true)  noexcept {
+    inline status enable(bool b = true)  noexcept {
 
       if (!doIsSupported())
         return code::NotSupported;
@@ -139,7 +139,7 @@ namespace valkyrie::graphics::engine{
 
       return std::move(result);
     }
-    inline Status disable() noexcept {
+    inline status disable() noexcept {
       auto result = this->doSetEnabled(false);
 
       if (result.success())
@@ -158,7 +158,7 @@ namespace valkyrie::graphics::engine{
 
   class Feature : public EnabledOption{
 
-    Status doSetEnabled(bool enabled) noexcept override;
+    status doSetEnabled(bool enabled) noexcept override;
 
   public:
 
@@ -171,7 +171,7 @@ namespace valkyrie::graphics::engine{
   class Extension : public EnabledOption{
     Version specVersion_;
 
-    Status doSetEnabled(bool enabled) noexcept override {
+    status doSetEnabled(bool enabled) noexcept override {
 
       for (Extension& dep : dependencies(*this)){
         auto result = dep.enable(enabled);

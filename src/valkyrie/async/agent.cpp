@@ -429,7 +429,7 @@ AgentMailbox::Interface AgentMailbox::dispatchInterface(AgentConcurrency concurr
   }
 }
 
-valkyrie::AgentMailbox::AgentMailbox(const u32 queueSize, const AgentConcurrency concurrency, Status &status) noexcept
+valkyrie::AgentMailbox::AgentMailbox(const u32 queueSize, const AgentConcurrency concurrency, status &status) noexcept
     : pMessageQueue(nullptr), queueSize(queueSize), dynamicInterface(dispatchInterface(concurrency)){
   MappedMemory mainBuffer, overflowBuffer;
   if (auto result = allocateCircularBuffer(queueSize)) {
@@ -441,7 +441,7 @@ valkyrie::AgentMailbox::AgentMailbox(const u32 queueSize, const AgentConcurrency
   std::tie(pMessageQueue, this->queueSize) = mainBuffer.release();
 }
 
-valkyrie::AgentMailbox::AgentMailbox(const AgentConcurrency concurrency, Status &status) noexcept
+valkyrie::AgentMailbox::AgentMailbox(const AgentConcurrency concurrency, status &status) noexcept
     : AgentMailbox(AllocationGranularity, concurrency, status){}
 
 valkyrie::AgentMailbox::AgentMailbox(AgentMailbox&& otherMailbox) noexcept

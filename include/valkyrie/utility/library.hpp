@@ -10,11 +10,15 @@
 #include <valkyrie/status/result.hpp>
 
 namespace valkyrie{
+
+
+
+
   class library{
     void*  handle;
     string name;
 
-    explicit library(string_view libName, status& opResult);
+    explicit library(string_view libName, system_status& opResult);
 
     struct polymorphic_function{
       void(*pFunction)();
@@ -30,6 +34,8 @@ namespace valkyrie{
     };
 
   public:
+
+    ~library();
 
     static system_result<library> open(string_view libName) noexcept;
 

@@ -31,8 +31,8 @@ namespace valkyrie::GUI{
     graphics::Extent2D<>      getExtents() const noexcept;
 
 
-    Status setFullscreen(bool enableFullscreen = true) noexcept;
-    Status close() noexcept;
+    status setFullscreen(bool enableFullscreen = true) noexcept;
+    status close() noexcept;
   };
 }
 

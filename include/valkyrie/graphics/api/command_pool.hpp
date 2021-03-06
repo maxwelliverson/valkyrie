@@ -19,7 +19,7 @@ namespace valkyrie::graphics::api{
 
 
     struct Processor{
-      virtual Status destroyCommandPool()
+      virtual status destroyCommandPool()
     };
   };
 
@@ -224,11 +224,11 @@ namespace valkyrie::graphics::api{
 
     void destroy() noexcept;
     void trim() noexcept;
-    Status reset() noexcept;
+    status reset() noexcept;
 
     /*Result<CommandBuffer> allocateCommandBuffer() noexcept;
     void                  freeCommandBuffer(const CommandBuffer&) noexcept;
-    Status allocateCommandBuffers(std::span<CommandBuffer> commandBuffers) noexcept;*/
+    status allocateCommandBuffers(std::span<CommandBuffer> commandBuffers) noexcept;*/
   };
 
   class command_buffer {
@@ -238,7 +238,7 @@ namespace valkyrie::graphics::api{
     command_buffer(command_pool & pool) noexcept;
 
 
-    Status begin() noexcept;
+    status begin() noexcept;
   };
 
 

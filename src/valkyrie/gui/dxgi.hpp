@@ -477,11 +477,11 @@ namespace valkyrie::GUI::Internal{
       return domainInstance;
     }
 
-    using Status = status_code<status_domain>;
+    using status = status_code<status_domain>;
     using Error  = error_code<status_domain>;
 
-    inline Status makeStatusCode(RawResult result) noexcept {
-      return Status{std::in_place, result};
+    inline status makeStatusCode(RawResult result) noexcept {
+      return status{std::in_place, result};
     }
 
     template <typename T>
@@ -517,19 +517,19 @@ namespace valkyrie::GUI::Internal{
       Output(Output&&) noexcept = default;
 
 
-      Status waitForVBlank() const noexcept {
+      status waitForVBlank() const noexcept {
         return pOutput ? (RawResult)pOutput->WaitForVBlank() : (RawResult)DXGI_ERROR_INVALID_CALL;
       }
-      Status getGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES& capabilities) const noexcept {
+      status getGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES& capabilities) const noexcept {
         return (RawResult)pOutput->GetGammaControlCapabilities(&capabilities);
       }
-      Status getGammaControl(DXGI_GAMMA_CONTROL& gammaControl) const noexcept{
+      status getGammaControl(DXGI_GAMMA_CONTROL& gammaControl) const noexcept{
         return (RawResult)pOutput->GetGammaControl(&gammaControl);
       }
-      Status setGammaControl(const DXGI_GAMMA_CONTROL& gammaControl) const noexcept {
+      status setGammaControl(const DXGI_GAMMA_CONTROL& gammaControl) const noexcept {
         return (RawResult)pOutput->SetGammaControl(&gammaControl);
       }
-      Status getFrameStatistics(DXGI_FRAME_STATISTICS& frameStatistics) const noexcept {
+      status getFrameStatistics(DXGI_FRAME_STATISTICS& frameStatistics) const noexcept {
         return (RawResult)pOutput->GetFrameStatistics(&frameStatistics);
       }
       std::string_view          getName() const noexcept {
@@ -558,7 +558,7 @@ namespace valkyrie::GUI::Internal{
       size_t DedicatedSystemMemory{};
       size_t SharedSystemMemory{};
       LUID AdapterLUID{};
-      Status lastResult{};
+      status lastResult{};
       /*DXGI_ADAPTER_FLAG3 Flags;
       DXGI_GRAPHICS_PREEMPTION_GRANULARITY GraphicsPreemptionGranularity;
       DXGI_COMPUTE_PREEMPTION_GRANULARITY ComputePreemptionGranularity;*/
@@ -597,7 +597,7 @@ namespace valkyrie::GUI::Internal{
       const LUID& getLUID() const noexcept {
         return AdapterLUID;
       }
-      Status getLastError() const noexcept {
+      status getLastError() const noexcept {
         return lastResult;
       }
       Result<Output> getMonitor(u32 monitorID) const noexcept {
@@ -626,7 +626,7 @@ namespace valkyrie::GUI::Internal{
       Factory& operator=(const Factory&) = default;
       Factory& operator=(Factory&&) noexcept = default;
 
-      Status          makeWindowAssociation(HWND hWindow) const noexcept {
+      status          makeWindowAssociation(HWND hWindow) const noexcept {
         return (RawResult)pFactory->MakeWindowAssociation(hWindow, 0);
       }
       Result<HWND>    getWindowAssociation() const noexcept {
@@ -634,7 +634,7 @@ namespace valkyrie::GUI::Internal{
         auto result = (RawResult)pFactory->GetWindowAssociation(&hWindow);
         if (result == S_OK)
           return hWindow;
-        return Status(result);
+        return status(result);
       }
       Result<Adapter> getAdapter(u32 adapterIndex) const noexcept {
         using AdapterResult = Result<Adapter>;

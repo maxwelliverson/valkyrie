@@ -85,6 +85,29 @@ endfunction()
 add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
+
+add_object(valkyrie.memory.detail.align)
+add_object(valkyrie.memory.detail.debug_helpers)
+add_object(valkyrie.memory.detail.free_list)
+add_object(valkyrie.memory.detail.free_list_array)
+add_object(valkyrie.memory.detail.small_free_list)
+
+add_object(valkyrie.memory.debugging)
+add_object(valkyrie.memory.error)
+add_object(valkyrie.memory.heap_allocator)
+add_object(valkyrie.memory.iteration_allocator)
+add_object(valkyrie.memory.malloc_allocator)
+add_object(valkyrie.memory.memory_arena)
+add_object(valkyrie.memory.memory_pool)
+add_object(valkyrie.memory.memory_pool_collection)
+add_object(valkyrie.memory.memory_stack)
+add_object(valkyrie.memory.new_allocator)
+add_object(valkyrie.memory.static_allocator)
+add_object(valkyrie.memory.temporary_allocator)
+add_object(valkyrie.memory.virtual_memory)
+
+
+
 add_object(valkyrie.agent.mailbox)
 add_object(valkyrie.agent.backend)
 add_object(valkyrie.agent.registry)
@@ -99,8 +122,6 @@ add_object(valkyrie.agent.message)
 add_object(valkyrie.async.semaphore)
 add_object(valkyrie.async.agent)
 
-add_object(valkyrie.memory.manager)
-add_object(valkyrie.memory)
 add_object(valkyrie.utility)
 add_object(valkyrie.error)
 add_object(valkyrie.system_error)
@@ -109,6 +130,7 @@ add_object(valkyrie.win32_functions)
 
 add_object(valkyrie.utility.json)
 add_object(valkyrie.utility.random)
+add_object(valkyrie.utility.library)
 
 add_object(valkyrie.graphics.api.instance)
 add_object(valkyrie.graphics.api.physical_device)
@@ -129,6 +151,9 @@ add_object(valkyrie.gui.dxgi)
 add_object(valkyrie.graphics.engine.engine)
 add_object(valkyrie.graphics.engine.option)
 
+
+add_object_library(valkyrie.memory.detail OBJECTS align debug_helpers free_list free_list_array small_free_list)
+add_object_library(valkyrie.memory OBJECTS detail debugging error heap_allocator iteration_allocator malloc_allocator memory_arena memory_pool memory_pool_collection memory_stack new_allocator static_allocator temporary_allocator virtual_memory)
 
 add_object_library(spirv OBJECTS SpirV Shader)
 

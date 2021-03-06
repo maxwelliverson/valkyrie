@@ -52,7 +52,7 @@ namespace valkyrie::graphics::api{
     }
   };
 
-  using Status = status_code<VulkanStatusDomain>;
+  using status = status_code<VulkanStatusDomain>;
   using Error  = error_code<VulkanStatusDomain>;
   template <typename T>
   using Result = maybe<T, VulkanStatusDomain>;

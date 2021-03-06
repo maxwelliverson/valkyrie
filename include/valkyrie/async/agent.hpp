@@ -446,8 +446,8 @@ namespace valkyrie{
     }
 
     explicit AgentMailbox() noexcept : pMessageQueue(nullptr), queueSize(0), dynamicInterface(){}
-    explicit AgentMailbox(AgentConcurrency concurrency, Status& status) noexcept;
-    explicit AgentMailbox(u32 queueSize, AgentConcurrency concurrency, Status& status) noexcept;
+    explicit AgentMailbox(AgentConcurrency concurrency, status& status) noexcept;
+    explicit AgentMailbox(u32 queueSize, AgentConcurrency concurrency, status& status) noexcept;
 
   public:
 
@@ -461,14 +461,14 @@ namespace valkyrie{
       return AgentMailbox{};
     }
     inline static maybe<AgentMailbox> create(AgentConcurrency concurrency) noexcept {
-      Status status;
+      status status;
       AgentMailbox mailbox{concurrency, status};
       if (status.failure())
         return std::move(status);
       return std::move(mailbox);
     }
     inline static maybe<AgentMailbox> create(u32 queueSize, AgentConcurrency concurrency) noexcept {
-      Status status;
+      status status;
       AgentMailbox mailbox{queueSize, concurrency, status};
       if (status.failure())
         return std::move(status);
@@ -496,8 +496,8 @@ namespace valkyrie{
     bool isRunning = false;
     bool isIndirect = false;
 
-    virtual Status doRegisterMailbox(AgentMailbox& mailbox) noexcept = 0;
-    virtual Status doUnregisterMailbox(const AgentMailbox& mailbox) noexcept = 0;
+    virtual status doRegisterMailbox(AgentMailbox& mailbox) noexcept = 0;
+    virtual status doUnregisterMailbox(const AgentMailbox& mailbox) noexcept = 0;
     virtual void   doUnregisterAll() noexcept = 0;
     virtual void   doDelete() noexcept = 0;
     virtual void   doRun() noexcept = 0;
@@ -507,14 +507,14 @@ namespace valkyrie{
   protected:
 
   public:
-    Status registerMailbox(AgentMailbox& mailbox) noexcept {
+    status registerMailbox(AgentMailbox& mailbox) noexcept {
       ++mailboxCount;
       if (pIndirectBackend)
         return pIndirectBackend->registerMailbox(mailbox);
       else
         return doRegisterMailbox(mailbox);
     }
-    Status unregisterMailbox(const AgentMailbox& mailbox) noexcept {
+    status unregisterMailbox(const AgentMailbox& mailbox) noexcept {
       VK_assert(mailboxCount > 0);
       --mailboxCount;
       if (pIndirectBackend)
@@ -585,13 +585,13 @@ namespace valkyrie{
     AgentMailbox  mailbox;
     AgentBackend* pBackend;
 
-    explicit Agent(AgentConcurrency concurrency, AgentBackend* pBackend, Status& status) noexcept
+    explicit Agent(AgentConcurrency concurrency, AgentBackend* pBackend, status& status) noexcept
         : mailbox(concurrency, status),
           pBackend(pBackend->getAddress()) {
       if (status.success())
         status = this->pBackend->registerMailbox(mailbox);
     }
-    explicit Agent(u32 queueSize, AgentConcurrency concurrency, AgentBackend* pBackend, Status& status) noexcept
+    explicit Agent(u32 queueSize, AgentConcurrency concurrency, AgentBackend* pBackend, status& status) noexcept
         : mailbox(queueSize, concurrency, status),
           pBackend(pBackend->getAddress()) {
       if (status.success())

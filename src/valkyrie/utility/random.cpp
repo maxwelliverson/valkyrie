@@ -41,10 +41,10 @@ namespace {
     template <std::derived_from<AutonomousTask> T>
     friend class Task;
 
-    Status threadStatus = code::NotReady;
+    status threadStatus = code::NotReady;
     std::atomic_uint32_t refCount;
 
-    virtual Status           begin() = 0;
+    virtual status           begin() = 0;
     virtual void             onExit(const status_code<void>& exitStatus) noexcept {
       //return exitStatus;
     }
@@ -239,9 +239,9 @@ namespace {
 
   public:
 
-    inline Status writeMessage(function_ref<void(void*)> fnCtor, u64 msgSize) noexcept;
-    inline Status readMessage(function_ref<Status(void*)> msgProc)       noexcept;
-    inline Status tryReadMessage(function_ref<Status(void*)> msgProc)    noexcept;
+    inline status writeMessage(function_ref<void(void*)> fnCtor, u64 msgSize) noexcept;
+    inline status readMessage(function_ref<status(void*)> msgProc)       noexcept;
+    inline status tryReadMessage(function_ref<status(void*)> msgProc)    noexcept;
   };
 
   class RandomGenerator{

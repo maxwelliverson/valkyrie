@@ -277,7 +277,7 @@ namespace valkyrie{
 
 
 
-      /* Process Status */
+      /* Process status */
       VK_foreach(VK_bind_front(VK_load_function, kernelLib),
 
                  EmptyWorkingSet,

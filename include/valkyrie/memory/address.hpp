@@ -61,7 +61,7 @@ namespace valkyrie{
     using value_type      = void*;
     using difference_type = i64; // ie. index_type
     using size_type       = u64; // ie. extent_type
-    using status_type     = Status;
+    using status_type     = status;
 
   protected:
 

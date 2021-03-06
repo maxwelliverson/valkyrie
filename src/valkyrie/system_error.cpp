@@ -452,7 +452,7 @@ bool system::detail::posix_status_domain::doEquivalent(const status_code<void> &
 #if VK_system_windows
   else if (statusB.domain() == system::win32_status_domain())
     return static_cast<const status_type&>(statusA).value() ==
-           translateWin32StatusToPosixCode(static_cast<const system::win32::Status&>(statusB).value());
+           translateWin32StatusToPosixCode(static_cast<const system::win32::status&>(statusB).value());
 #endif
   return false;
 }

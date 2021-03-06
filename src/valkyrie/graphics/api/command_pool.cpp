@@ -53,7 +53,7 @@ class api::command_pool::Impl{
 
 
 public:
-  Impl(Status& resultStatus){
+  Impl(status& resultStatus){
 
     maybe<AgentMailbox> result{code::ObjectNotInitialized};
 

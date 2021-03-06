@@ -45,12 +45,12 @@ namespace valkyrie::graphics::api{
     surface createSurface(Extent2D<> extents) const noexcept;
 
 
-    Status enable(InstanceExtensionID extensionId) noexcept;
-    Status disable(InstanceExtensionID extensionId) noexcept;
-    Status enable(LayerID layerId) noexcept;
-    Status disable(LayerID layerId) noexcept;
-    Status enable(ValidationFeatureID validationFeatureId) noexcept;
-    Status disable(ValidationFeatureID validationFeatureId) noexcept;
+    status enable(InstanceExtensionID extensionId) noexcept;
+    status disable(InstanceExtensionID extensionId) noexcept;
+    status enable(LayerID layerId) noexcept;
+    status disable(LayerID layerId) noexcept;
+    status enable(ValidationFeatureID validationFeatureId) noexcept;
+    status disable(ValidationFeatureID validationFeatureId) noexcept;
 
     bool isEnabled(InstanceExtensionID extensionId) const noexcept;
     bool isAvailable(InstanceExtensionID extensionId) const noexcept;
