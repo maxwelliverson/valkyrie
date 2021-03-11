@@ -10,6 +10,7 @@
 
 #include <atomic>
 
+
 namespace valkyrie{
   namespace detail{
     template <typename T>
@@ -23,7 +24,7 @@ namespace valkyrie{
   }
 
   template <typename T>
-  using Atomic = typename detail::GetAtomicType<T>::type;
+  using atomic = typename detail::GetAtomicType<T>::type;
 }
 
 #endif//VALKYRIE_ASYNC_ATOMIC_HPP

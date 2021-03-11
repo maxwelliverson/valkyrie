@@ -5,12 +5,15 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_POOL_TYPE_HPP
 #define VALKYRIE_MEMORY_MEMORY_POOL_TYPE_HPP
 
+#include "detail/free_list.hpp"
+#include "detail/small_free_list.hpp"
+
 namespace valkyrie{
   /// Tag type defining a memory pool optimized for nodes.
   /// It does not support array allocations that great and may trigger a growth even if there is enough memory.
   /// But it is the fastest pool type.
   /// \ingroup allocator
-  struct node_pool : FOONATHAN_EBO(std::true_type)
+  struct node_pool : std::true_type
       {
           using type = detail::node_free_memory_list;
       };
@@ -21,7 +24,7 @@ namespace valkyrie{
   /// Node allocations are still fast, unless there is deallocation in random order.
   /// \note Use this tag type only if you really need to have a memory pool!
   /// \ingroup allocator
-  struct array_pool : FOONATHAN_EBO(std::true_type)
+  struct array_pool : std::true_type
       {
           using type = detail::array_free_memory_list;
       };
@@ -31,7 +34,7 @@ namespace valkyrie{
   /// This tag type does not have this requirement and thus allows zero-memory-overhead allocations of small nodes.
   /// It is a little bit slower than \ref node_pool and does not support arrays.
   /// \ingroup allocator
-  struct small_node_pool : FOONATHAN_EBO(std::false_type)
+  struct small_node_pool : std::false_type
       {
           using type = detail::small_free_memory_list;
       };

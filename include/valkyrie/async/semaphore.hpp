@@ -130,7 +130,7 @@ namespace valkyrie{
   using BinarySemaphore = CountingSemaphore<1>;
   using Semaphore       = CountingSemaphore<>;
 #else
-  template <size_t N = std::numeric_limits<ptrdiff_t>::max()>
+  template <size_t N = std::numeric_limits<i64>::max()>
   using CountingSemaphore = std::counting_semaphore<N>;
   using Semaphore = CountingSemaphore<>;
   using BinarySemaphore = std::binary_semaphore;

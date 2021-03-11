@@ -21,13 +21,13 @@ namespace valkyrie::detail{
     // actual number is calculated via policy
     // memory is taken from fixed_memory_stack, it must be sufficient
     free_list_array(fixed_memory_stack& stack, const char* end,
-                    std::size_t max_node_size) noexcept
+                    u64 max_node_size) noexcept
         : no_elements_(AccessPolicy::index_from_size(max_node_size) - min_size_index + 1)
         {
             array_ = static_cast<FreeList*>(
                 stack.allocate(end, no_elements_ * sizeof(FreeList), alignof(FreeList)));
-        FOONATHAN_MEMORY_ASSERT_MSG(array_, "insufficient memory for free lists");
-        for (std::size_t i = 0u; i != no_elements_; ++i)
+        VK_assert_MSG(array_, "insufficient memory for free lists");
+        for (u64 i = 0u; i != no_elements_; ++i)
         {
           auto node_size = AccessPolicy::size_from_index(i + min_size_index);
           ::new (static_cast<void*>(array_ + i)) FreeList(node_size);
@@ -56,7 +56,7 @@ namespace valkyrie::detail{
     }
 
     // access free list for given size
-    FreeList& get(std::size_t node_size) const noexcept
+    FreeList& get(u64 node_size) const noexcept
     {
       auto i = AccessPolicy::index_from_size(node_size);
       if (i < min_size_index)
@@ -65,38 +65,38 @@ namespace valkyrie::detail{
     }
 
     // number of free lists
-    std::size_t size() const noexcept
+    u64 size() const noexcept
     {
       return no_elements_;
     }
 
     // maximum supported node size
-    std::size_t max_node_size() const noexcept
+    u64 max_node_size() const noexcept
     {
       return AccessPolicy::size_from_index(no_elements_ + min_size_index - 1);
     }
 
   private:
-    static const std::size_t min_size_index;
+    static const u64 min_size_index;
 
     FreeList*   array_;
-    std::size_t no_elements_;
+    u64 no_elements_;
   };
 
   template <class FL, class AP>
-  const std::size_t free_list_array<FL, AP>::min_size_index =
+  const u64 free_list_array<FL, AP>::min_size_index =
       AP::index_from_size(FL::min_element_size);
 
   // AccessPolicy that maps size to indices 1:1
   // creates a free list for each size!
   struct identity_access_policy
   {
-    static std::size_t index_from_size(std::size_t size) noexcept
+    static u64 index_from_size(u64 size) noexcept
     {
       return size;
     }
 
-    static std::size_t size_from_index(std::size_t index) noexcept
+    static u64 size_from_index(u64 index) noexcept
     {
       return index;
     }
@@ -106,8 +106,8 @@ namespace valkyrie::detail{
   // this creates more nodes and never wastes more than half the size
   struct log2_access_policy
   {
-    static std::size_t index_from_size(std::size_t size) noexcept;
-    static std::size_t size_from_index(std::size_t index) noexcept;
+    static u64 index_from_size(u64 size) noexcept;
+    static u64 size_from_index(u64 index) noexcept;
   };
 }
 

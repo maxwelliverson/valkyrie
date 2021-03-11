@@ -253,7 +253,7 @@ namespace {
 
   /*template <typename T>
   struct AtomicSListNode{
-    Atomic<AtomicSListNode<T>*> pNext;
+    atomic<AtomicSListNode<T>*> pNext;
     T value;
   };
   template <typename T, typename Alloc = std::allocator<AtomicSListNode<T>>>
@@ -262,7 +262,7 @@ namespace {
   public:
 
     using node_type = AtomicSListNode<T>;
-    using atomic_node_type = Atomic<node_type*>;
+    using atomic_node_type = atomic<node_type*>;
     using value_type = T;
     using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>;
 
@@ -326,8 +326,8 @@ namespace {
 
     }
 
-    Atomic<AtomicSListNode<T>*>    pHead  = nullptr;
-    Atomic<AtomicSListNode<T>*>    pTail  = nullptr;
+    atomic<AtomicSListNode<T>*>    pHead  = nullptr;
+    atomic<AtomicSListNode<T>*>    pTail  = nullptr;
     u64                                  length = 0;
     [[no_unique_address]] allocator_type alloc;
 

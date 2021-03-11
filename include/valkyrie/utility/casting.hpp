@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_UTILITY_CASTING_HPP
 #define VALKYRIE_UTILITY_CASTING_HPP
 
-#include <valkyrie/status/assert.hpp>
+//#include <valkyrie/status/assert.hpp>
 #include <valkyrie/traits.hpp>
 
 #include <memory>

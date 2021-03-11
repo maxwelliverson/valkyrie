@@ -45,9 +45,9 @@ namespace valkyrie{
     u32   queueSize;
 
 
-    Atomic<u32> nextReadOffset = 0;
-    Atomic<u32> nextWriteOffset = 0;
-    Atomic<u32> syncMarker = 0;
+    atomic<u32> nextReadOffset = 0;
+    atomic<u32> nextWriteOffset = 0;
+    atomic<u32> syncMarker = 0;
     
   };
 

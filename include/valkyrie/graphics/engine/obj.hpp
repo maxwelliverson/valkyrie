@@ -2078,7 +2078,7 @@ void LoadMtl(std::map<std::string, int> *material_map,
       _space = strchr(token, '\t');
     }
     if (_space) {
-      std::ptrdiff_t len = _space - token;
+      ptrdiff_t len = _space - token;
       std::string key(token, static_cast<size_t>(len));
       std::string value = _space + 1;
       material.unknown_parameter.insert(

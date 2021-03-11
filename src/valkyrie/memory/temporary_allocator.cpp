@@ -2,15 +2,20 @@
 // Created by maxwe on 2021-03-05.
 //
 
+#include <valkyrie/primitives.hpp>
+#include <valkyrie/memory/temporary_allocator.hpp>
+
+using namespace valkyrie;
+
 namespace
 {
-  void default_growth_tracker(std::size_t) noexcept {}
+  void default_growth_tracker(u64) noexcept {}
 
 using temporary_impl_allocator        = default_allocator;
 using temporary_impl_allocator_traits = allocator_traits<temporary_impl_allocator>;
 } // namespace
 
-detail::temporary_block_allocator::temporary_block_allocator(std::size_t block_size) noexcept
+detail::temporary_block_allocator::temporary_block_allocator(u64 block_size) noexcept
 : tracker_(default_growth_tracker), block_size_(block_size)
 {
 }
@@ -35,7 +40,7 @@ memory_block detail::temporary_block_allocator::allocate_block()
   auto memory = temporary_impl_allocator_traits::allocate_array(alloc, block_size_, 1,
                                                                 detail::max_alignment);
   auto block  = memory_block(memory, block_size_);
-  block_size_ = std::size_t(block_size_
+  block_size_ = u64(block_size_
                             * growing_block_allocator<temporary_impl_allocator>::growth_factor());
   return block;
 }
@@ -47,41 +52,13 @@ void detail::temporary_block_allocator::deallocate_block(memory_block block)
                                                     detail::max_alignment);
 }
 
-#if FOONATHAN_MEMORY_TEMPORARY_STACK_MODE >= 2
-// lifetime managment through the nifty counter and the list
-// note: I could have used a simple `thread_local` variable for the temporary stack
-// but this could lead to issues with destruction order
-// and more importantly I have to support platforms that can't handle non-trivial thread local's
-// hence I need to dynamically allocate the stack's and store them in a container
-// on program exit the container is iterated and all stack's are properly destroyed
-// if a thread exit can be detected, the dynamic memory of the stack is already released,
-// but not the stack itself destroyed
-
-#if !defined(__MINGW64__)
-
-// only use the thread exit detector if we have thread local and are not running on MinGW due to a bug
-// see: https://sourceforge.net/p/mingw-w64/bugs/527/
-#define FOONATHAN_MEMORY_THREAD_EXIT_DETECTOR 1
-
-#else
-#define FOONATHAN_MEMORY_THREAD_EXIT_DETECTOR 0
-
-#if defined(_MSC_VER)
-#pragma message(                                                                                   \
-    "thread_local doesn't support destructors, need to use the temporary_stack_initializer to ensure proper cleanup of the temporary memory")
-#else
-#warning                                                                                           \
-    "thread_local doesn't support destructors, need to use the temporary_stack_initializer to ensure proper cleanup of the temporary memory"
-#endif
-
-#endif
 
 static class detail::temporary_stack_list
 {
 public:
     std::atomic<temporary_stack_list_node*> first;
 
-    temporary_stack* create_new(std::size_t size)
+    temporary_stack* create_new(u64 size)
     {
         auto storage =
             default_allocator().allocate_node(sizeof(temporary_stack), alignof(temporary_stack));
@@ -100,7 +77,7 @@ public:
         return nullptr;
     }
 
-    temporary_stack* create(std::size_t size)
+    temporary_stack* create(u64 size)
     {
         if (auto ptr = find_unused())
         {
@@ -139,7 +116,7 @@ public:
 
 namespace
 {
-    thread_local std::size_t      nifty_counter;
+    thread_local u64      nifty_counter;
     thread_local temporary_stack* temp_stack = nullptr;
 
 #if FOONATHAN_MEMORY_THREAD_EXIT_DETECTOR
@@ -181,7 +158,7 @@ detail::temporary_allocator_dtor_t::~temporary_allocator_dtor_t() noexcept
         temporary_stack_list_obj.destroy();
 }
 
-temporary_stack_initializer::temporary_stack_initializer(std::size_t initial_size)
+temporary_stack_initializer::temporary_stack_initializer(u64 initial_size)
 {
     if (!temp_stack)
         temp_stack = temporary_stack_list_obj.create(initial_size);
@@ -195,77 +172,13 @@ temporary_stack_initializer::~temporary_stack_initializer() noexcept
         temporary_stack_list_obj.clear(*temp_stack);
 }
 
-temporary_stack& valkyrie::get_temporary_stack(std::size_t initial_size)
+temporary_stack& valkyrie::get_temporary_stack(u64 initial_size)
 {
     if (!temp_stack)
         temp_stack = temporary_stack_list_obj.create(initial_size);
     return *temp_stack;
 }
 
-#elif FOONATHAN_MEMORY_TEMPORARY_STACK_MODE == 1
-
-namespace
-{
-    FOONATHAN_THREAD_LOCAL alignas(
-        temporary_stack) char temporary_stack_storage[sizeof(temporary_stack)];
-    FOONATHAN_THREAD_LOCAL bool is_created = false;
-
-    temporary_stack& get() noexcept
-    {
-        FOONATHAN_MEMORY_ASSERT(is_created);
-        return *static_cast<temporary_stack*>(static_cast<void*>(&temporary_stack_storage));
-    }
-
-    void create(std::size_t initial_size)
-    {
-        if (!is_created)
-        {
-            ::new (static_cast<void*>(&temporary_stack_storage)) temporary_stack(initial_size);
-            is_created = true;
-        }
-    }
-} // namespace
-
-// explicit lifetime managment
-temporary_stack_initializer::temporary_stack_initializer(std::size_t initial_size)
-{
-    create(initial_size);
-}
-
-temporary_stack_initializer::~temporary_stack_initializer()
-{
-    if (is_created)
-        get().~temporary_stack();
-}
-
-temporary_stack& valkyrie::get_temporary_stack(std::size_t initial_size)
-{
-    create(initial_size);
-    return get();
-}
-
-#else
-
-// no lifetime managment
-
-temporary_stack_initializer::temporary_stack_initializer(std::size_t initial_size)
-{
-  if (initial_size != 0u)
-    FOONATHAN_MEMORY_WARNING("temporary_stack_initializer() has no effect if "
-                             "FOONATHAN_MEMORY_TEMPORARY_STACK == 0 (pass an initial size of 0 "
-                             "to disable this message)");
-}
-
-temporary_stack_initializer::~temporary_stack_initializer() {}
-
-temporary_stack& valkyrie::get_temporary_stack(std::size_t)
-{
-  FOONATHAN_MEMORY_UNREACHABLE("get_temporary_stack() called but stack is disabled by "
-                               "FOONATHAN_MEMORY_TEMPORARY_STACK == 0");
-  std::abort();
-}
-
-#endif
 
 const temporary_stack_initializer::defer_create_t temporary_stack_initializer::defer_create;
 
@@ -274,7 +187,7 @@ temporary_allocator::temporary_allocator() : temporary_allocator(get_temporary_s
 temporary_allocator::temporary_allocator(temporary_stack& stack)
     : unwind_(stack), prev_(stack.top_), shrink_to_fit_(false)
 {
-  FOONATHAN_MEMORY_ASSERT(!prev_ || prev_->is_active());
+  VK_assert(!prev_ || prev_->is_active());
   stack.top_ = this;
 }
 
@@ -291,9 +204,9 @@ stack.stack_.shrink_to_fit();
 }
 }
 
-void* temporary_allocator::allocate(std::size_t size, std::size_t alignment)
+void* temporary_allocator::allocate(u64 size, u64 alignment)
 {
-  FOONATHAN_MEMORY_ASSERT_MSG(is_active(), "object isn't the active allocator");
+  VK_assert_msg(is_active(), "object isn't the active allocator");
   return unwind_.get_stack().stack_.allocate(size, alignment);
 }
 
@@ -304,9 +217,9 @@ shrink_to_fit_ = true;
 
 bool temporary_allocator::is_active() const noexcept
 {
-FOONATHAN_MEMORY_ASSERT(unwind_.will_unwind());
+VK_assert(unwind_.will_unwind());
 auto res = unwind_.get_stack().top_ == this;
 // check that prev is actually before this
-FOONATHAN_MEMORY_ASSERT(!res || !prev_ || prev_->unwind_.get_marker() <= unwind_.get_marker());
+VK_assert(!res || !prev_ || prev_->unwind_.get_marker() <= unwind_.get_marker());
 return res;
 }

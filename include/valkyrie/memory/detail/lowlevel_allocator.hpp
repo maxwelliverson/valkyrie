@@ -5,11 +5,14 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_LOWLEVEL_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_DETAIL_LOWLEVEL_ALLOCATOR_HPP
 
+#include <valkyrie/memory/detail/align.hpp>
+#include <valkyrie/memory/detail/debug_helpers.hpp>
+
 namespace valkyrie::detail{
   template <class Functor>
   struct lowlevel_allocator_leak_handler
   {
-    void operator()(std::ptrdiff_t amount)
+    void operator()(i64 amount)
     {
       debug_handle_memory_leak(Functor::info(), amount);
     }
@@ -17,9 +20,9 @@ namespace valkyrie::detail{
 
   // Functor controls low-level allocation:
   // static allocator_info info()
-  // static void* allocate(std::size_t size, std::size_t alignment);
-  // static void deallocate(void *memory, std::size_t size, std::size_t alignment);
-  // static std::size_t max_node_size();
+  // static void* allocate(u64 size, u64 alignment);
+  // static void deallocate(void *memory, u64 size, u64 alignment);
+  // static u64 max_node_size();
   template <class Functor>
   class lowlevel_allocator : global_leak_checker<lowlevel_allocator_leak_handler<Functor>>
   {
@@ -41,21 +44,26 @@ namespace valkyrie::detail{
       return *this;
     }
 
-    void* allocate_node(std::size_t size, std::size_t alignment)
+    void* allocate_node(u64 size, u64 alignment)
     {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
       auto memory = Functor::allocate(actual_size, alignment);
-      if (!memory)
-        FOONATHAN_THROW(out_of_memory(Functor::info(), actual_size));
+      //if (!memory)
+        //FOONATHAN_THROW(out_of_memory(Functor::info(), actual_size));
 
-      this->on_allocate(actual_size);
+      if ( memory ) {
+        this->on_allocate(actual_size);
 
-      return debug_fill_new(memory, size, max_alignment);
+        return debug_fill_new(memory, size, max_alignment);
+      } else {
+        return nullptr;
+      }
+
     }
 
-    void deallocate_node(void* node, std::size_t size,
-                         std::size_t alignment) noexcept
+    void deallocate_node(void* node, u64 size,
+                         u64 alignment) noexcept
     {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
@@ -65,14 +73,14 @@ namespace valkyrie::detail{
       this->on_deallocate(actual_size);
     }
 
-    std::size_t max_node_size() const noexcept
+    u64 max_node_size() const noexcept
     {
       return Functor::max_node_size();
     }
   };
 
-#define FOONATHAN_MEMORY_LL_ALLOCATOR_LEAK_CHECKER(functor, var_name)                              \
-    FOONATHAN_MEMORY_GLOBAL_LEAK_CHECKER(lowlevel_allocator_leak_handler<functor>, var_name)
+#define VALKYRIE_LL_ALLOCATOR_LEAK_CHECKER(functor, var_name)                              \
+    VALKYRIE_GLOBAL_LEAK_CHECKER(lowlevel_allocator_leak_handler<functor>, var_name)
 }
 
 #endif//VALKYRIE_MEMORY_DETAIL_LOWLEVEL_ALLOCATOR_HPP

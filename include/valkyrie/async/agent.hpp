@@ -177,7 +177,7 @@ namespace valkyrie{
   };
   class AgentExceptionPayload{
     friend class AgentExceptionDomain;
-    Atomic<u32> refCount;
+    atomic<u32> refCount;
 
     virtual void doDestroy() noexcept = 0;
     void acquireRef() noexcept {
@@ -295,8 +295,8 @@ namespace valkyrie{
     friend class AgentMailbox;
     class CondemnedMessage;
 
-    Atomic<u32>          nextOffset = 0;
-    Atomic<MessageState> state      = MessageState::Alive;
+    atomic<u32>          nextOffset = 0;
+    atomic<MessageState> state      = MessageState::Alive;
 
     inline void condemn() noexcept;
     inline u32  exile(u32) noexcept;
@@ -431,9 +431,9 @@ namespace valkyrie{
     u32   queueSize;
 
 
-    Atomic<u32> nextReadOffset = 0;
-    Atomic<u32> nextWriteOffset = 0;
-    Atomic<u32> syncMarker = 0;
+    atomic<u32> nextReadOffset = 0;
+    atomic<u32> nextWriteOffset = 0;
+    atomic<u32> syncMarker = 0;
 
     Interface dynamicInterface;
 

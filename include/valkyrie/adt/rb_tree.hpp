@@ -54,7 +54,7 @@ protected:
     }
 
     inline int getOffsetFrom(const Node* other) const noexcept {
-      const ptrdiff_t nodeOffset = reinterpret_cast<const std::byte*>(this) - reinterpret_cast<const std::byte*>(other);
+      const i64 nodeOffset = reinterpret_cast<const std::byte*>(this) - reinterpret_cast<const std::byte*>(other);
       assert(nodeOffset <= std::numeric_limits<int>::max());
       assert(std::numeric_limits<int>::min() <= nodeOffset);
       return static_cast<int>(nodeOffset);
@@ -1228,7 +1228,7 @@ class AddressIntervalTree{
     }
 
     inline int getOffsetFrom(const Node* other) const noexcept {
-      const ptrdiff_t nodeOffset = reinterpret_cast<const std::byte*>(this) - reinterpret_cast<const std::byte*>(other);
+      const i64 nodeOffset = reinterpret_cast<const std::byte*>(this) - reinterpret_cast<const std::byte*>(other);
       assert(nodeOffset <= std::numeric_limits<int>::max());
       assert(std::numeric_limits<int>::min() <= nodeOffset);
       return static_cast<int>(nodeOffset);

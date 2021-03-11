@@ -27,10 +27,10 @@ namespace valkyrie{
       explicit operator function_ptr<Ret, Args...>() const noexcept {
         return static_cast<function_ptr<Ret, Args...>>(pFunction);
       }
-      template <typename Ret, typename ...Args>
+      /*template <typename Ret, typename ...Args>
       explicit operator noreturn_function_ptr<Ret, Args...>() const noexcept {
         return static_cast<noreturn_function_ptr<Ret, Args...>>(pFunction);
-      }
+      }*/
     };
 
   public:

@@ -389,9 +389,9 @@ namespace valkyrie{
     }
 
     template <detail::ExtentLike auto ...Ext>
-    using Extents = BasicExtents<ptrdiff_t, Ext...>;
+    using Extents = BasicExtents<i64, Ext...>;
     template <auto ...Ext>
-    using Strides = BasicStrides<ptrdiff_t, Ext...>;
+    using Strides = BasicStrides<i64, Ext...>;
 
 
 
@@ -679,10 +679,10 @@ namespace valkyrie{
       template <typename Ext>
       using rebind = AccessorBasic<ElementType, Ext>;
 
-      VK_nodiscard VK_gpu_inline constexpr typename offset_policy::pointer offset(pointer p, ptrdiff_t i) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr typename offset_policy::pointer offset(pointer p, i64 i) const noexcept {
         return p + i;
       }
-      VK_nodiscard VK_gpu_inline constexpr reference access(pointer p, ptrdiff_t i) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr reference access(pointer p, i64 i) const noexcept {
         return p[i];
       }
       VK_nodiscard VK_gpu_inline constexpr pointer decay(pointer p) const noexcept {

@@ -5,6 +5,10 @@
 #ifndef VALKYRIE_MEMORY_ERROR_HPP
 #define VALKYRIE_MEMORY_ERROR_HPP
 
+#include <valkyrie/primitives.hpp>
+
+#include <stdexcept>
+
 namespace valkyrie{
   /// Contains information about an allocator.
   /// It can be used for logging in the various handler functions.
@@ -66,7 +70,7 @@ namespace valkyrie{
     /// On a freestanding implementation it does nothing.
     /// \note It is different from \c std::new_handler; it will not be called in a loop trying to allocate memory
     /// or something like that. Its only job is to report the error.
-    using handler = void (*)(const allocator_info& info, std::size_t amount);
+    using handler = void (*)(const allocator_info& info, u64 amount);
 
     /// \effects Sets \c h as the new \ref handler in an atomic operation.
     /// A \c nullptr sets the default \ref handler.
@@ -78,7 +82,7 @@ namespace valkyrie{
 
     /// \effects Creates it by passing it the \ref allocator_info and the amount of memory failed to be allocated.
     /// It also calls the \ref handler to control whether or not it will be thrown.
-    out_of_memory(const allocator_info& info, std::size_t amount);
+    out_of_memory(const allocator_info& info, u64 amount);
 
     /// \returns A static NTBS that describes the error.
     /// It does not contain any specific information since there is no memory for formatting.
@@ -92,15 +96,16 @@ namespace valkyrie{
 
     /// \returns The amount of memory that was tried to be allocated.
     /// This is the value passed in the constructor.
-    std::size_t failed_allocation_size() const noexcept
+    u64 failed_allocation_size() const noexcept
     {
       return amount_;
     }
 
   private:
     allocator_info info_;
-    std::size_t    amount_;
+    u64    amount_;
   };
+
 
   /// A special case of \ref out_of_memory errors
   /// thrown when a low-level allocator with a fixed size runs out of memory.
@@ -111,7 +116,7 @@ namespace valkyrie{
   {
   public:
     /// \effects Just forwards to \ref out_of_memory.
-    out_of_fixed_memory(const allocator_info& info, std::size_t amount)
+    out_of_fixed_memory(const allocator_info& info, u64 amount)
         : out_of_memory(info, amount)
     {
     }
@@ -147,8 +152,8 @@ namespace valkyrie{
     /// \defaultbe On a hosted implementation it logs the error on \c stderr and continues execution,
     /// leading to this exception being thrown.
     /// On a freestanding implementation it does nothing.
-    using handler = void (*)(const allocator_info& info, std::size_t passed,
-                             std::size_t supported);
+    using handler = void (*)(const allocator_info& info, u64 passed,
+                             u64 supported);
 
     /// \effects Sets \c h as the new \ref handler in an atomic operation.
     /// A \c nullptr sets the default \ref handler.
@@ -161,8 +166,8 @@ namespace valkyrie{
     /// \effects Creates it by passing it the \ref allocator_info, the size passed to the allocation function
     /// and an upper bound on the supported size.
     /// It also calls the \ref handler to control whether or not it will be thrown.
-    bad_allocation_size(const allocator_info& info, std::size_t passed,
-                        std::size_t supported);
+    bad_allocation_size(const allocator_info& info, u64 passed,
+                        u64 supported);
 
     /// \returns A static NTBS that describes the error.
     /// It does not contain any specific information since there is no memory for formatting.
@@ -176,21 +181,21 @@ namespace valkyrie{
 
     /// \returns The size or alignment value that was passed to the allocation function
     /// which was too big. This is the same value passed to the constructor.
-    std::size_t passed_value() const noexcept
+    u64 passed_value() const noexcept
     {
       return passed_;
     }
 
     /// \returns An upper bound on the maximum supported size/alignment.
     /// It is only an upper bound, values below can fail, but values above will always fail.
-    std::size_t supported_value() const noexcept
+    u64 supported_value() const noexcept
     {
       return supported_;
     }
 
   private:
     allocator_info info_;
-    std::size_t    passed_, supported_;
+    u64    passed_, supported_;
   };
 
   /// The exception class thrown when the node size exceeds the supported maximum,
@@ -201,7 +206,7 @@ namespace valkyrie{
   {
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
-    bad_node_size(const allocator_info& info, std::size_t passed, std::size_t supported)
+    bad_node_size(const allocator_info& info, u64 passed, u64 supported)
         : bad_allocation_size(info, passed, supported)
     {
     }
@@ -219,7 +224,7 @@ namespace valkyrie{
   {
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
-    bad_array_size(const allocator_info& info, std::size_t passed, std::size_t supported)
+    bad_array_size(const allocator_info& info, u64 passed, u64 supported)
         : bad_allocation_size(info, passed, supported)
     {
     }
@@ -238,7 +243,7 @@ namespace valkyrie{
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
     /// \c passed is <tt>count * size</tt>, \c supported the size in bytes.
-    bad_alignment(const allocator_info& info, std::size_t passed, std::size_t supported)
+    bad_alignment(const allocator_info& info, u64 passed, u64 supported)
         : bad_allocation_size(info, passed, supported)
     {
     }
@@ -251,7 +256,7 @@ namespace valkyrie{
   namespace detail
   {
     template <class Ex, typename Func>
-    void check_allocation_size(std::size_t passed, Func f, const allocator_info& info)
+    void check_allocation_size(u64 passed, Func f, const allocator_info& info)
     {
 #if FOONATHAN_MEMORY_CHECK_ALLOCATION_SIZE
       auto supported = f();
@@ -265,7 +270,7 @@ namespace valkyrie{
     }
 
     template <class Ex>
-    void check_allocation_size(std::size_t passed, std::size_t supported,
+    void check_allocation_size(u64 passed, u64 supported,
                                const allocator_info& info)
     {
       check_allocation_size<Ex>(

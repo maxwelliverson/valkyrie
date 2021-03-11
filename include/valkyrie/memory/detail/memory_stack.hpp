@@ -5,6 +5,9 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_MEMORY_STACK_HPP
 #define VALKYRIE_MEMORY_DETAIL_MEMORY_STACK_HPP
 
+#include "align.hpp"
+#include "../debugging.hpp"
+
 namespace valkyrie::detail{
   // simple memory stack implementation that does not support growing
   class fixed_memory_stack
@@ -33,20 +36,20 @@ namespace valkyrie::detail{
     }
 
     // bumps the top pointer without filling it
-    void bump(std::size_t offset) noexcept
+    void bump(u64 offset) noexcept
     {
       cur_ += offset;
     }
 
     // bumps the top pointer by offset and fills
-    void bump(std::size_t offset, debug_magic m) noexcept
+    void bump(u64 offset, debug_magic m) noexcept
     {
       detail::debug_fill(cur_, offset, m);
       bump(offset);
     }
 
     // same as bump(offset, m) but returns old value
-    void* bump_return(std::size_t offset,
+    void* bump_return(u64 offset,
                       debug_magic m = debug_magic::new_memory) noexcept
     {
       auto memory = cur_;
@@ -57,13 +60,13 @@ namespace valkyrie::detail{
 
     // allocates memory by advancing the stack, returns nullptr if insufficient
     // debug: mark memory as new_memory, put fence in front and back
-    void* allocate(const char* end, std::size_t size, std::size_t alignment,
-                   std::size_t fence_size = debug_fence_size) noexcept
+    void* allocate(const char* end, u64 size, u64 alignment,
+                   u64 fence_size = debug_fence_size) noexcept
     {
       if (cur_ == nullptr)
         return nullptr;
 
-      auto remaining = std::size_t(end - cur_);
+      auto remaining = u64(end - cur_);
       auto offset    = align_offset(cur_ + fence_size, alignment);
       if (fence_size + offset + size + fence_size > remaining)
         return nullptr;
@@ -73,8 +76,8 @@ namespace valkyrie::detail{
 
     // same as allocate() but does not check the size
     // note: pass it the align OFFSET, not the alignment
-    void* allocate_unchecked(std::size_t size, std::size_t align_offset,
-                             std::size_t fence_size = debug_fence_size) noexcept
+    void* allocate_unchecked(u64 size, u64 align_offset,
+                             u64 fence_size = debug_fence_size) noexcept
     {
       bump(fence_size, debug_magic::fence_memory);
       bump(align_offset, debug_magic::alignment_memory);
@@ -88,7 +91,7 @@ namespace valkyrie::detail{
     // doesn't check for invalid pointer
     void unwind(char* top) noexcept
     {
-      debug_fill(top, std::size_t(cur_ - top), debug_magic::freed_memory);
+      debug_fill(top, u64(cur_ - top), debug_magic::freed_memory);
       cur_ = top;
     }
 

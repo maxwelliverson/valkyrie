@@ -5,51 +5,35 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_DEBUG_HELPERS_HPP
 #define VALKYRIE_MEMORY_DETAIL_DEBUG_HELPERS_HPP
 
+#include <valkyrie/primitives.hpp>
+#include <valkyrie/traits.hpp>
+#include <valkyrie/async/atomic.hpp>
+
+#define PP_VK_impl_INLINE_LINKAGE_FN(...) { __VA_ARGS__ }
+#define PP_VK_impl_EXTERNAL_LINKAGE_FN(...) ;
+
+#define VK_inline_linkage_fn PP_VK_impl_INLINE_LINKAGE_FN
+#define VK_external_linkage_fn PP_VK_impl_EXTERNAL_LINKAGE_FN
+#define VK_debug_memory(...) VK_if(VK_not(VK_debug_build)( inline static )) __VA_ARGS__ VK_if(VK_debug_build(VK_external_linkage_fn)VK_else(VK_inline_linkage_fn))
+
 namespace valkyrie{
   enum class debug_magic : unsigned char;
   struct allocator_info;
 
   namespace detail {
-    using debug_fill_enabled = std::integral_constant<bool, FOONATHAN_MEMORY_DEBUG_FILL>;
-    constexpr std::size_t debug_fence_size =
-        FOONATHAN_MEMORY_DEBUG_FILL ? FOONATHAN_MEMORY_DEBUG_FENCE : 0u;
 
-#if FOONATHAN_MEMORY_DEBUG_FILL
-    // fills size bytes of memory with debug_magic
-    void debug_fill(void *memory, std::size_t size, debug_magic m) noexcept;
+    using debug_fill_enabled = meta::boolean_constant<VK_debug_build>;
+    constexpr u64 debug_fence_size = debug_fill_enabled::value;
 
-    // returns nullptr if memory is filled with debug_magic
-    // else returns pointer to mismatched byte
-    void *debug_is_filled(void *memory, std::size_t size, debug_magic m) noexcept;
+    VK_debug_memory(void debug_fill(void *, u64, debug_magic) noexcept)()
 
-    // fills fence, new and fence
-    // returns after fence
-    void *debug_fill_new(void *memory, std::size_t node_size,
-                         std::size_t fence_size = debug_fence_size) noexcept;
+    VK_debug_memory(void* debug_is_filled(void*, u64, debug_magic) noexcept)( return nullptr; )
 
-    // fills free memory and returns memory starting at fence
-    void *debug_fill_free(void *memory, std::size_t node_size,
-                          std::size_t fence_size = debug_fence_size) noexcept;
+    VK_debug_memory(void *debug_fill_new(void *memory, u64, u64) noexcept)( return memory; )
 
-    // fills internal memory
-    void debug_fill_internal(void *memory, std::size_t size, bool free) noexcept;
-#else
-    inline void debug_fill(void *, std::size_t, debug_magic) noexcept {}
+    VK_debug_memory(void *debug_fill_free(void *memory, u64, u64) noexcept )( return static_cast<char *>(memory); )
 
-    inline void *debug_is_filled(void *, std::size_t, debug_magic) noexcept {
-      return nullptr;
-    }
-
-    inline void *debug_fill_new(void *memory, std::size_t, std::size_t) noexcept {
-      return memory;
-    }
-
-    inline void *debug_fill_free(void *memory, std::size_t, std::size_t) noexcept {
-      return static_cast<char *>(memory);
-    }
-
-    inline void debug_fill_internal(void *, std::size_t, bool) noexcept {}
-#endif
+    VK_debug_memory(void debug_fill_internal(void *, u64, bool) noexcept)()
 
     void debug_handle_invalid_ptr(const allocator_info &info, void *ptr);
 
@@ -58,45 +42,42 @@ namespace valkyrie{
     // note: ptr is just used as the information passed to the invalid ptr handler
     template<class Functor>
     void debug_check_pointer(Functor condition, const allocator_info &info, void *ptr) {
-#if FOONATHAN_MEMORY_DEBUG_POINTER_CHECK
-      if (!condition())
-        debug_handle_invalid_ptr(info, ptr);
-#else
-      (void) ptr;
-      (void) condition;
-      (void) info;
-#endif
+      VK_if(VK_debug_build(
+          if (!condition()) debug_handle_invalid_ptr(info, ptr);
+      ) VK_else(
+            (void)ptr;
+            (void)condition;
+            (void)info;
+      ))
     }
 
     // validates ptr by using a more expensive double-dealloc check
     template<class Functor>
     void debug_check_double_dealloc(Functor condition, const allocator_info &info,
                                     void *ptr) {
-#if FOONATHAN_MEMORY_DEBUG_DOUBLE_DEALLOC_CHECK
-      debug_check_pointer(condition, info, ptr);
-#else
-      (void) condition;
-      (void) info;
-      (void) ptr;
-#endif
+      VK_if(VK_debug_build(
+                if (!condition()) debug_handle_invalid_ptr(info, ptr);
+            ) VK_else(
+                (void)ptr;
+                (void)condition;
+                (void)info;
+            ))
     }
 
-    void debug_handle_memory_leak(const allocator_info &info, std::ptrdiff_t amount);
+    void debug_handle_memory_leak(const allocator_info &info, i64 amount);
 
     // does no leak checking, null overhead
     template<class Handler>
     class no_leak_checker {
     public:
-      no_leak_checker() noexcept {}
-      no_leak_checker(no_leak_checker &&) noexcept {}
-      ~no_leak_checker() noexcept {}
+      no_leak_checker() noexcept = default;
+      no_leak_checker(no_leak_checker &&) noexcept = default;
+      ~no_leak_checker() noexcept = default;
 
-      no_leak_checker &operator=(no_leak_checker &&) noexcept {
-        return *this;
-      }
+      no_leak_checker &operator=(no_leak_checker &&) noexcept = default;
 
-      void on_allocate(std::size_t) noexcept {}
-      void on_deallocate(std::size_t) noexcept {}
+      void on_allocate(u64) noexcept {}
+      void on_deallocate(u64) noexcept {}
     };
 
     // does leak checking per-object
@@ -122,20 +103,20 @@ namespace valkyrie{
         return *this;
       }
 
-      void on_allocate(std::size_t size) noexcept {
-        allocated_ += std::ptrdiff_t(size);
+      void on_allocate(u64 size) noexcept {
+        allocated_ += i64(size);
       }
 
-      void on_deallocate(std::size_t size) noexcept {
-        allocated_ -= std::ptrdiff_t(size);
+      void on_deallocate(u64 size) noexcept {
+        allocated_ -= i64(size);
       }
 
     private:
-      std::ptrdiff_t allocated_;
+      i64 allocated_;
     };
 
     // does leak checking on a global basis
-    // call macro FOONATHAN_MEMORY_GLOBAL_LEAK_CHECKER(handler, var_name) in the header
+    // call macro VALKYRIE_GLOBAL_LEAK_CHECKER(handler, var_name) in the header
     // when last counter gets destroyed, leak is detected
     template<class Handler>
     class global_leak_checker_impl {
@@ -152,47 +133,48 @@ namespace valkyrie{
         }
       };
 
-      global_leak_checker_impl() noexcept {}
+      global_leak_checker_impl() noexcept = default;
       global_leak_checker_impl(global_leak_checker_impl &&) noexcept {}
-      ~global_leak_checker_impl() noexcept {}
+      ~global_leak_checker_impl() noexcept = default;
 
       global_leak_checker_impl &operator=(global_leak_checker_impl &&) noexcept {
         return *this;
       }
 
-      void on_allocate(std::size_t size) noexcept {
-        allocated_ += std::ptrdiff_t(size);
+      void on_allocate(u64 size) noexcept {
+        allocated_ += i64(size);
       }
 
-      void on_deallocate(std::size_t size) noexcept {
-        allocated_ -= std::ptrdiff_t(size);
+      void on_deallocate(u64 size) noexcept {
+        allocated_ -= i64(size);
       }
 
     private:
-      static std::atomic<std::size_t> no_counter_objects_;
-      static std::atomic<std::ptrdiff_t> allocated_;
+      static atomic<u64> no_counter_objects_;
+      static atomic<i64> allocated_;
     };
 
     template<class Handler>
-    std::atomic<std::size_t> global_leak_checker_impl<Handler>::no_counter_objects_(0u);
+    atomic<u64> global_leak_checker_impl<Handler>::no_counter_objects_(0u);
 
     template<class Handler>
-    std::atomic<std::ptrdiff_t> global_leak_checker_impl<Handler>::allocated_(0);
+    atomic<i64> global_leak_checker_impl<Handler>::allocated_(0);
 
-#if FOONATHAN_MEMORY_DEBUG_LEAK_CHECK
+#if defined(EBUG_GLOBAL_LEAK_CHECKING)
     template<class Handler>
     using global_leak_checker = global_leak_checker_impl<Handler>;
 
-#define FOONATHAN_MEMORY_GLOBAL_LEAK_CHECKER(handler, var_name)                                    \
+#define VALKYRIE_GLOBAL_LEAK_CHECKER(handler, var_name)                                    \
     static valkyrie::detail::global_leak_checker<handler>::counter var_name;
 #else
     template<class Handler>
     using global_leak_checker = no_leak_checker<int>;// only one instantiation
 
-#define FOONATHAN_MEMORY_GLOBAL_LEAK_CHECKER(handler, var_name)
+#define VALKYRIE_GLOBAL_LEAK_CHECKER(handler, var_name)
 #endif
 
-#if FOONATHAN_MEMORY_DEBUG_LEAK_CHECK
+
+#if VK_debug_build
     template<class Handler>
     using default_leak_checker = object_leak_checker<Handler>;
 #else

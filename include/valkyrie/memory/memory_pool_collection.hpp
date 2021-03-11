@@ -5,12 +5,23 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_POOL_COLLECTION_HPP
 #define VALKYRIE_MEMORY_MEMORY_POOL_COLLECTION_HPP
 
+#include <valkyrie/primitives.hpp>
+
+#include "default_allocator.hpp"
+#include "detail/align.hpp"
+#include "detail/memory_stack.hpp"
+#include "detail/free_list_array.hpp"
+#include "debugging.hpp"
+#include "error.hpp"
+#include "memory_arena.hpp"
+#include "memory_pool_type.hpp"
+
 namespace valkyrie{
   namespace detail
   {
     struct memory_pool_collection_leak_handler
     {
-      void operator()(std::ptrdiff_t amount);
+      void operator()(i64 amount);
     };
   } // namespace detail
 
@@ -42,7 +53,7 @@ namespace valkyrie{
   template <class PoolType, class BucketDistribution,
       class BlockOrRawAllocator = default_allocator>
   class memory_pool_collection
-      : FOONATHAN_EBO(detail::default_leak_checker<detail::memory_pool_collection_leak_handler>)
+      : detail::default_leak_checker<detail::memory_pool_collection_leak_handler>
       {
           using free_list_array =
           detail::free_list_array<typename PoolType::type, typename BucketDistribution::type>;
@@ -61,9 +72,9 @@ namespace valkyrie{
           /// \requires \c max_node_size must be a valid \concept{concept_node,node} size
           /// and \c block_size must be non-zero.
           template <typename... Args>
-          memory_pool_collection(std::size_t max_node_size, std::size_t block_size,
+          memory_pool_collection(u64 max_node_size, u64 block_size,
           Args&&... args)
-          : arena_(block_size, detail::forward<Args>(args)...),
+          : arena_(block_size, std::forward<Args>(args)...),
           stack_(allocate_block()),
           pools_(stack_, block_end(), max_node_size)
           {
@@ -79,19 +90,19 @@ namespace valkyrie{
           /// That means that it is not allowed to call \ref deallocate_node() on a moved-from allocator
           /// even when passing it memory that was previously allocated by this object.
           memory_pool_collection(memory_pool_collection&& other) noexcept
-          : leak_checker(detail::move(other)),
-          arena_(detail::move(other.arena_)),
-          stack_(detail::move(other.stack_)),
-          pools_(detail::move(other.pools_))
+          : leak_checker(std::move(other)),
+          arena_(std::move(other.arena_)),
+          stack_(std::move(other.stack_)),
+          pools_(std::move(other.pools_))
           {
           }
 
           memory_pool_collection& operator=(memory_pool_collection&& other) noexcept
           {
-            leak_checker::operator=(detail::move(other));
-            arena_                = detail::move(other.arena_);
-            stack_                = detail::move(other.stack_);
-            pools_                = detail::move(other.pools_);
+            leak_checker::operator=(std::move(other));
+            arena_                = std::move(other.arena_);
+            stack_                = std::move(other.stack_);
+            pools_                = std::move(other.pools_);
             return *this;
           }
           /// @}
@@ -106,7 +117,7 @@ namespace valkyrie{
           /// \returns A \concept{concept_node,node} of given size suitable aligned,
           /// i.e. suitable for any type where <tt>sizeof(T) < node_size</tt>.
           /// \throws Anything thrown by the \concept{concept_blockallocator,BlockAllocator} if a growth is needed or a \ref bad_node_size exception if the node size is too big.
-          void* allocate_node(std::size_t node_size)
+          void* allocate_node(u64 node_size)
           {
             detail::check_allocation_size<bad_node_size>(
                 node_size, [&] { return max_node_size(); }, info());
@@ -118,7 +129,7 @@ namespace valkyrie{
             }
 
             auto mem = pool.allocate();
-            FOONATHAN_MEMORY_ASSERT(mem);
+            VK_assert(mem);
             return mem;
           }
 
@@ -127,7 +138,7 @@ namespace valkyrie{
           /// instead of growing the arnea and possibly throwing.
           /// \returns A \concept{concept_node,node} of given size suitable aligned
           /// or `nullptr` in case of failure.
-          void* try_allocate_node(std::size_t node_size) noexcept
+          void* try_allocate_node(u64 node_size) noexcept
           {
             if (node_size > max_node_size())
               return nullptr;
@@ -150,7 +161,7 @@ namespace valkyrie{
           /// or a \ref bad_allocation_size exception.
           /// \requires \c count must be valid \concept{concept_array,array count} and
           /// \c node_size must be valid \concept{concept_node,node size}.
-          void* allocate_array(std::size_t count, std::size_t node_size)
+          void* allocate_array(u64 count, u64 node_size)
           {
             detail::check_allocation_size<bad_node_size>(
                 node_size, [&] { return max_node_size(); }, info());
@@ -178,7 +189,7 @@ namespace valkyrie{
                 pool.insert(block.memory, block.size);
 
                 mem = pool.allocate(count * node_size);
-                FOONATHAN_MEMORY_ASSERT(mem);
+                VK_assert(mem);
               }
             }
 
@@ -190,7 +201,7 @@ namespace valkyrie{
           /// instead of growing the arnea and possibly throwing.
           /// \returns A \concept{concept_array,array} of given size suitable aligned
           /// or `nullptr` in case of failure.
-          void* try_allocate_array(std::size_t count, std::size_t node_size) noexcept
+          void* try_allocate_array(u64 count, u64 node_size) noexcept
           {
             if (!pool_type::value || node_size > max_node_size())
               return nullptr;
@@ -207,7 +218,7 @@ namespace valkyrie{
           /// \effects Deallocates a \concept{concept_node,node} by putting it back onto the appropriate free list.
           /// \requires \c ptr must be a result from a previous call to \ref allocate_node() with the same size on the same free list,
           /// i.e. either this allocator object or a new object created by moving this to it.
-          void deallocate_node(void* ptr, std::size_t node_size) noexcept
+          void deallocate_node(void* ptr, u64 node_size) noexcept
           {
             pools_.get(node_size).deallocate(ptr);
           }
@@ -216,7 +227,7 @@ namespace valkyrie{
           /// But it checks if it can deallocate this memory.
           /// \returns `true` if the node could be deallocated,
           /// `false` otherwise.
-          bool try_deallocate_node(void* ptr, std::size_t node_size) noexcept
+          bool try_deallocate_node(void* ptr, u64 node_size) noexcept
           {
             if (node_size > max_node_size() || !arena_.owns(ptr))
               return false;
@@ -227,7 +238,7 @@ namespace valkyrie{
           /// \effects Deallocates an \concept{concept_array,array} by putting it back onto the free list.
           /// \requires \c ptr must be a result from a previous call to \ref allocate_array() with the same sizes on the same free list,
           /// i.e. either this allocator object or a new object created by moving this to it.
-          void deallocate_array(void* ptr, std::size_t count, std::size_t node_size) noexcept
+          void deallocate_array(void* ptr, u64 count, u64 node_size) noexcept
           {
             pools_.get(node_size).deallocate(ptr, count * node_size);
           }
@@ -236,7 +247,7 @@ namespace valkyrie{
           /// But it checks if it can deallocate this memory.
           /// \returns `true` if the array could be deallocated,
           /// `false` otherwise.
-          bool try_deallocate_array(void* ptr, std::size_t count, std::size_t node_size) noexcept
+          bool try_deallocate_array(void* ptr, u64 count, u64 node_size) noexcept
           {
             if (!pool_type::value || node_size > max_node_size() || !arena_.owns(ptr))
               return false;
@@ -251,16 +262,16 @@ namespace valkyrie{
           /// \throws Anything thrown by the \concept{concept_blockallocator,BlockAllocator} if a growth is needed.
           /// \requires \c node_size must be valid \concept{concept_node,node size} less than or equal to \ref max_node_size(),
           /// \c capacity_left must be less than \ref next_capacity().
-          void reserve(std::size_t node_size, std::size_t capacity)
+          void reserve(u64 node_size, u64 capacity)
           {
-            FOONATHAN_MEMORY_ASSERT_MSG(node_size <= max_node_size(), "node_size too big");
+            VK_assert_MSG(node_size <= max_node_size(), "node_size too big");
             auto& pool = pools_.get(node_size);
             reserve_memory(pool, capacity);
           }
 
           /// \returns The maximum node size for which is a free list.
           /// This is the value passed to it in the constructor.
-          std::size_t max_node_size() const noexcept
+          u64 max_node_size() const noexcept
           {
             return pools_.max_node_size();
           }
@@ -269,9 +280,9 @@ namespace valkyrie{
           /// as defined over the \c BucketDistribution.
           /// This is the number of nodes that can be allocated without the free list requesting more memory from the arena.
           /// \note Array allocations may lead to a growth even if the capacity_left is big enough.
-          std::size_t pool_capacity_left(std::size_t node_size) const noexcept
+          u64 pool_capacity_left(u64 node_size) const noexcept
           {
-            FOONATHAN_MEMORY_ASSERT_MSG(node_size <= max_node_size(), "node_size too big");
+            VK_assert_MSG(node_size <= max_node_size(), "node_size too big");
             return pools_.get(node_size).capacity();
           }
 
@@ -279,15 +290,15 @@ namespace valkyrie{
           /// This is the number of bytes that can be inserted into the free lists
           /// without requesting more memory from the \concept{concept_blockallocator,BlockAllocator}.
           /// \note Array allocations may lead to a growth even if the capacity is big enough.
-          std::size_t capacity_left() const noexcept
+          u64 capacity_left() const noexcept
           {
-            return std::size_t(block_end() - stack_.top());
+            return u64(block_end() - stack_.top());
           }
 
           /// \returns The size of the next memory block after \ref capacity_left() arena grows.
           /// This is the amount of memory that can be distributed in the pools.
           /// \note If the `PoolType` is \ref small_node_pool, the exact usable memory is lower than that.
-          std::size_t next_capacity() const noexcept
+          u64 next_capacity() const noexcept
           {
             return arena_.next_block_size();
           }
@@ -305,7 +316,7 @@ namespace valkyrie{
             return {FOONATHAN_MEMORY_LOG_PREFIX "::memory_pool_collection", this};
           }
 
-          std::size_t def_capacity() const noexcept
+          u64 def_capacity() const noexcept
           {
             return arena_.next_block_size() / pools_.size();
           }
@@ -323,7 +334,7 @@ namespace valkyrie{
 
           bool insert_rest(typename pool_type::type& pool) noexcept
           {
-            if (auto remaining = std::size_t(block_end() - stack_.top()))
+            if (auto remaining = u64(block_end() - stack_.top()))
             {
               auto offset = detail::align_offset(stack_.top(), detail::max_alignment);
               if (offset < remaining)
@@ -337,7 +348,7 @@ namespace valkyrie{
             return false;
           }
 
-          void try_reserve_memory(typename pool_type::type& pool, std::size_t capacity) noexcept
+          void try_reserve_memory(typename pool_type::type& pool, u64 capacity) noexcept
           {
             auto mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
             if (!mem)
@@ -346,7 +357,7 @@ namespace valkyrie{
               pool.insert(mem, capacity);
           }
 
-          memory_block reserve_memory(typename pool_type::type& pool, std::size_t capacity)
+          memory_block reserve_memory(typename pool_type::type& pool, u64 capacity)
           {
             auto mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
             if (!mem)
@@ -357,7 +368,7 @@ namespace valkyrie{
 
               // allocate ensuring alignment
               mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
-              FOONATHAN_MEMORY_ASSERT(mem);
+              VK_assert(mem);
             }
             return {mem, capacity};
           }
@@ -369,7 +380,7 @@ namespace valkyrie{
           friend allocator_traits<memory_pool_collection>;
       };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class memory_pool_collection<node_pool, identity_buckets>;
         extern template class memory_pool_collection<array_pool, identity_buckets>;
         extern template class memory_pool_collection<small_node_pool, identity_buckets>;
@@ -377,7 +388,7 @@ namespace valkyrie{
         extern template class memory_pool_collection<node_pool, log2_buckets>;
         extern template class memory_pool_collection<array_pool, log2_buckets>;
         extern template class memory_pool_collection<small_node_pool, log2_buckets>;
-#endif
+
 
   /// An alias for \ref memory_pool_collection using the \ref identity_buckets policy
   /// and a \c PoolType defaulting to \ref node_pool.
@@ -404,8 +415,8 @@ namespace valkyrie{
     /// \throws Anything thrown by the pool allocation function
     /// or a \ref bad_allocation_size exception if \c size / \c alignment exceeds \ref max_node_size() / the suitable alignment value,
     /// i.e. the node is over-aligned.
-    static void* allocate_node(allocator_type& state, std::size_t size,
-                               std::size_t alignment)
+    static void* allocate_node(allocator_type& state, u64 size,
+                               u64 alignment)
     {
       // node already checked
       detail::check_allocation_size<bad_alignment>(
@@ -418,8 +429,8 @@ namespace valkyrie{
     /// \returns The result of \ref memory_pool_collection::allocate_array().
     /// \throws Anything thrown by the pool allocation function or a \ref bad_allocation_size exception.
     /// \requires The \ref memory_pool_collection has to support array allocations.
-    static void* allocate_array(allocator_type& state, std::size_t count, std::size_t size,
-                                std::size_t alignment)
+    static void* allocate_array(allocator_type& state, u64 count, u64 size,
+                                u64 alignment)
     {
       // node and array already checked
       detail::check_allocation_size<bad_alignment>(
@@ -430,8 +441,8 @@ namespace valkyrie{
     }
 
     /// \effects Calls \ref memory_pool_collection::deallocate_node().
-    static void deallocate_node(allocator_type& state, void* node, std::size_t size,
-                                std::size_t) noexcept
+    static void deallocate_node(allocator_type& state, void* node, u64 size,
+                                u64) noexcept
     {
       state.deallocate_node(node, size);
       state.on_deallocate(size);
@@ -439,28 +450,28 @@ namespace valkyrie{
 
     /// \effects Calls \ref memory_pool_collection::deallocate_array().
     /// \requires The \ref memory_pool_collection has to support array allocations.
-    static void deallocate_array(allocator_type& state, void* array, std::size_t count,
-                                 std::size_t size, std::size_t) noexcept
+    static void deallocate_array(allocator_type& state, void* array, u64 count,
+                                 u64 size, u64) noexcept
     {
       state.deallocate_array(array, count, size);
       state.on_deallocate(count * size);
     }
 
     /// \returns The maximum size of each node which is \ref memory_pool_collection::max_node_size().
-    static std::size_t max_node_size(const allocator_type& state) noexcept
+    static u64 max_node_size(const allocator_type& state) noexcept
     {
       return state.max_node_size();
     }
 
     /// \returns An upper bound on the maximum array size which is \ref memory_pool::next_capacity().
-    static std::size_t max_array_size(const allocator_type& state) noexcept
+    static u64 max_array_size(const allocator_type& state) noexcept
     {
       return state.next_capacity();
     }
 
     /// \returns Just \c alignof(std::max_align_t) since the actual maximum alignment depends on the node size,
     /// the nodes must not be over-aligned.
-    static std::size_t max_alignment(const allocator_type&) noexcept
+    static u64 max_alignment(const allocator_type&) noexcept
     {
       return detail::max_alignment;
     }
@@ -478,8 +489,8 @@ namespace valkyrie{
 
     /// \returns The result of \ref memory_pool_collection::try_allocate_node()
     /// or `nullptr` if the allocation size was too big.
-    static void* try_allocate_node(allocator_type& state, std::size_t size,
-                                   std::size_t alignment) noexcept
+    static void* try_allocate_node(allocator_type& state, u64 size,
+                                   u64 alignment) noexcept
     {
       if (alignment > traits::max_alignment(state))
         return nullptr;
@@ -488,8 +499,8 @@ namespace valkyrie{
 
     /// \returns The result of \ref memory_pool_collection::try_allocate_array()
     /// or `nullptr` if the allocation size was too big.
-    static void* try_allocate_array(allocator_type& state, std::size_t count,
-                                    std::size_t size, std::size_t alignment) noexcept
+    static void* try_allocate_array(allocator_type& state, u64 count,
+                                    u64 size, u64 alignment) noexcept
     {
       if (count * size > traits::max_array_size(state)
           || alignment > traits::max_alignment(state))
@@ -499,8 +510,8 @@ namespace valkyrie{
 
     /// \effects Just forwards to \ref memory_pool_collection::try_deallocate_node().
     /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_node(allocator_type& state, void* node, std::size_t size,
-                                    std::size_t alignment) noexcept
+    static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
+                                    u64 alignment) noexcept
     {
       if (alignment > traits::max_alignment(state))
         return false;
@@ -509,8 +520,8 @@ namespace valkyrie{
 
     /// \effects Forwards to \ref memory_pool_collection::deallocate_array().
     /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_array(allocator_type& state, void* array, std::size_t count,
-                                     std::size_t size, std::size_t alignment) noexcept
+    static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
+                                     u64 size, u64 alignment) noexcept
     {
       if (count * size > traits::max_array_size(state)
           || alignment > traits::max_alignment(state))
@@ -519,7 +530,7 @@ namespace valkyrie{
     }
   };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
         extern template class allocator_traits<
             memory_pool_collection<array_pool, identity_buckets>>;
@@ -544,7 +555,7 @@ namespace valkyrie{
             memory_pool_collection<array_pool, log2_buckets>>;
         extern template class composable_allocator_traits<
             memory_pool_collection<small_node_pool, log2_buckets>>;
-#endif
+
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_POOL_COLLECTION_HPP

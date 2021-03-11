@@ -8,49 +8,29 @@
 namespace valkyrie{
   namespace detail
   {
-    template <class Allocator>
-    std::true_type has_construct(int, FOONATHAN_SFINAE(std::declval<Allocator>().construct(
-        std::declval<typename Allocator::pointer>(),
-        std::declval<typename Allocator::value_type>())));
-
-    template <class Allocator>
-    std::false_type has_construct(short);
-
-    template <class Allocator>
-    std::true_type has_destroy(int, FOONATHAN_SFINAE(std::declval<Allocator>().destroy(
-    std::declval<typename Allocator::pointer>())));
-
-    template <class Allocator>
-    std::false_type has_destroy(short);
-
-    template <class Allocator>
-    struct check_standard_allocator
-    {
-      using custom_construct = decltype(has_construct<Allocator>(0));
-      using custom_destroy   = decltype(has_destroy<Allocator>(0));
-
-      using valid = std::integral_constant<bool, !custom_construct::value
-                                                 && !custom_destroy::value>;
+    template <typename A>
+    concept has_construct = requires{
+      typename A::pointer;
+      typename A::value_type;
+    } && requires(A& alloc, typename A::pointer p, typename A::value_type value){
+      alloc.construct(p, std::move(value));
     };
+
+    template <typename A>
+    concept has_destroy = requires{
+      typename A::pointer;
+    } && requires(A& alloc, typename A::pointer p){
+      alloc.destroy(p);
+    };
+
+    template <typename A>
+    concept standard_allocator = !has_construct<A> && !has_destroy<A>;
   } // namespace detail
 
-  /// Traits class that checks whether or not a standard \c Allocator can be used as \concept{concept_rawallocator,RawAllocator}.
-  /// It checks the existence of a custom \c construct(), \c destroy() function, if provided,
-  /// it cannot be used since it would not be called.<br>
-  /// Specialize it for custom \c Allocator types to override this check.
-  /// \ingroup core
-  template <class Allocator>
-  struct allocator_is_raw_allocator
-      : FOONATHAN_EBO(detail::check_standard_allocator<Allocator>::valid)
-      {
-      };
-
-  /// Specialization of \ref allocator_is_raw_allocator that allows \c std::allocator again.
-  /// \ingroup core
+  template <typename A>
+  struct allocator_is_raw_allocator : meta::value_wrapper<detail::standard_allocator<A>>{};
   template <typename T>
-  struct allocator_is_raw_allocator<std::allocator<T>> : std::true_type
-{
-};
+  struct allocator_is_raw_allocator<std::allocator<T>> : meta::true_type{};
 
 namespace traits_detail // use seperate namespace to avoid name clashes
 {
@@ -60,8 +40,7 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   {
     operator void*() const noexcept
     {
-      FOONATHAN_MEMORY_UNREACHABLE(
-          "this is just to hide an error and move static_assert to the front");
+      VK_unreachable;
       return nullptr;
     }
   };
@@ -148,26 +127,41 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   auto is_stateful(min_concept) ->
   typename is_stateful_impl<Allocator, std::is_empty<Allocator>::value>::type;
 
+  
+  template <typename T, typename U>
+  struct valid_return_type;
+  template <typename T>
+  struct valid_return_type<T, T>{
+    using type = T;
+  };
+  
+  template <typename T, typename U>
+  using valid_return_type_t = typename valid_return_type<T, U>::type;
+
+  
+#define VK_auto_return(expr) decltype(expr) { return expr; }
+#define VK_auto_return_type(expr, type) valid_return_type_t<decltype(expr), type> { return expr; }
+
   //=== allocate_node() ===//
   // first try Allocator::allocate_node
   // then assume std_allocator and call Allocator::allocate
   // then error
   template <class Allocator>
-  auto allocate_node(full_concept, Allocator& alloc, std::size_t size,
-                     std::size_t alignment)
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.allocate_node(size, alignment), void*)
+  auto allocate_node(full_concept, Allocator& alloc, u64 size,
+                     u64 alignment)
+  -> VK_auto_return_type(alloc.allocate_node(size, alignment), void*)
 
   template <class Allocator>
-  auto allocate_node(std_concept, Allocator& alloc, std::size_t size, std::size_t)
-  -> FOONATHAN_AUTO_RETURN(static_cast<void*>(alloc.allocate(size)))
+  auto allocate_node(std_concept, Allocator& alloc, u64 size, u64)
+  -> VK_auto_return(static_cast<void*>(alloc.allocate(size)))
 
   template <class Allocator>
-  error allocate_node(error, Allocator&, std::size_t, std::size_t)
+  error allocate_node(error, Allocator&, u64, u64)
   {
     static_assert(invalid_allocator_concept<Allocator>::error,
                   "type is not a RawAllocator as it does not provide: void* "
-                  "allocate_node(std::size_t, "
-                  "std::size_t)");
+                  "allocate_node(u64, "
+                  "u64)");
     return {};
   }
 
@@ -176,22 +170,22 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   // then assume std_allocator and call Allocator::deallocate
   // then error
   template <class Allocator>
-  auto deallocate_node(full_concept, Allocator& alloc, void* ptr, std::size_t size,
-                       std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.deallocate_node(ptr, size, alignment), void)
+  auto deallocate_node(full_concept, Allocator& alloc, void* ptr, u64 size,
+                       u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.deallocate_node(ptr, size, alignment), void)
 
   template <class Allocator>
-  auto deallocate_node(std_concept, Allocator& alloc, void* ptr, std::size_t size,
-                       std::size_t) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.deallocate(static_cast<char*>(ptr), size), void)
+  auto deallocate_node(std_concept, Allocator& alloc, void* ptr, u64 size,
+                       u64) noexcept
+  -> VK_auto_return_type(alloc.deallocate(static_cast<char*>(ptr), size), void)
 
   template <class Allocator>
-  error deallocate_node(error, Allocator&, void*, std::size_t, std::size_t)
+  error deallocate_node(error, Allocator&, void*, u64, u64)
   {
     static_assert(invalid_allocator_concept<Allocator>::error,
                   "type is not a RawAllocator as it does not provide: void "
-                  "deallocate_node(void*, std::size_t, "
-                  "std::size_t)");
+                  "deallocate_node(void*, u64, "
+                  "u64)");
     return error{};
   }
 
@@ -199,13 +193,13 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   // first try Allocator::allocate_array
   // then forward to allocate_node()
   template <class Allocator>
-  auto allocate_array(full_concept, Allocator& alloc, std::size_t count, std::size_t size,
-                      std::size_t alignment)
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.allocate_array(count, size, alignment), void*)
+  auto allocate_array(full_concept, Allocator& alloc, u64 count, u64 size,
+                      u64 alignment)
+  -> VK_auto_return_type(alloc.allocate_array(count, size, alignment), void*)
 
   template <class Allocator>
-  void* allocate_array(min_concept, Allocator& alloc, std::size_t count,
-                       std::size_t size, std::size_t alignment)
+  void* allocate_array(min_concept, Allocator& alloc, u64 count,
+                       u64 size, u64 alignment)
   {
     return allocate_node(full_concept{}, alloc, count * size, alignment);
   }
@@ -214,15 +208,15 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   // first try Allocator::deallocate_array
   // then forward to deallocate_node()
   template <class Allocator>
-  auto deallocate_array(full_concept, Allocator& alloc, void* ptr, std::size_t count,
-                        std::size_t size, std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.deallocate_array(ptr, count, size, alignment),
+  auto deallocate_array(full_concept, Allocator& alloc, void* ptr, u64 count,
+                        u64 size, u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.deallocate_array(ptr, count, size, alignment),
   void)
 
   template <class Allocator>
   void deallocate_array(min_concept, Allocator& alloc, void* ptr,
-                        std::size_t count, std::size_t size,
-                        std::size_t alignment) noexcept
+                        u64 count, u64 size,
+                        u64 alignment) noexcept
 {
   deallocate_node(full_concept{}, alloc, ptr, count * size, alignment);
 }
@@ -232,12 +226,12 @@ namespace traits_detail // use seperate namespace to avoid name clashes
 // then return maximum value
 template <class Allocator>
 auto max_node_size(full_concept, const Allocator& alloc)
--> FOONATHAN_AUTO_RETURN_TYPE(alloc.max_node_size(), std::size_t)
+-> VK_auto_return_type(alloc.max_node_size(), u64)
 
 template <class Allocator>
-std::size_t max_node_size(min_concept, const Allocator&) noexcept
+u64 max_node_size(min_concept, const Allocator&) noexcept
 {
-return std::size_t(-1);
+return u64(-1);
 }
 
 //=== max_node_size() ===//
@@ -245,10 +239,10 @@ return std::size_t(-1);
 // then forward to max_node_size()
 template <class Allocator>
 auto max_array_size(full_concept, const Allocator& alloc)
--> FOONATHAN_AUTO_RETURN_TYPE(alloc.max_array_size(), std::size_t)
+-> VK_auto_return_type(alloc.max_array_size(), u64)
 
 template <class Allocator>
-std::size_t max_array_size(min_concept, const Allocator& alloc)
+u64 max_array_size(min_concept, const Allocator& alloc)
 {
   return max_node_size(full_concept{}, alloc);
 }
@@ -258,12 +252,12 @@ std::size_t max_array_size(min_concept, const Allocator& alloc)
 // then return detail::max_alignment
 template <class Allocator>
 auto max_alignment(full_concept, const Allocator& alloc)
--> FOONATHAN_AUTO_RETURN_TYPE(alloc.max_alignment(), std::size_t)
+-> VK_auto_return_type(alloc.max_alignment(), u64)
 
 template <class Allocator>
-std::size_t max_alignment(min_concept, const Allocator&)
+u64 max_alignment(min_concept, const Allocator&)
 {
-  return detail::max_alignment;
+  return alignof(std::max_align_t);
 }
 } // namespace traits_detail
 
@@ -279,8 +273,8 @@ public:
   using is_stateful =
   decltype(traits_detail::is_stateful<Allocator>(traits_detail::full_concept{}));
 
-  static void* allocate_node(allocator_type& state, std::size_t size,
-                             std::size_t alignment)
+  static void* allocate_node(allocator_type& state, u64 size,
+                             u64 alignment)
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -289,8 +283,8 @@ public:
                                         alignment);
   }
 
-  static void* allocate_array(allocator_type& state, std::size_t count, std::size_t size,
-                              std::size_t alignment)
+  static void* allocate_array(allocator_type& state, u64 count, u64 size,
+                              u64 alignment)
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -299,8 +293,8 @@ public:
                                          size, alignment);
   }
 
-  static void deallocate_node(allocator_type& state, void* node, std::size_t size,
-                              std::size_t alignment) noexcept
+  static void deallocate_node(allocator_type& state, void* node, u64 size,
+                              u64 alignment) noexcept
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -309,8 +303,8 @@ public:
                                    alignment);
   }
 
-  static void deallocate_array(allocator_type& state, void* array, std::size_t count,
-                               std::size_t size, std::size_t alignment) noexcept
+  static void deallocate_array(allocator_type& state, void* array, u64 count,
+                               u64 size, u64 alignment) noexcept
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -319,7 +313,7 @@ public:
                                     size, alignment);
   }
 
-  static std::size_t max_node_size(const allocator_type& state)
+  static u64 max_node_size(const allocator_type& state)
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -327,7 +321,7 @@ public:
     return traits_detail::max_node_size(traits_detail::full_concept{}, state);
   }
 
-  static std::size_t max_array_size(const allocator_type& state)
+  static u64 max_array_size(const allocator_type& state)
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -335,7 +329,7 @@ public:
     return traits_detail::max_array_size(traits_detail::full_concept{}, state);
   }
 
-  static std::size_t max_alignment(const allocator_type& state)
+  static u64 max_alignment(const allocator_type& state)
   {
     static_assert(allocator_is_raw_allocator<Allocator>::value,
                   "Allocator cannot be used as RawAllocator because it provides custom "
@@ -408,17 +402,17 @@ namespace traits_detail
   // try Allocator::try_allocate_node
   // otherwise error
   template <class Allocator>
-  auto try_allocate_node(full_concept, Allocator& alloc, std::size_t size,
-  std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.try_allocate_node(size, alignment), void*)
+  auto try_allocate_node(full_concept, Allocator& alloc, u64 size,
+  u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.try_allocate_node(size, alignment), void*)
 
   template <class Allocator>
-  error try_allocate_node(error, Allocator&, std::size_t, std::size_t)
+  error try_allocate_node(error, Allocator&, u64, u64)
   {
     static_assert(invalid_allocator_concept<Allocator>::error,
                   "type is not a composable RawAllocator as it does not provide: void* "
-                  "try_allocate_node(std::size_t, "
-                  "std::size_t)");
+                  "try_allocate_node(u64, "
+                  "u64)");
     return {};
   }
 
@@ -426,17 +420,17 @@ namespace traits_detail
   // try Allocator::try_deallocate_node
   // otherwise error
   template <class Allocator>
-  auto try_deallocate_node(full_concept, Allocator& alloc, void* ptr, std::size_t size,
-  std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.try_deallocate_node(ptr, size, alignment), bool)
+  auto try_deallocate_node(full_concept, Allocator& alloc, void* ptr, u64 size,
+  u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.try_deallocate_node(ptr, size, alignment), bool)
 
   template <class Allocator>
-  error try_deallocate_node(error, Allocator&, void*, std::size_t, std::size_t)
+  error try_deallocate_node(error, Allocator&, void*, u64, u64)
   {
     static_assert(invalid_allocator_concept<Allocator>::error,
                   "type is not a composable RawAllocator as it does not provide: bool "
-                  "try_deallocate_node(void*, std::size_t, "
-                  "std::size_t)");
+                  "try_deallocate_node(void*, u64, "
+                  "u64)");
     return error{};
   }
 
@@ -444,14 +438,14 @@ namespace traits_detail
   // first try Allocator::try_allocate_array
   // then forward to try_allocate_node()
   template <class Allocator>
-  auto try_allocate_array(full_concept, Allocator& alloc, std::size_t count,
-  std::size_t size, std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.try_allocate_array(count, size, alignment),
+  auto try_allocate_array(full_concept, Allocator& alloc, u64 count,
+  u64 size, u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.try_allocate_array(count, size, alignment),
   void*)
 
   template <class Allocator>
-  void* try_allocate_array(min_concept, Allocator& alloc, std::size_t count,
-                           std::size_t size, std::size_t alignment)
+  void* try_allocate_array(min_concept, Allocator& alloc, u64 count,
+                           u64 size, u64 alignment)
   {
     return try_allocate_node(full_concept{}, alloc, count * size, alignment);
   }
@@ -460,16 +454,16 @@ namespace traits_detail
   // first try Allocator::try_deallocate_array
   // then forward to try_deallocate_node()
   template <class Allocator>
-  auto try_deallocate_array(full_concept, Allocator& alloc, void* ptr, std::size_t count,
-  std::size_t size, std::size_t alignment) noexcept
-  -> FOONATHAN_AUTO_RETURN_TYPE(alloc.try_deallocate_array(ptr, count, size,
+  auto try_deallocate_array(full_concept, Allocator& alloc, void* ptr, u64 count,
+  u64 size, u64 alignment) noexcept
+  -> VK_auto_return_type(alloc.try_deallocate_array(ptr, count, size,
       alignment),
   bool)
 
   template <class Allocator>
   bool try_deallocate_array(min_concept, Allocator& alloc, void* ptr,
-                            std::size_t count, std::size_t size,
-                            std::size_t alignment) noexcept
+                            u64 count, u64 size,
+                            u64 alignment) noexcept
 {
   return try_deallocate_node(full_concept{}, alloc, ptr, count * size, alignment);
 }
@@ -485,8 +479,8 @@ class composable_allocator_traits
 public:
   using allocator_type = typename allocator_traits<Allocator>::allocator_type;
 
-  static void* try_allocate_node(allocator_type& state, std::size_t size,
-                                 std::size_t alignment) noexcept
+  static void* try_allocate_node(allocator_type& state, u64 size,
+                                 u64 alignment) noexcept
   {
     static_assert(is_raw_allocator<Allocator>::value,
                   "ComposableAllocator must be RawAllocator");
@@ -494,8 +488,8 @@ public:
                                             alignment);
   }
 
-  static void* try_allocate_array(allocator_type& state, std::size_t count,
-                                  std::size_t size, std::size_t alignment) noexcept
+  static void* try_allocate_array(allocator_type& state, u64 count,
+                                  u64 size, u64 alignment) noexcept
   {
     static_assert(is_raw_allocator<Allocator>::value,
                   "ComposableAllocator must be RawAllocator");
@@ -503,8 +497,8 @@ public:
                                              count, size, alignment);
   }
 
-  static bool try_deallocate_node(allocator_type& state, void* node, std::size_t size,
-                                  std::size_t alignment) noexcept
+  static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
+                                  u64 alignment) noexcept
   {
     static_assert(is_raw_allocator<Allocator>::value,
                   "ComposableAllocator must be RawAllocator");
@@ -512,8 +506,8 @@ public:
                                               node, size, alignment);
   }
 
-  static bool try_deallocate_array(allocator_type& state, void* array, std::size_t count,
-                                   std::size_t size, std::size_t alignment) noexcept
+  static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
+                                   u64 size, u64 alignment) noexcept
   {
     static_assert(is_raw_allocator<Allocator>::value,
                   "ComposableAllocator must be RawAllocator");
@@ -558,13 +552,13 @@ namespace detail
   };
 
   template <typename T, class DefaultTraits>
-  struct is_composable_allocator : memory::is_raw_allocator<T>
+  struct is_composable_allocator : valkyrie::is_raw_allocator<T>
   {
   };
 
   template <typename T>
   struct is_composable_allocator<T, std::integral_constant<bool, true>>
-  : std::integral_constant<bool, memory::is_raw_allocator<T>::value
+  : std::integral_constant<bool, valkyrie::is_raw_allocator<T>::value
                                  && !(has_invalid_try_alloc_function<T>::value
                                       || has_invalid_try_dealloc_function<T>::value)>
 {

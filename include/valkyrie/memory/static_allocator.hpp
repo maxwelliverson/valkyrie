@@ -5,13 +5,21 @@
 #ifndef VALKYRIE_MEMORY_STATIC_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_STATIC_ALLOCATOR_HPP
 
+
+#include "detail/align.hpp"
+#include "detail/memory_stack.hpp"
+#include "detail/utility.hpp"
+#include "allocator_traits.hpp"
+
+#include <valkyrie/traits.hpp>
+
 namespace valkyrie{
   /// Storage for a \ref static_allocator.
   /// Its constructor will take a reference to it and use it for its allocation.
   /// The storage type is simply a \c char array aligned for maximum alignment.
   /// \note It is not allowed to access the memory of the storage.
   /// \ingroup allocator
-  template <std::size_t Size>
+  template <u64 Size>
   struct static_allocator_storage
   {
     alignas(detail::max_alignment) char storage[Size];
@@ -30,14 +38,14 @@ namespace valkyrie{
   class static_allocator
   {
   public:
-    using is_stateful = std::true_type;
+    using is_stateful = meta::true_type;
 
     /// \effects Creates it by passing it a \ref static_allocator_storage by reference.
     /// It will take the address of the storage and use its memory for the allocation.
     /// \requires The storage object must live as long as the allocator object.
     /// It must not be shared between multiple allocators,
     /// i.e. the object must not have been passed to a constructor before.
-    template <std::size_t Size>
+    template <u64 Size>
     static_allocator(static_allocator_storage<Size>& storage) noexcept
         : stack_(&storage), end_(stack_.top() + Size)
     {
@@ -47,23 +55,23 @@ namespace valkyrie{
     /// It uses the specified \ref static_allocator_storage.
     /// \returns A pointer to a \concept{concept_node,node}, it will never be \c nullptr.
     /// \throws An exception of type \ref out_of_memory or whatever is thrown by its handler if the storage is exhausted.
-    void* allocate_node(std::size_t size, std::size_t alignment);
+    void* allocate_node(u64 size, u64 alignment);
 
     /// \effects A \concept{concept_rawallocator,RawAllocator} deallocation function.
     /// It does nothing, deallocation is not supported by this allocator.
-    void deallocate_node(void*, std::size_t, std::size_t) noexcept {}
+    void deallocate_node(void*, u64, u64) noexcept {}
 
     /// \returns The maximum node size which is the capacity remaining inside the \ref static_allocator_storage.
-    std::size_t max_node_size() const noexcept
+    u64 max_node_size() const noexcept
     {
-      return static_cast<std::size_t>(end_ - stack_.top());
+      return static_cast<u64>(end_ - stack_.top());
     }
 
     /// \returns The maximum possible value since there is no alignment restriction
     /// (except indirectly through the size of the \ref static_allocator_storage).
-    std::size_t max_alignment() const noexcept
+    u64 max_alignment() const noexcept
     {
-      return std::size_t(-1);
+      return u64(-1);
     }
 
   private:
@@ -73,9 +81,9 @@ namespace valkyrie{
     const char*                end_;
   };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class allocator_traits<static_allocator>;
-#endif
+
 
   struct memory_block;
 
@@ -93,15 +101,15 @@ namespace valkyrie{
     /// It must not be shared between multiple allocators,
     /// i.e. the object must not have been passed to a constructor before.
     /// The size of the \ref static_allocator_storage must be a multiple of the (non-null) block size.
-    template <std::size_t Size>
-    static_block_allocator(std::size_t                     block_size,
+    template <u64 Size>
+    static_block_allocator(u64                     block_size,
                            static_allocator_storage<Size>& storage) noexcept
         : cur_(static_cast<char*>(static_cast<void*>(&storage))),
         end_(cur_ + Size),
     block_size_(block_size)
         {
-            FOONATHAN_MEMORY_ASSERT(block_size <= Size);
-        FOONATHAN_MEMORY_ASSERT(Size % block_size == 0u);
+            VK_assert(block_size <= Size);
+        VK_assert(Size % block_size == 0u);
         }
 
     ~static_block_allocator() noexcept = default;
@@ -118,7 +126,7 @@ namespace valkyrie{
 
     static_block_allocator& operator=(static_block_allocator&& other) noexcept
     {
-      static_block_allocator tmp(detail::move(other));
+      static_block_allocator tmp(std::move(other));
       swap(*this, tmp);
       return *this;
     }
@@ -128,9 +136,9 @@ namespace valkyrie{
     /// This does not invalidate any memory blocks.
     friend void swap(static_block_allocator& a, static_block_allocator& b) noexcept
     {
-      detail::adl_swap(a.cur_, b.cur_);
-      detail::adl_swap(a.end_, b.end_);
-      detail::adl_swap(a.block_size_, b.block_size_);
+      std::swap(a.cur_, b.cur_);
+      std::swap(a.end_, b.end_);
+      std::swap(a.block_size_, b.block_size_);
     }
 
     /// \effects Allocates a new block by returning the \ref next_block_size() bytes.
@@ -144,7 +152,7 @@ namespace valkyrie{
     void deallocate_block(memory_block block) noexcept;
 
     /// \returns The next block size, this is the size passed to the constructor.
-    std::size_t next_block_size() const noexcept
+    u64 next_block_size() const noexcept
     {
       return block_size_;
     }
@@ -153,7 +161,7 @@ namespace valkyrie{
     allocator_info info() const noexcept;
 
     char *      cur_, *end_;
-    std::size_t block_size_;
+    u64 block_size_;
   };
 }
 

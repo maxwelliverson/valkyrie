@@ -906,9 +906,9 @@ namespace valkyrie{
   template <string_type T>
   using string_traits    = traits::detail::StringInfo<T>;
   template <iterator_type T>
-  using iterator_traits  = traits::detail::IteratorInfo<T>;
+  using iterator_traits  = traits::detail::IteratorInfo<T>;/*
   template <allocator_type T>
-  using allocator_traits = traits::detail::AllocatorInfo<T>;
+  using allocator_traits = traits::detail::AllocatorInfo<T>;*/
   template <class_type C>
   using class_traits     = traits::detail::ClassInfo<C>;
   template <numeric_type N>

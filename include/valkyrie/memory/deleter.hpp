@@ -11,7 +11,7 @@ namespace valkyrie{
   /// It deallocates memory for a specified type but does not call its destructors.
   /// \ingroup adapter
   template <typename Type, class RawAllocator>
-  class allocator_deallocator : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+  class allocator_deallocator : allocator_reference<RawAllocator>
       {
           static_assert(!std::is_abstract<Type>::value,
                         "use allocator_polymorphic_deallocator for storing base classes");
@@ -55,7 +55,7 @@ namespace valkyrie{
   /// \ingroup adapter
   template <typename Type, class RawAllocator>
   class allocator_deallocator<Type[], RawAllocator>
-      : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+      : allocator_reference<RawAllocator>
       {
           static_assert(!std::is_abstract<Type>::value, "must not create polymorphic arrays");
 
@@ -71,7 +71,7 @@ namespace valkyrie{
       /// \effects Creates it by passing it an \ref allocator_reference and the size of the array that will be deallocated.
       /// It will store the reference to the allocator and uses the referenced allocator object for the deallocation.
       allocator_deallocator(allocator_reference<RawAllocator> alloc,
-      std::size_t                       size) noexcept
+      u64                       size) noexcept
       : allocator_reference<RawAllocator>(alloc), size_(size)
       {
       }
@@ -96,13 +96,13 @@ namespace valkyrie{
 
       /// \returns The size of the array that will be deallocated.
       /// This is the same value as passed in the constructor, or `0` if it was created by the default constructor.
-      std::size_t array_size() const noexcept
+      u64 array_size() const noexcept
       {
         return size_;
       }
 
       private:
-      std::size_t size_;
+      u64 size_;
       };
 
   /// A deleter class that deallocates the memory of a derived type through a specified \concept{concept_rawallocator,RawAllocator}.
@@ -110,7 +110,7 @@ namespace valkyrie{
   /// It can only be created from a \ref allocator_deallocator and thus must only be used for smart pointers initialized by derived-to-base conversion of the pointer.
   /// \ingroup adapter
   template <typename BaseType, class RawAllocator>
-  class allocator_polymorphic_deallocator : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+  class allocator_polymorphic_deallocator : allocator_reference<RawAllocator>
       {
           public:
           using allocator_type = typename allocator_reference<RawAllocator>::allocator_type;
@@ -143,14 +143,14 @@ namespace valkyrie{
           }
 
           private:
-          std::size_t derived_size_, derived_alignment_;
+          u64 derived_size_, derived_alignment_;
       };
 
   /// Similar to \ref allocator_deallocator but calls the destructors of the object.
   /// Otherwise behaves the same.
   /// \ingroup adapter
   template <typename Type, class RawAllocator>
-  class allocator_deleter : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+  class allocator_deleter : allocator_reference<RawAllocator>
       {
           static_assert(!std::is_abstract<Type>::value,
                         "use allocator_polymorphic_deleter for storing base classes");
@@ -195,7 +195,7 @@ namespace valkyrie{
   /// \ingroup adapter
   template <typename Type, class RawAllocator>
   class allocator_deleter<Type[], RawAllocator>
-      : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+      : allocator_reference<RawAllocator>
       {
           static_assert(!std::is_abstract<Type>::value, "must not create polymorphic arrays");
 
@@ -210,7 +210,7 @@ namespace valkyrie{
 
       /// \effects Creates it by passing it an \ref allocator_reference and the size of the array that will be deallocated.
       /// It will store the reference to the allocator and uses the referenced allocator object for the deallocation.
-      allocator_deleter(allocator_reference<RawAllocator> alloc, std::size_t size) noexcept
+      allocator_deleter(allocator_reference<RawAllocator> alloc, u64 size) noexcept
       : allocator_reference<RawAllocator>(alloc), size_(size)
       {
       }
@@ -237,13 +237,13 @@ namespace valkyrie{
 
       /// \returns The size of the array that will be deallocated.
       /// This is the same value as passed in the constructor, or `0` if it was created by the default constructor.
-      std::size_t array_size() const noexcept
+      u64 array_size() const noexcept
       {
         return size_;
       }
 
       private:
-      std::size_t size_;
+      u64 size_;
       };
 
   /// Similar to \ref allocator_polymorphic_deallocator but calls the destructors of the object.
@@ -251,7 +251,7 @@ namespace valkyrie{
   /// \note It has a relatively high space overhead, so only use it if you have to.
   /// \ingroup adapter
   template <typename BaseType, class RawAllocator>
-  class allocator_polymorphic_deleter : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+  class allocator_polymorphic_deleter : allocator_reference<RawAllocator>
       {
           public:
           using allocator_type = typename allocator_reference<RawAllocator>::allocator_type;
@@ -265,8 +265,8 @@ namespace valkyrie{
           derived_size_(sizeof(T)),
           derived_alignment_(alignof(T))
           {
-            FOONATHAN_MEMORY_ASSERT(std::size_t(derived_size_) == sizeof(T)
-                                    && std::size_t(derived_alignment_) == alignof(T));
+            VK_assert(u64(derived_size_) == sizeof(T)
+                                    && u64(derived_alignment_) == alignof(T));
           }
 
           /// \effects Deallocates the memory given to it.

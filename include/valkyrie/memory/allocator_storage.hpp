@@ -9,63 +9,63 @@ namespace valkyrie{
   namespace detail
   {
     template <class Alloc>
-    void* try_allocate_node(std::true_type, Alloc& alloc, std::size_t size,
-                            std::size_t alignment) noexcept
+    void* try_allocate_node(std::true_type, Alloc& alloc, u64 size,
+                            u64 alignment) noexcept
   {
     return composable_allocator_traits<Alloc>::try_allocate_node(alloc, size,
         alignment);
   }
 
   template <class Alloc>
-  void* try_allocate_array(std::true_type, Alloc& alloc, std::size_t count,
-                           std::size_t size, std::size_t alignment) noexcept
+  void* try_allocate_array(std::true_type, Alloc& alloc, u64 count,
+                           u64 size, u64 alignment) noexcept
 {
   return composable_allocator_traits<Alloc>::try_allocate_array(alloc, count, size,
       alignment);
 }
 
 template <class Alloc>
-bool try_deallocate_node(std::true_type, Alloc& alloc, void* ptr, std::size_t size,
-                         std::size_t alignment) noexcept
+bool try_deallocate_node(std::true_type, Alloc& alloc, void* ptr, u64 size,
+                         u64 alignment) noexcept
 {
 return composable_allocator_traits<Alloc>::try_deallocate_node(alloc, ptr, size,
     alignment);
 }
 
 template <class Alloc>
-bool try_deallocate_array(std::true_type, Alloc& alloc, void* ptr, std::size_t count,
-                          std::size_t size, std::size_t alignment) noexcept
+bool try_deallocate_array(std::true_type, Alloc& alloc, void* ptr, u64 count,
+                          u64 size, u64 alignment) noexcept
 {
 return composable_allocator_traits<Alloc>::try_deallocate_array(alloc, ptr, count,
     size, alignment);
 }
 
 template <class Alloc>
-void* try_allocate_node(std::false_type, Alloc&, std::size_t, std::size_t) noexcept
+void* try_allocate_node(std::false_type, Alloc&, u64, u64) noexcept
 {
 FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
 return nullptr;
 }
 
 template <class Alloc>
-void* try_allocate_array(std::false_type, Alloc&, std::size_t, std::size_t,
-                         std::size_t) noexcept
+void* try_allocate_array(std::false_type, Alloc&, u64, u64,
+                         u64) noexcept
 {
 FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
 return nullptr;
 }
 
 template <class Alloc>
-bool try_deallocate_node(std::false_type, Alloc&, void*, std::size_t,
-                         std::size_t) noexcept
+bool try_deallocate_node(std::false_type, Alloc&, void*, u64,
+                         u64) noexcept
 {
 FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
 return false;
 }
 
 template <class Alloc>
-bool try_deallocate_array(std::false_type, Alloc&, void*, std::size_t, std::size_t,
-                          std::size_t) noexcept
+bool try_deallocate_array(std::false_type, Alloc&, void*, u64, u64,
+                          u64) noexcept
 {
 FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
 return false;
@@ -78,9 +78,9 @@ return false;
 /// \ingroup storage
 template <class StoragePolicy, class Mutex>
 class allocator_storage
-    : FOONATHAN_EBO(StoragePolicy,
+    : StoragePolicy,
     detail::mutex_storage<
-    detail::mutex_for<typename StoragePolicy::allocator_type, Mutex>>)
+    detail::mutex_for<typename StoragePolicy::allocator_type, Mutex>>
 {
 using traits = allocator_traits<typename StoragePolicy::allocator_type>;
 using composable_traits =
@@ -112,8 +112,8 @@ template <
     FOONATHAN_REQUIRES(
         (!std::is_base_of<allocator_storage, typename std::decay<Alloc>::type>::value))>
 allocator_storage(Alloc&& alloc,
-FOONATHAN_SFINAE(new storage_policy(detail::forward<Alloc>(alloc))))
-: storage_policy(detail::forward<Alloc>(alloc))
+FOONATHAN_SFINAE(new storage_policy(std::forward<Alloc>(alloc))))
+: storage_policy(std::forward<Alloc>(alloc))
 {
 }
 
@@ -132,18 +132,18 @@ allocator_storage(const allocator_storage<OtherPolicy, Mutex>& other,
 /// \effects Moves the \c allocator_storage object.
 /// A moved-out \c allocator_storage object must still store a valid allocator object.
 allocator_storage(allocator_storage&& other) noexcept
-: storage_policy(detail::move(other)),
+: storage_policy(std::move(other)),
 detail::mutex_storage<
 detail::mutex_for<typename StoragePolicy::allocator_type, Mutex>>(
-    detail::move(other))
+    std::move(other))
 {
 }
 
 allocator_storage& operator=(allocator_storage&& other) noexcept
 {
-storage_policy::                                 operator=(detail::move(other));
+storage_policy::                                 operator=(std::move(other));
 detail::mutex_storage<detail::mutex_for<typename StoragePolicy::allocator_type,
-    Mutex>>::operator=(detail::move(other));
+    Mutex>>::operator=(std::move(other));
 return *this;
 }
 /// @}
@@ -158,50 +158,50 @@ allocator_storage& operator=(const allocator_storage&) = default;
 /// @{
 /// \effects Calls the function on the stored allocator.
 /// The \c Mutex will be locked during the operation.
-void* allocate_node(std::size_t size, std::size_t alignment)
+void* allocate_node(u64 size, u64 alignment)
 {
   std::lock_guard<actual_mutex> lock(*this);
   auto&&                        alloc = get_allocator();
   return traits::allocate_node(alloc, size, alignment);
 }
 
-void* allocate_array(std::size_t count, std::size_t size, std::size_t alignment)
+void* allocate_array(u64 count, u64 size, u64 alignment)
 {
   std::lock_guard<actual_mutex> lock(*this);
   auto&&                        alloc = get_allocator();
   return traits::allocate_array(alloc, count, size, alignment);
 }
 
-void deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+void deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
 {
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 traits::deallocate_node(alloc, ptr, size, alignment);
 }
 
-void deallocate_array(void* ptr, std::size_t count, std::size_t size,
-                      std::size_t alignment) noexcept
+void deallocate_array(void* ptr, u64 count, u64 size,
+                      u64 alignment) noexcept
 {
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 traits::deallocate_array(alloc, ptr, count, size, alignment);
 }
 
-std::size_t max_node_size() const
+u64 max_node_size() const
 {
   std::lock_guard<actual_mutex> lock(*this);
   auto&&                        alloc = get_allocator();
   return traits::max_node_size(alloc);
 }
 
-std::size_t max_array_size() const
+u64 max_array_size() const
 {
   std::lock_guard<actual_mutex> lock(*this);
   auto&&                        alloc = get_allocator();
   return traits::max_array_size(alloc);
 }
 
-std::size_t max_alignment() const
+u64 max_alignment() const
 {
   std::lock_guard<actual_mutex> lock(*this);
   auto&&                        alloc = get_allocator();
@@ -217,38 +217,38 @@ std::size_t max_alignment() const
 /// \note This check is done at compile-time where possible,
 /// and at runtime in the case of type-erased storage.
 FOONATHAN_ENABLE_IF(composable::value)
-void* try_allocate_node(std::size_t size, std::size_t alignment) noexcept
+void* try_allocate_node(u64 size, u64 alignment) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(is_composable());
+VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 return composable_traits::try_allocate_node(alloc, size, alignment);
 }
 
 FOONATHAN_ENABLE_IF(composable::value)
-void* try_allocate_array(std::size_t count, std::size_t size,
-                         std::size_t alignment) noexcept
+void* try_allocate_array(u64 count, u64 size,
+                         u64 alignment) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(is_composable());
+VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 return composable_traits::try_allocate_array(alloc, count, size, alignment);
 }
 
 FOONATHAN_ENABLE_IF(composable::value)
-bool try_deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(is_composable());
+VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 return composable_traits::try_deallocate_node(alloc, ptr, size, alignment);
 }
 
 FOONATHAN_ENABLE_IF(composable::value)
-bool try_deallocate_array(void* ptr, std::size_t count, std::size_t size,
-                          std::size_t alignment) noexcept
+bool try_deallocate_array(void* ptr, u64 count, u64 size,
+                          u64 alignment) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(is_composable());
+VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
 auto&&                        alloc = get_allocator();
 return composable_traits::try_deallocate_array(alloc, ptr, count, size, alignment);
@@ -311,7 +311,7 @@ struct any_allocator
 /// It embeds the allocator inside it, i.e. moving the storage policy will move the allocator.
 /// \ingroup storage
 template <class RawAllocator>
-class direct_storage : FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_type)
+class direct_storage : allocator_traits<RawAllocator>::allocator_type
     {
         static_assert(!std::is_same<RawAllocator, any_allocator>::value,
                       "cannot type-erase in direct_storage");
@@ -325,18 +325,18 @@ class direct_storage : FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_t
 
     /// \effects Creates it by moving in an allocator object.
     direct_storage(allocator_type&& allocator) noexcept
-    : allocator_type(detail::move(allocator))
+    : allocator_type(std::move(allocator))
     {
     }
 
     /// @{
     /// \effects Moves the \c direct_storage object.
     /// This will move the stored allocator.
-    direct_storage(direct_storage&& other) noexcept : allocator_type(detail::move(other)) {}
+    direct_storage(direct_storage&& other) noexcept : allocator_type(std::move(other)) {}
 
     direct_storage& operator=(direct_storage&& other) noexcept
     {
-      allocator_type::operator=(detail::move(other));
+      allocator_type::operator=(std::move(other));
       return *this;
     }
     /// @}
@@ -377,7 +377,7 @@ template <class RawAllocator>
 auto make_allocator_adapter(RawAllocator&& allocator) noexcept
 -> allocator_adapter<typename std::decay<RawAllocator>::type>
 {
-return {detail::forward<RawAllocator>(allocator)};
+return {std::forward<RawAllocator>(allocator)};
 }
 
 /// An alias template for \ref allocator_storage using the \ref direct_storage policy with a mutex.
@@ -402,7 +402,7 @@ FOONATHAN_ALIAS_TEMPLATE(thread_safe_allocator,
         auto make_thread_safe_allocator(RawAllocator&& allocator)
             -> thread_safe_allocator<typename std::decay<RawAllocator>::type>
         {
-            return detail::forward<RawAllocator>(allocator);
+            return std::forward<RawAllocator>(allocator);
         }
 #endif
 
@@ -414,7 +414,7 @@ template <class Mutex, class RawAllocator>
 auto make_thread_safe_allocator(RawAllocator&& allocator)
 -> thread_safe_allocator<typename std::decay<RawAllocator>::type, Mutex>
 {
-  return detail::forward<RawAllocator>(allocator);
+  return std::forward<RawAllocator>(allocator);
 }
 
 namespace detail
@@ -453,7 +453,7 @@ namespace detail
 
     RawAllocator& get_allocator() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(alloc_ != nullptr);
+      VK_assert(alloc_ != nullptr);
       return *alloc_;
     }
 
@@ -529,11 +529,11 @@ struct is_shared_allocator : std::false_type
 template <class RawAllocator>
 class reference_storage
 #ifndef DOXYGEN
-    : FOONATHAN_EBO(detail::reference_storage_impl<
+    : detail::reference_storage_impl<
     typename allocator_traits<RawAllocator>::allocator_type,
     decltype(detail::reference_type(
         typename allocator_traits<RawAllocator>::is_stateful{},
-        is_shared_allocator<RawAllocator>{}))>)
+        is_shared_allocator<RawAllocator>{})>)
 #endif
     {
         using storage = detail::reference_storage_impl<
@@ -609,73 +609,73 @@ class reference_storage<any_allocator>
 
     virtual void clone(void* storage) const noexcept = 0;
 
-    void* allocate_node(std::size_t size, std::size_t alignment)
+    void* allocate_node(u64 size, u64 alignment)
     {
       return allocate_impl(1, size, alignment);
     }
 
-    void* allocate_array(std::size_t count, std::size_t size, std::size_t alignment)
+    void* allocate_array(u64 count, u64 size, u64 alignment)
     {
       return allocate_impl(count, size, alignment);
     }
 
-    void deallocate_node(void* node, std::size_t size, std::size_t alignment) noexcept
+    void deallocate_node(void* node, u64 size, u64 alignment) noexcept
     {
       deallocate_impl(node, 1, size, alignment);
     }
 
-    void deallocate_array(void* array, std::size_t count, std::size_t size,
-                          std::size_t alignment) noexcept
+    void deallocate_array(void* array, u64 count, u64 size,
+                          u64 alignment) noexcept
     {
       deallocate_impl(array, count, size, alignment);
     }
 
-    void* try_allocate_node(std::size_t size, std::size_t alignment) noexcept
+    void* try_allocate_node(u64 size, u64 alignment) noexcept
     {
       return try_allocate_impl(1, size, alignment);
     }
 
-    void* try_allocate_array(std::size_t count, std::size_t size,
-                             std::size_t alignment) noexcept
+    void* try_allocate_array(u64 count, u64 size,
+                             u64 alignment) noexcept
     {
       return try_allocate_impl(count, size, alignment);
     }
 
-    bool try_deallocate_node(void* node, std::size_t size,
-                             std::size_t alignment) noexcept
+    bool try_deallocate_node(void* node, u64 size,
+                             u64 alignment) noexcept
     {
       return try_deallocate_impl(node, 1, size, alignment);
     }
 
-    bool try_deallocate_array(void* array, std::size_t count, std::size_t size,
-                              std::size_t alignment) noexcept
+    bool try_deallocate_array(void* array, u64 count, u64 size,
+                              u64 alignment) noexcept
     {
       return try_deallocate_impl(array, count, size, alignment);
     }
 
     // count 1 means node
-    virtual void* allocate_impl(std::size_t count, std::size_t size,
-                                std::size_t alignment)            = 0;
-    virtual void  deallocate_impl(void* ptr, std::size_t count, std::size_t size,
-                                  std::size_t alignment) noexcept = 0;
+    virtual void* allocate_impl(u64 count, u64 size,
+                                u64 alignment)            = 0;
+    virtual void  deallocate_impl(void* ptr, u64 count, u64 size,
+                                  u64 alignment) noexcept = 0;
 
-    virtual void* try_allocate_impl(std::size_t count, std::size_t size,
-                                    std::size_t alignment) noexcept = 0;
+    virtual void* try_allocate_impl(u64 count, u64 size,
+                                    u64 alignment) noexcept = 0;
 
-    virtual bool try_deallocate_impl(void* ptr, std::size_t count, std::size_t size,
-                                     std::size_t alignment) noexcept = 0;
+    virtual bool try_deallocate_impl(void* ptr, u64 count, u64 size,
+                                     u64 alignment) noexcept = 0;
 
-    std::size_t max_node_size() const
+    u64 max_node_size() const
     {
       return max(query::node_size);
     }
 
-    std::size_t max_array_size() const
+    u64 max_array_size() const
     {
       return max(query::array_size);
     }
 
-    std::size_t max_alignment() const
+    u64 max_alignment() const
     {
       return max(query::alignment);
     }
@@ -690,7 +690,7 @@ class reference_storage<any_allocator>
       alignment
     };
 
-    virtual std::size_t max(query q) const = 0;
+    virtual u64 max(query q) const = 0;
   };
 
 public:
@@ -803,8 +803,8 @@ private:
             ::new (storage) basic_allocator(get());
         }
 
-    void* allocate_impl(std::size_t count, std::size_t size,
-                        std::size_t alignment) override
+    void* allocate_impl(u64 count, u64 size,
+                        u64 alignment) override
     {
       auto&& alloc = get();
       if (count == 1u)
@@ -813,8 +813,8 @@ private:
         return traits::allocate_array(alloc, count, size, alignment);
     }
 
-    void deallocate_impl(void* ptr, std::size_t count, std::size_t size,
-                         std::size_t alignment) noexcept override
+    void deallocate_impl(void* ptr, u64 count, u64 size,
+                         u64 alignment) noexcept override
         {
             auto&& alloc = get();
         if (count == 1u)
@@ -823,8 +823,8 @@ private:
         traits::deallocate_array(alloc, ptr, count, size, alignment);
         }
 
-    void* try_allocate_impl(std::size_t count, std::size_t size,
-                            std::size_t alignment) noexcept override
+    void* try_allocate_impl(u64 count, u64 size,
+                            u64 alignment) noexcept override
         {
             auto&& alloc = get();
         if (count == 1u)
@@ -834,8 +834,8 @@ private:
         alignment);
         }
 
-    bool try_deallocate_impl(void* ptr, std::size_t count, std::size_t size,
-                             std::size_t alignment) noexcept override
+    bool try_deallocate_impl(void* ptr, u64 count, u64 size,
+                             u64 alignment) noexcept override
         {
             auto&& alloc = get();
         if (count == 1u)
@@ -851,7 +851,7 @@ private:
             return composable::value;
         }
 
-    std::size_t max(query q) const override
+    u64 max(query q) const override
     {
       auto&& alloc = get();
       if (q == query::node_size)
@@ -882,7 +882,7 @@ template <class RawAllocator>
 auto make_allocator_reference(RawAllocator&& allocator) noexcept
 -> allocator_reference<typename std::decay<RawAllocator>::type>
 {
-return {detail::forward<RawAllocator>(allocator)};
+return {std::forward<RawAllocator>(allocator)};
 }
 
 /// An alias for the \ref reference_storage specialization using type-erasure.
@@ -902,7 +902,7 @@ template <class RawAllocator>
 auto make_any_allocator_reference(RawAllocator&& allocator) noexcept
 -> any_allocator_reference
 {
-return {detail::forward<RawAllocator>(allocator)};
+return {std::forward<RawAllocator>(allocator)};
 }
 }
 

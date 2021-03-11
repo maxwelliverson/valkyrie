@@ -20,7 +20,7 @@ namespace valkyrie{
   public:
 
     using size_type = size_t;
-    using difference_type = ptrdiff_t;
+    using difference_type = i64;
     using value_type = T;
     using pointer = typename alloc_traits::pointer;
     using reference = decltype(*std::declval<pointer>());

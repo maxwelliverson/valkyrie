@@ -5,27 +5,32 @@
 #ifndef VALKYRIE_MEMORY_SEGREGATOR_HPP
 #define VALKYRIE_MEMORY_SEGREGATOR_HPP
 
+#include "detail/ebo_storage.hpp"
+#include "detail/utility.hpp"
+#include "allocator_traits.hpp"
+#include "error.hpp"
+
 namespace valkyrie{
   /// A \concept{concept_segregatable,Segregatable} that allocates until a maximum size.
   /// \ingroup adapter
   template <class RawAllocator>
-  class threshold_segregatable : FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_type)
+  class threshold_segregatable : allocator_traits<RawAllocator>::allocator_type
       {
           public:
           using allocator_type = typename allocator_traits<RawAllocator>::allocator_type;
 
           /// \effects Creates it by passing the maximum size it will allocate
           /// and the allocator it uses.
-          explicit threshold_segregatable(std::size_t    max_size,
+          explicit threshold_segregatable(u64    max_size,
           allocator_type alloc = allocator_type())
-          : allocator_type(detail::move(alloc)), max_size_(max_size)
+          : allocator_type(std::move(alloc)), max_size_(max_size)
           {
           }
 
           /// \returns `true` if `size` is less then or equal to the maximum size,
           /// `false` otherwise.
           /// \note A return value of `true` means that the allocator will be used for the allocation.
-          bool use_allocate_node(std::size_t size, std::size_t) noexcept
+          bool use_allocate_node(u64 size, u64) noexcept
           {
             return size <= max_size_;
           }
@@ -33,7 +38,7 @@ namespace valkyrie{
           /// \returns `true` if `count * size` is less then or equal to the maximum size,
           /// `false` otherwise.
           /// \note A return value of `true` means that the allocator will be used for the allocation.
-          bool use_allocate_array(std::size_t count, std::size_t size, std::size_t) noexcept
+          bool use_allocate_array(u64 count, u64 size, u64) noexcept
           {
             return count * size <= max_size_;
           }
@@ -52,13 +57,13 @@ namespace valkyrie{
           /// @}
 
           private:
-          std::size_t max_size_;
+          u64 max_size_;
       };
 
   /// \returns A \ref threshold_segregatable with the same parameter.
   template <class RawAllocator>
   threshold_segregatable<typename std::decay<RawAllocator>::type> threshold(
-      std::size_t max_size, RawAllocator&& alloc)
+      u64 max_size, RawAllocator&& alloc)
   {
     return threshold_segregatable<
         typename std::decay<RawAllocator>::type>(max_size,
@@ -73,27 +78,27 @@ namespace valkyrie{
   public:
     /// \effects Will always throw.
     /// \throws A \ref out_of_fixed_memory exception.
-    void* allocate_node(std::size_t size, std::size_t)
+    void* allocate_node(u64 size, u64)
     {
       throw out_of_fixed_memory(info(), size);
     }
 
     /// \requires Must not be called.
-    void deallocate_node(void*, std::size_t, std::size_t) noexcept
+    void deallocate_node(void*, u64, u64) noexcept
     {
       FOONATHAN_MEMORY_UNREACHABLE("cannot be called with proper values");
     }
 
     /// \effects Does nothing.
     /// \returns Always returns `nullptr`.
-    void* try_allocate_node(std::size_t, std::size_t) noexcept
+    void* try_allocate_node(u64, u64) noexcept
     {
       return nullptr;
     }
 
     /// \effects Does nothing.
     /// \returns Always returns `false`.
-    bool try_deallocate_node(void*, std::size_t, std::size_t) noexcept
+    bool try_deallocate_node(void*, u64, u64) noexcept
     {
       return false;
     }
@@ -111,8 +116,8 @@ namespace valkyrie{
   /// \ingroup adapter
   template <class Segregatable, class RawAllocator>
   class binary_segregator
-      : FOONATHAN_EBO(
-      detail::ebo_storage<1, typename allocator_traits<RawAllocator>::allocator_type>)
+      :
+      detail::ebo_storage<1, typename allocator_traits<RawAllocator>::allocator_type>
       {
           using segregatable_traits = allocator_traits<typename Segregatable::allocator_type>;
           using fallback_traits     = allocator_traits<RawAllocator>;
@@ -126,15 +131,15 @@ namespace valkyrie{
           /// and the \concept{concept_rawallocator,RawAllocator}.
           explicit binary_segregator(segregatable            s,
           fallback_allocator_type fallback = fallback_allocator_type())
-          : detail::ebo_storage<1, fallback_allocator_type>(detail::move(fallback)),
-          s_(detail::move(s))
+          : detail::ebo_storage<1, fallback_allocator_type>(std::move(fallback)),
+          s_(std::move(s))
           {
           }
 
           /// @{
           /// \effects Uses the \concept{concept_segregatable,Segregatable} to decide which allocator to use.
           /// Then forwards to the chosen allocator.
-          void* allocate_node(std::size_t size, std::size_t alignment)
+          void* allocate_node(u64 size, u64 alignment)
           {
             if (get_segregatable().use_allocate_node(size, alignment))
               return segregatable_traits::allocate_node(get_segregatable_allocator(), size,
@@ -144,7 +149,7 @@ namespace valkyrie{
                                                     alignment);
           }
 
-          void deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+          void deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
           {
             if (get_segregatable().use_allocate_node(size, alignment))
               segregatable_traits::deallocate_node(get_segregatable_allocator(), ptr, size,
@@ -154,7 +159,7 @@ namespace valkyrie{
                                                alignment);
           }
 
-          void* allocate_array(std::size_t count, std::size_t size, std::size_t alignment)
+          void* allocate_array(u64 count, u64 size, u64 alignment)
           {
             if (get_segregatable().use_allocate_array(count, size, alignment))
               return segregatable_traits::allocate_array(get_segregatable_allocator(), count,
@@ -164,8 +169,8 @@ namespace valkyrie{
                                                      alignment);
           }
 
-          void deallocate_array(void* array, std::size_t count, std::size_t size,
-          std::size_t alignment) noexcept
+          void deallocate_array(void* array, u64 count, u64 size,
+          u64 alignment) noexcept
           {
             if (get_segregatable().use_allocate_array(count, size, alignment))
               segregatable_traits::deallocate_array(get_segregatable_allocator(), array,
@@ -180,17 +185,17 @@ namespace valkyrie{
           /// \returns The maximum value of the fallback.
           /// \note It assumes that the fallback will be used for larger allocations,
           /// and the `Segregatable` for smaller ones.
-          std::size_t max_node_size() const
+          u64 max_node_size() const
           {
             return fallback_traits::max_node_size(get_fallback_allocator());
           }
 
-          std::size_t max_array_size() const
+          u64 max_array_size() const
           {
             return fallback_traits::max_array_size(get_fallback_allocator());
           }
 
-          std::size_t max_alignemnt() const
+          u64 max_alignemnt() const
           {
             return fallback_traits::max_alignment(get_fallback_allocator());
           }
@@ -280,7 +285,7 @@ namespace valkyrie{
                               std::forward<Rest>(rest)...));
     }
 
-    template <std::size_t I, class Segregator>
+    template <u64 I, class Segregator>
     struct segregatable_type;
 
     template <class Segregator, class Fallback>
@@ -299,7 +304,7 @@ namespace valkyrie{
       }
     };
 
-    template <std::size_t I, class Segregator, class Fallback>
+    template <u64 I, class Segregator, class Fallback>
     struct segregatable_type<I, binary_segregator<Segregator, Fallback>>
     {
       using base = segregatable_type<I - 1, Fallback>;
@@ -321,7 +326,7 @@ namespace valkyrie{
     {
       using type = Fallback;
 
-      static const std::size_t size = 0u;
+      static const u64 size = 0u;
 
       static type& get(Fallback& f)
       {
@@ -340,7 +345,7 @@ namespace valkyrie{
       using base = fallback_type<Fallback>;
       using type = typename base::type;
 
-      static const std::size_t size = base::size + 1u;
+      static const u64 size = base::size + 1u;
 
       static type& get(binary_segregator<Segregator, Fallback>& s)
       {
@@ -382,25 +387,25 @@ namespace valkyrie{
   template <class Segregator>
   struct segregator_size
   {
-    static const std::size_t value = detail::fallback_type<Segregator>::size;
+    static const u64 value = detail::fallback_type<Segregator>::size;
   };
 
   /// The type of the `I`th \concept{concept_segregatable,Segregatable}.
   /// \relates segregator
-  template <std::size_t I, class Segregator>
+  template <u64 I, class Segregator>
   using segregatable_allocator_type = typename detail::segregatable_type<I, Segregator>::type;
 
   /// @{
   /// \returns The `I`th \concept{concept_segregatable,Segregatable}.
   /// \relates segregrator
-  template <std::size_t I, class Segregator, class Fallback>
+  template <u64 I, class Segregator, class Fallback>
   auto get_segregatable_allocator(binary_segregator<Segregator, Fallback>& s)
   -> segregatable_allocator_type<I, binary_segregator<Segregator, Fallback>>&
   {
     return detail::segregatable_type<I, binary_segregator<Segregator, Fallback>>::get(s);
   }
 
-  template <std::size_t I, class Segregator, class Fallback>
+  template <u64 I, class Segregator, class Fallback>
   auto get_segregatable_allocator(const binary_segregator<Segregator, Fallback>& s)
   -> const segregatable_allocator_type<I, binary_segregator<Segregator, Fallback>>
   {

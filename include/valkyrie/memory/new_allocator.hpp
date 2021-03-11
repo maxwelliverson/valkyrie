@@ -5,6 +5,9 @@
 #ifndef VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP
 
+#include "detail/lowlevel_allocator.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   struct allocator_info;
 
@@ -14,14 +17,14 @@ namespace valkyrie{
     {
       static allocator_info info() noexcept;
 
-      static void* allocate(std::size_t size, std::size_t) noexcept;
+      static void* allocate(u64 size, u64) noexcept;
 
-      static void deallocate(void* ptr, std::size_t size, std::size_t) noexcept;
+      static void deallocate(void* ptr, u64 size, u64) noexcept;
 
-      static std::size_t max_node_size() noexcept;
+      static u64 max_node_size() noexcept;
     };
 
-    FOONATHAN_MEMORY_LL_ALLOCATOR_LEAK_CHECKER(new_allocator_impl,
+    VALKYRIE_LL_ALLOCATOR_LEAK_CHECKER(new_allocator_impl,
         new_alloator_leak_checker)
   } // namespace detail
 
@@ -29,13 +32,12 @@ namespace valkyrie{
   /// If the operator returns \c nullptr, it behaves like \c new and loops calling \c std::new_handler,
   /// but instead of throwing a \c std::bad_alloc exception, it throws \ref out_of_memory.
   /// \ingroup allocator
-  using new_allocator =
-  FOONATHAN_IMPL_DEFINED(detail::lowlevel_allocator<detail::new_allocator_impl>);
+  using new_allocator = detail::lowlevel_allocator<detail::new_allocator_impl>;
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class detail::lowlevel_allocator<detail::new_allocator_impl>;
-        extern template class allocator_traits<new_allocator>;
-#endif
+  extern template class allocator_traits<new_allocator>;
+
 }
 
 #endif//VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP

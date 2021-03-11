@@ -5,6 +5,9 @@
 #ifndef VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP
 
+#include "detail/lowlevel_allocator.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   struct allocator_info;
 
@@ -17,7 +20,7 @@ namespace valkyrie{
   /// It must be thread safe.
   /// \defaultbe On a hosted implementation this function uses OS specific facilities, \c std::malloc is used as fallback.
   /// \ingroup allocator
-  void* heap_alloc(std::size_t size) noexcept;
+  void* heap_alloc(u64 size) noexcept;
 
   /// Deallocates heap memory.
   /// This function is used by the \ref heap_allocator to allocate the heap memory.
@@ -28,7 +31,7 @@ namespace valkyrie{
   /// It must be thread safe.
   /// \defaultbe On a hosted implementation this function uses OS specific facilities, \c std::free is used as fallback.
   /// \ingroup allocator
-  void heap_dealloc(void* ptr, std::size_t size) noexcept;
+  void heap_dealloc(void* ptr, u64 size) noexcept;
 
   namespace detail
   {
@@ -36,20 +39,20 @@ namespace valkyrie{
     {
       static allocator_info info() noexcept;
 
-      static void* allocate(std::size_t size, std::size_t) noexcept
+      static void* allocate(u64 size, u64) noexcept
       {
         return heap_alloc(size);
       }
 
-      static void deallocate(void* ptr, std::size_t size, std::size_t) noexcept
+      static void deallocate(void* ptr, u64 size, u64) noexcept
       {
         heap_dealloc(ptr, size);
       }
 
-      static std::size_t max_node_size() noexcept;
+      static u64 max_node_size() noexcept;
     };
 
-    FOONATHAN_MEMORY_LL_ALLOCATOR_LEAK_CHECKER(heap_allocator_impl,
+    VALKYRIE_LL_ALLOCATOR_LEAK_CHECKER(heap_allocator_impl,
         heap_alloator_leak_checker)
   } // namespace detail
 
@@ -57,13 +60,12 @@ namespace valkyrie{
   /// It uses the two functions \ref heap_alloc and \ref heap_dealloc for the allocation,
   /// which default to \c std::malloc and \c std::free.
   /// \ingroup allocator
-  using heap_allocator =
-  FOONATHAN_IMPL_DEFINED(detail::lowlevel_allocator<detail::heap_allocator_impl>);
+  using heap_allocator = detail::lowlevel_allocator<detail::heap_allocator_impl>;
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class detail::lowlevel_allocator<detail::heap_allocator_impl>;
-        extern template class allocator_traits<heap_allocator>;
-#endif
+  extern template class allocator_traits<heap_allocator>;
+
 }
 
 #endif//VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP

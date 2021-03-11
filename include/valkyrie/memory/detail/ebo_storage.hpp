@@ -13,7 +13,7 @@ namespace valkyrie::detail{
     ebo_storage(const T& t) : T(t) {}
 
     ebo_storage(T&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
-        : T(detail::move(t))
+        : T(std::move(t))
         {
         }
 

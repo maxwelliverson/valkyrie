@@ -5,6 +5,18 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_ARENA_HPP
 #define VALKYRIE_MEMORY_MEMORY_ARENA_HPP
 
+#include <valkyrie/traits.hpp>
+
+#include <valkyrie/status/status_code.hpp>
+
+#include "detail/align.hpp"
+#include "detail/concepts.hpp"
+#include "detail/debug_helpers.hpp"
+#include "error.hpp"
+#include "default_allocator.hpp"
+
+#include <utility>
+
 namespace valkyrie{
   /// A memory block.
   /// It is defined by its starting address and size.
@@ -12,17 +24,17 @@ namespace valkyrie{
   struct memory_block
   {
     void*       memory; ///< The address of the memory block (might be \c nullptr).
-    std::size_t size;   ///< The size of the memory block (might be \c 0).
+    u64 size;   ///< The size of the memory block (might be \c 0).
 
     /// \effects Creates an invalid memory block with starting address \c nullptr and size \c 0.
-    memory_block() noexcept : memory_block(nullptr, std::size_t(0)) {}
+    memory_block() noexcept : memory_block(nullptr, u64(0)) {}
 
     /// \effects Creates a memory block from a given starting address and size.
-    memory_block(void* mem, std::size_t s) noexcept : memory(mem), size(s) {}
+    memory_block(void* mem, u64 s) noexcept : memory(mem), size(s) {}
 
     /// \effects Creates a memory block from a [begin,end) range.
     memory_block(void* begin, void* end) noexcept
-        : memory_block(begin, static_cast<std::size_t>(static_cast<char*>(end)
+        : memory_block(begin, static_cast<u64>(static_cast<char*>(end)
                                                        - static_cast<char*>(begin)))
         {
         }
@@ -36,32 +48,8 @@ namespace valkyrie{
     }
   };
 
-  namespace detail
-  {
-    template <class BlockAllocator>
-    std::true_type is_block_allocator_impl(
-        int,
-        FOONATHAN_SFINAE(std::declval<memory_block&>() =
-    std::declval<BlockAllocator&>().allocate_block()),
-        FOONATHAN_SFINAE(std::declval<std::size_t&>() =
-                             std::declval<BlockAllocator&>().next_block_size()),
-        FOONATHAN_SFINAE(std::declval<BlockAllocator>().deallocate_block(memory_block{})));
-
-    template <typename T>
-    std::false_type is_block_allocator_impl(short);
-  } // namespace detail
-
-  /// Traits that check whether a type models concept \concept{concept_blockallocator,BlockAllocator}.
-  /// \ingroup core
-  template <typename T>
-  struct is_block_allocator : decltype(detail::is_block_allocator_impl<T>(0))
-{
-};
-
-#if !defined(DOXYGEN)
-template <class BlockAllocator, bool Cached = true>
-class memory_arena;
-#endif
+  template <block_allocator BlockAllocator, bool Cached = true>
+  class memory_arena;
 
 /// @{
 /// Controls the caching of \ref memory_arena.
@@ -92,14 +80,14 @@ namespace detail
 
     memory_block_stack& operator=(memory_block_stack&& other) noexcept
     {
-      memory_block_stack tmp(detail::move(other));
+      memory_block_stack tmp(std::move(other));
       swap(*this, tmp);
       return *this;
     }
 
     friend void swap(memory_block_stack& a, memory_block_stack& b) noexcept
     {
-      detail::adl_swap(a.head_, b.head_);
+      std::swap(a.head_, b.head_);
     }
 
     // the raw allocated block returned from an allocator
@@ -109,7 +97,7 @@ namespace detail
     using inserted_mb = memory_block;
 
     // how much an inserted block is smaller
-    static constexpr std::size_t implementation_offset() noexcept
+    static constexpr u64 implementation_offset() noexcept
     {
       // node size rounded up to the next multiple of max_alignment.
       return (sizeof(node) / max_alignment + (sizeof(node) % max_alignment != 0))
@@ -128,7 +116,7 @@ namespace detail
     // returns the last pushed() inserted memory block
     inserted_mb top() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(head_);
+      VK_assert(head_);
       auto mem = static_cast<void*>(head_);
       return {static_cast<char*>(mem) + implementation_offset(), head_->usable_size};
     }
@@ -141,15 +129,15 @@ namespace detail
     bool owns(const void* ptr) const noexcept;
 
     // O(n) size
-    std::size_t size() const noexcept;
+    u64 size() const noexcept;
 
   private:
     struct node
     {
       node*       prev;
-      std::size_t usable_size;
+      u64 usable_size;
 
-      node(node* p, std::size_t size) noexcept : prev(p), usable_size(size) {}
+      node(node* p, u64 size) noexcept : prev(p), usable_size(size) {}
     };
 
     node* head_;
@@ -167,12 +155,12 @@ namespace detail
       return cached_.empty();
     }
 
-    std::size_t cache_size() const noexcept
+    u64 cache_size() const noexcept
     {
       return cached_.size();
     }
 
-    std::size_t cached_block_size() const noexcept
+    u64 cached_block_size() const noexcept
     {
       return cached_.top().size;
     }
@@ -217,12 +205,12 @@ namespace detail
       return true;
     }
 
-    std::size_t cache_size() const noexcept
+    u64 cache_size() const noexcept
     {
       return 0u;
     }
 
-    std::size_t cached_block_size() const noexcept
+    u64 cached_block_size() const noexcept
     {
       return 0u;
     }
@@ -257,12 +245,8 @@ namespace detail
 /// passing it \ref uncached_arena (or \c false) disables it,
 /// \ref cached_arena (or \c true) enables it explicitly.
 /// \ingroup core
-template <class BlockAllocator, bool Cached /* = true */>
-class memory_arena : FOONATHAN_EBO(BlockAllocator),
-FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
-{
-  static_assert(is_block_allocator<BlockAllocator>::value,
-                "BlockAllocator is not a BlockAllocator!");
+template <block_allocator BlockAllocator, bool Cached /* = true */>
+class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   using cache = detail::memory_arena_cache<Cached>;
 
   public:
@@ -274,8 +258,8 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   /// \requires \c block_size must be greater than \c 0 and other requirements depending on the \concept{concept_blockallocator,BlockAllocator}.
   /// \throws Anything thrown by the constructor of the \c BlockAllocator.
   template <typename... Args>
-  explicit memory_arena(std::size_t block_size, Args&&... args)
-  : allocator_type(block_size, detail::forward<Args>(args)...)
+  explicit memory_arena(u64 block_size, Args&&... args)
+  : allocator_type(block_size, std::forward<Args>(args)...)
   {
   }
 
@@ -295,15 +279,15 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   /// which is empty after that.
   /// This does not invalidate any memory blocks.
   memory_arena(memory_arena&& other) noexcept
-  : allocator_type(detail::move(other)),
-      cache(detail::move(other)),
-      used_(detail::move(other.used_))
+  : allocator_type(std::move(other)),
+      cache(std::move(other)),
+      used_(std::move(other.used_))
   {
   }
 
   memory_arena& operator=(memory_arena&& other) noexcept
   {
-    memory_arena tmp(detail::move(other));
+    memory_arena tmp(std::move(other));
     swap(*this, tmp);
     return *this;
   }
@@ -313,9 +297,9 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   /// This does not invalidate any memory blocks.
   friend void swap(memory_arena& a, memory_arena& b) noexcept
   {
-    detail::adl_swap(static_cast<allocator_type&>(a), static_cast<allocator_type&>(b));
-    detail::adl_swap(static_cast<cache&>(a), static_cast<cache&>(b));
-    detail::adl_swap(a.used_, b.used_);
+    std::swap(static_cast<allocator_type&>(a), static_cast<allocator_type&>(b));
+    std::swap(static_cast<cache&>(a), static_cast<cache&>(b));
+    std::swap(a.used_, b.used_);
   }
 
   /// \effects Allocates a new memory block.
@@ -366,20 +350,20 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   }
 
   /// \returns The capacity of the arena, i.e. how many blocks are used and cached.
-  std::size_t capacity() const noexcept
+  u64 capacity() const noexcept
   {
     return size() + cache_size();
   }
 
   /// \returns The size of the cache, i.e. how many blocks can be allocated without allocation.
-  std::size_t cache_size() const noexcept
+  u64 cache_size() const noexcept
   {
     return cache::cache_size();
   }
 
   /// \returns The size of the arena, i.e. how many blocks are in use.
   /// It is always smaller or equal to the \ref capacity().
-  std::size_t size() const noexcept
+  u64 size() const noexcept
   {
     return used_.size();
   }
@@ -388,7 +372,7 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   /// i.e. of the next call to \ref allocate_block().
   /// If there are blocks in the cache, returns size of the next one.
   /// Otherwise forwards to the \concept{concept_blockallocator,BlockAllocator} and subtracts an implementation offset.
-  std::size_t next_block_size() const noexcept
+  u64 next_block_size() const noexcept
   {
     return this->cache_empty() ?
            allocator_type::next_block_size()
@@ -407,12 +391,12 @@ FOONATHAN_EBO(detail::memory_arena_cache<Cached>)
   detail::memory_block_stack used_;
 };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
 extern template class memory_arena<static_block_allocator, true>;
         extern template class memory_arena<static_block_allocator, false>;
         extern template class memory_arena<virtual_block_allocator, true>;
         extern template class memory_arena<virtual_block_allocator, false>;
-#endif
+
 
 /// A \concept{concept_blockallocator,BlockAllocator} that uses a given \concept{concept_rawallocator,RawAllocator} for allocating the blocks.
 /// It calls the \c allocate_array() function with a node of size \c 1 and maximum alignment on the used allocator for the block allocation.
@@ -420,9 +404,8 @@ extern template class memory_arena<static_block_allocator, true>;
 /// allowing an amortized constant allocation time in the higher level allocator.
 /// The factor can be given as rational in the template parameter, default is \c 2.
 /// \ingroup adapter
-template <class RawAllocator = default_allocator, unsigned Num = 2, unsigned Den = 1>
-class growing_block_allocator
-    : FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_type)
+template <raw_allocator RawAllocator = default_allocator, unsigned Num = 2, unsigned Den = 1>
+class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type
     {
         static_assert(float(Num) / Den >= 1.0, "invalid growth factor");
 
@@ -434,9 +417,9 @@ class growing_block_allocator
     /// \effects Creates it by giving it the initial block size, the allocator object and the growth factor.
     /// By default, it uses a default-constructed allocator object and a growth factor of \c 2.
     /// \requires \c block_size must be greater than 0.
-    explicit growing_block_allocator(std::size_t    block_size,
+    explicit growing_block_allocator(u64    block_size,
     allocator_type alloc = allocator_type()) noexcept
-    : allocator_type(detail::move(alloc)), block_size_(block_size)
+    : allocator_type(std::move(alloc)), block_size_(block_size)
     {
     }
 
@@ -448,7 +431,7 @@ class growing_block_allocator
       auto memory =
           traits::allocate_array(get_allocator(), block_size_, 1, detail::max_alignment);
       memory_block block(memory, block_size_);
-      block_size_ = std::size_t(block_size_ * growth_factor());
+      block_size_ = u64(block_size_ * growth_factor());
       return block;
     }
 
@@ -462,7 +445,7 @@ class growing_block_allocator
     }
 
     /// \returns The size of the memory block returned by the next call to \ref allocate_block().
-    std::size_t next_block_size() const noexcept
+    u64 next_block_size() const noexcept
     {
       return block_size_;
     }
@@ -481,21 +464,21 @@ class growing_block_allocator
     }
 
     private:
-    std::size_t block_size_;
+    u64 block_size_;
     };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
 extern template class growing_block_allocator<>;
         extern template class memory_arena<growing_block_allocator<>, true>;
         extern template class memory_arena<growing_block_allocator<>, false>;
-#endif
+
 
 /// A \concept{concept_blockallocator,BlockAllocator} that allows only one block allocation.
 /// It can be used to prevent higher-level allocators from expanding.
 /// The one block allocation is performed through the \c allocate_array() function of the given \concept{concept_rawallocator,RawAllocator}.
 /// \ingroup adapter
 template <class RawAllocator = default_allocator>
-class fixed_block_allocator : FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_type)
+class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type
     {
         using traits = allocator_traits<RawAllocator>;
 
@@ -504,9 +487,9 @@ class fixed_block_allocator : FOONATHAN_EBO(allocator_traits<RawAllocator>::allo
 
         /// \effects Creates it by passing it the size of the block and the allocator object.
         /// \requires \c block_size must be greater than 0,
-        explicit fixed_block_allocator(std::size_t    block_size,
+        explicit fixed_block_allocator(u64    block_size,
         allocator_type alloc = allocator_type()) noexcept
-        : allocator_type(detail::move(alloc)), block_size_(block_size)
+        : allocator_type(std::move(alloc)), block_size_(block_size)
         {
         }
 
@@ -523,7 +506,9 @@ class fixed_block_allocator : FOONATHAN_EBO(allocator_traits<RawAllocator>::allo
             block_size_ = 0u;
             return block;
           }
-          FOONATHAN_THROW(out_of_fixed_memory(info(), block_size_));
+          //panic(out_of_fixed_memory(info(), block_size_));
+
+          VK_unreachable;
         }
 
         /// \effects Deallocates the previously allocated memory block.
@@ -538,7 +523,7 @@ class fixed_block_allocator : FOONATHAN_EBO(allocator_traits<RawAllocator>::allo
         }
 
         /// \returns The size of the next block which is either the initial size or \c 0.
-        std::size_t next_block_size() const noexcept
+        u64 next_block_size() const noexcept
         {
           return block_size_;
         }
@@ -552,17 +537,17 @@ class fixed_block_allocator : FOONATHAN_EBO(allocator_traits<RawAllocator>::allo
         private:
         allocator_info info() noexcept
         {
-          return {FOONATHAN_MEMORY_LOG_PREFIX "::fixed_block_allocator", this};
+          return {"valkyrie::fixed_block_allocator", this};
         }
 
-        std::size_t block_size_;
+        u64 block_size_;
     };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
 extern template class fixed_block_allocator<>;
         extern template class memory_arena<fixed_block_allocator<>, true>;
         extern template class memory_arena<fixed_block_allocator<>, false>;
-#endif
+
 
 namespace detail
 {
@@ -570,17 +555,17 @@ namespace detail
   using default_block_wrapper = growing_block_allocator<RawAlloc>;
 
   template <template <class...> class Wrapper, class BlockAllocator, typename... Args>
-  BlockAllocator make_block_allocator(std::true_type, std::size_t block_size,
+  BlockAllocator make_block_allocator(std::true_type, u64 block_size,
                                       Args&&... args)
   {
-    return BlockAllocator(block_size, detail::forward<Args>(args)...);
+    return BlockAllocator(block_size, std::forward<Args>(args)...);
   }
 
   template <template <class...> class Wrapper, class RawAlloc>
-  auto make_block_allocator(std::false_type, std::size_t block_size,
+  auto make_block_allocator(std::false_type, u64 block_size,
                             RawAlloc alloc = RawAlloc()) -> Wrapper<RawAlloc>
   {
-    return Wrapper<RawAlloc>(block_size, detail::move(alloc));
+    return Wrapper<RawAlloc>(block_size, std::move(alloc));
   }
 } // namespace detail
 
@@ -590,10 +575,10 @@ namespace detail
 /// \ingroup core
 template <class BlockOrRawAllocator,
     template <typename...> class BlockAllocator = detail::default_block_wrapper>
-using make_block_allocator_t = FOONATHAN_IMPL_DEFINED(
-    typename std::conditional<is_block_allocator<BlockOrRawAllocator>::value,
+using make_block_allocator_t = std::conditional_t<
+    block_allocator<BlockOrRawAllocator>,
         BlockOrRawAllocator,
-        BlockAllocator<BlockOrRawAllocator>>::type);
+    BlockAllocator<BlockOrRawAllocator>>;
 
 /// @{
 /// Helper function make a \concept{concept_blockallocator,BlockAllocator}.
@@ -601,60 +586,60 @@ using make_block_allocator_t = FOONATHAN_IMPL_DEFINED(
 /// \requires Same requirements as the constructor.
 /// \ingroup core
 template <class BlockOrRawAllocator, typename... Args>
-make_block_allocator_t<BlockOrRawAllocator> make_block_allocator(std::size_t block_size,
+make_block_allocator_t<BlockOrRawAllocator> make_block_allocator(u64 block_size,
                                                                  Args&&... args)
 {
   return detail::make_block_allocator<
       detail::default_block_wrapper,
-      BlockOrRawAllocator>(is_block_allocator<BlockOrRawAllocator>{}, block_size,
-                           detail::forward<Args>(args)...);
+      BlockOrRawAllocator>(std::bool_constant<block_allocator<BlockOrRawAllocator>>{}, block_size,
+                           std::forward<Args>(args)...);
 }
 
 template <template <class...> class BlockAllocator, class BlockOrRawAllocator,
     typename... Args>
 make_block_allocator_t<BlockOrRawAllocator, BlockAllocator> make_block_allocator(
-    std::size_t block_size, Args&&... args)
+    u64 block_size, Args&&... args)
 {
   return detail::make_block_allocator<
-      BlockAllocator, BlockOrRawAllocator>(is_block_allocator<BlockOrRawAllocator>{},
-                                           block_size, detail::forward<Args>(args)...);
+      BlockAllocator, BlockOrRawAllocator>(std::bool_constant<block_allocator<BlockOrRawAllocator>>{},
+                                           block_size, std::forward<Args>(args)...);
 }
 /// @}
 
-namespace literals
+namespace memory_literals
 {
   /// Syntax sugar to express sizes with unit prefixes.
   /// \returns The number of bytes `value` is in the given unit.
   /// \ingroup core
   /// @{
-  constexpr std::size_t operator"" _KiB(unsigned long long value) noexcept
+  constexpr u64 operator"" _KiB(unsigned long long value) noexcept
 {
-  return std::size_t(value * 1024);
+  return u64(value * 1024);
 }
 
-constexpr std::size_t operator"" _KB(unsigned long long value) noexcept
+constexpr u64 operator"" _KB(unsigned long long value) noexcept
 {
-return std::size_t(value * 1000);
+return u64(value * 1000);
 }
 
-constexpr std::size_t operator"" _MiB(unsigned long long value) noexcept
+constexpr u64 operator"" _MiB(unsigned long long value) noexcept
 {
-return std::size_t(value * 1024 * 1024);
+return u64(value * 1024 * 1024);
 }
 
-constexpr std::size_t operator"" _MB(unsigned long long value) noexcept
+constexpr u64 operator"" _MB(unsigned long long value) noexcept
 {
-return std::size_t(value * 1000 * 1000);
+return u64(value * 1000 * 1000);
 }
 
-constexpr std::size_t operator"" _GiB(unsigned long long value) noexcept
+constexpr u64 operator"" _GiB(unsigned long long value) noexcept
 {
-return std::size_t(value * 1024 * 1024 * 1024);
+return u64(value * 1024 * 1024 * 1024);
 }
 
-constexpr std::size_t operator"" _GB(unsigned long long value) noexcept
+constexpr u64 operator"" _GB(unsigned long long value) noexcept
 {
-return std::size_t(value * 1000 * 1000 * 1000);
+return u64(value * 1000 * 1000 * 1000);
 }
 } // namespace literals
 }

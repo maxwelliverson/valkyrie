@@ -5,6 +5,11 @@
 #ifndef VALKYRIE_MEMORY_FALLBACK_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_FALLBACK_ALLOCATOR_HPP
 
+
+#include "detail/ebo_storage.hpp"
+#include "detail/utility.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   /// A \concept{raw_allocator,RawAllocator} with a fallback.
   /// Allocation first tries `Default`, if it fails,
@@ -14,8 +19,8 @@ namespace valkyrie{
   /// \ingroup adapter
   template <class Default, class Fallback>
   class fallback_allocator
-      : FOONATHAN_EBO(detail::ebo_storage<0, typename allocator_traits<Default>::allocator_type>),
-  FOONATHAN_EBO(detail::ebo_storage<1, typename allocator_traits<Fallback>::allocator_type>)
+      : detail::ebo_storage<0, typename allocator_traits<Default>::allocator_type>,
+  detail::ebo_storage<1, typename allocator_traits<Fallback>::allocator_type>
   {
     using default_traits             = allocator_traits<Default>;
     using default_composable_traits  = composable_allocator_traits<Default>;
@@ -44,15 +49,15 @@ namespace valkyrie{
     /// \effects Constructs the allocator by passing in the two allocators it has.
     explicit fallback_allocator(default_allocator_type&&  default_alloc,
         fallback_allocator_type&& fallback_alloc = {})
-    : detail::ebo_storage<0, default_allocator_type>(detail::move(default_alloc)),
-        detail::ebo_storage<1, fallback_allocator_type>(detail::move(fallback_alloc))
+    : detail::ebo_storage<0, default_allocator_type>(std::move(default_alloc)),
+        detail::ebo_storage<1, fallback_allocator_type>(std::move(fallback_alloc))
     {
     }
 
     /// @{
     /// \effects First calls the compositioning (de)allocation function on the `default_allocator_type`.
     /// If that fails, uses the non-compositioning function of the `fallback_allocator_type`.
-    void* allocate_node(std::size_t size, std::size_t alignment)
+    void* allocate_node(u64 size, u64 alignment)
     {
       auto ptr = default_composable_traits::try_allocate_node(get_default_allocator(),
                                                               size, alignment);
@@ -61,7 +66,7 @@ namespace valkyrie{
       return ptr;
     }
 
-    void* allocate_array(std::size_t count, std::size_t size, std::size_t alignment)
+    void* allocate_array(u64 count, u64 size, u64 alignment)
     {
       auto ptr = default_composable_traits::try_allocate_array(get_default_allocator(),
                                                                count, size, alignment);
@@ -71,7 +76,7 @@ namespace valkyrie{
       return ptr;
     }
 
-    void deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+    void deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
     {
       auto res = default_composable_traits::try_deallocate_node(get_default_allocator(),
                                                                 ptr, size, alignment);
@@ -80,8 +85,8 @@ namespace valkyrie{
                                          alignment);
     }
 
-    void deallocate_array(void* ptr, std::size_t count, std::size_t size,
-    std::size_t alignment) noexcept
+    void deallocate_array(void* ptr, u64 count, u64 size,
+    u64 alignment) noexcept
     {
       auto res =
           default_composable_traits::try_deallocate_array(get_default_allocator(), ptr,
@@ -97,7 +102,7 @@ namespace valkyrie{
     /// If that fails, uses the compositioning function of the `fallback_allocator_type`.
     /// \requires The `fallback_allocator_type` msut be composable.
     FOONATHAN_ENABLE_IF(fallback_composable::value)
-    void* try_allocate_node(std::size_t size, std::size_t alignment) noexcept
+    void* try_allocate_node(u64 size, u64 alignment) noexcept
     {
       auto ptr = default_composable_traits::try_allocate_node(get_default_allocator(),
                                                               size, alignment);
@@ -108,8 +113,8 @@ namespace valkyrie{
     }
 
     FOONATHAN_ENABLE_IF(fallback_composable::value)
-    void* allocate_array(std::size_t count, std::size_t size,
-    std::size_t alignment) noexcept
+    void* allocate_array(u64 count, u64 size,
+    u64 alignment) noexcept
     {
       auto ptr = default_composable_traits::try_allocate_array(get_default_allocator(),
                                                                count, size, alignment);
@@ -120,7 +125,7 @@ namespace valkyrie{
     }
 
     FOONATHAN_ENABLE_IF(fallback_composable::value)
-    bool try_deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+    bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
     {
       auto res = default_composable_traits::try_deallocate_node(get_default_allocator(),
                                                                 ptr, size, alignment);
@@ -131,8 +136,8 @@ namespace valkyrie{
     }
 
     FOONATHAN_ENABLE_IF(fallback_composable::value)
-    bool try_deallocate_array(void* ptr, std::size_t count, std::size_t size,
-    std::size_t alignment) noexcept
+    bool try_deallocate_array(void* ptr, u64 count, u64 size,
+    u64 alignment) noexcept
     {
       auto res =
           default_composable_traits::try_deallocate_array(get_default_allocator(), ptr,
@@ -147,21 +152,21 @@ namespace valkyrie{
 
     /// @{
     /// \returns The maximum of the two values from both allocators.
-    std::size_t max_node_size() const
+    u64 max_node_size() const
     {
       auto def      = default_traits::max_node_size(get_default_allocator());
       auto fallback = fallback_traits::max_node_size(get_fallback_allocator());
       return fallback > def ? fallback : def;
     }
 
-    std::size_t max_array_size() const
+    u64 max_array_size() const
     {
       auto def      = default_traits::max_array_size(get_default_allocator());
       auto fallback = fallback_traits::max_array_size(get_fallback_allocator());
       return fallback > def ? fallback : def;
     }
 
-    std::size_t max_alignment() const
+    u64 max_alignment() const
     {
       auto def      = default_traits::max_alignment(get_default_allocator());
       auto fallback = fallback_traits::max_alignment(get_fallback_allocator());

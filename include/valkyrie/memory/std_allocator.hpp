@@ -5,6 +5,11 @@
 #ifndef VALKYRIE_MEMORY_STD_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_STD_ALLOCATOR_HPP
 
+#include "detail/utility.hpp"
+#include "config.hpp"
+#include "allocator_storage.hpp"
+#include "threading.hpp"
+
 namespace valkyrie{
   namespace traits_detail
   {
@@ -60,9 +65,9 @@ namespace valkyrie{
   template <typename T, class RawAllocator>
   class std_allocator :
 #if defined _MSC_VER && defined __clang__
-      FOONATHAN_EBO(protected allocator_reference<RawAllocator>)
+      protected allocator_reference<RawAllocator>
 #else
-      FOONATHAN_EBO(allocator_reference<RawAllocator>)
+      allocator_reference<RawAllocator>
 #endif
       {
           using alloc_reference = allocator_reference<RawAllocator>;
@@ -78,8 +83,8 @@ namespace valkyrie{
           using const_pointer   = const T*;
           using reference       = T&;
           using const_reference = const T&;
-          using size_type       = std::size_t;
-          using difference_type = std::ptrdiff_t;
+          using size_type       = u64;
+          using difference_type = i64;
 
           using propagate_on_container_swap = typename prop_traits::propagate_on_container_swap;
           using propagate_on_container_move_assignment =
@@ -195,7 +200,7 @@ namespace valkyrie{
           void construct(U* p, Args&&... args)
           {
             void* mem = p;
-            ::new (mem) U(detail::forward<Args>(args)...);
+            ::new (mem) U(std::forward<Args>(args)...);
           }
 
           /// \effects Calls the destructor for an object of type \c U at given address.
@@ -323,7 +328,7 @@ template <typename T, class RawAllocator>
 auto make_std_allocator(RawAllocator&& allocator) noexcept
 -> std_allocator<T, typename std::decay<RawAllocator>::type>
 {
-return {detail::forward<RawAllocator>(allocator)};
+return {std::forward<RawAllocator>(allocator)};
 }
 
 /// An alias template for \ref std_allocator using a type-erased \concept{concept_rawallocator,RawAllocator}.
@@ -338,7 +343,7 @@ FOONATHAN_ALIAS_TEMPLATE(any_std_allocator, std_allocator<T, any_allocator>);
 template <typename T, class RawAllocator>
 any_std_allocator<T> make_any_std_allocator(RawAllocator&& allocator) noexcept
 {
-return {detail::forward<RawAllocator>(allocator)};
+return {std::forward<RawAllocator>(allocator)};
 }
 }
 

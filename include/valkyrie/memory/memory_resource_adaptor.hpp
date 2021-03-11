@@ -5,6 +5,10 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_RESOURCE_ADAPTOR_HPP
 #define VALKYRIE_MEMORY_MEMORY_RESOURCE_ADAPTOR_HPP
 
+#include "detail/assert.hpp"
+#include "detail/utility.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   /// The \c memory_resource abstract base class used in the implementation.
   /// \ingroup adapter
@@ -15,14 +19,14 @@ namespace valkyrie{
   template <class RawAllocator>
   class memory_resource_adapter
       : public memory_resource,
-        FOONATHAN_EBO(allocator_traits<RawAllocator>::allocator_type)
+        allocator_traits<RawAllocator>::allocator_type
       {
           public:
           using allocator_type = typename allocator_traits<RawAllocator>::allocator_type;
 
           /// \effects Creates the resource by moving in the allocator.
           memory_resource_adapter(allocator_type&& other) noexcept
-          : allocator_type(detail::move(other))
+          : allocator_type(std::move(other))
           {
           }
 
@@ -46,7 +50,7 @@ namespace valkyrie{
           /// It forwards to \c allocate_node() or \c allocate_array() depending on the size.
           /// \returns The new memory as returned by the \concept{concept_rawallocator,RawAllocator}.
           /// \throws Anything thrown by the allocation function.
-          void* do_allocate(std::size_t bytes, std::size_t alignment) override
+          void* do_allocate(u64 bytes, u64 alignment) override
           {
             auto max = traits_type::max_node_size(*this);
             if (bytes <= max)
@@ -60,7 +64,7 @@ namespace valkyrie{
           /// \effects Deallocates memory previously allocated by \ref do_allocate.
           /// It forwards to \c deallocate_node() or \c deallocate_array() depending on the size.
           /// \throws Nothing.
-          void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override
+          void do_deallocate(void* p, u64 bytes, u64 alignment) override
           {
             auto max = traits_type::max_node_size(*this);
             if (bytes <= max)
@@ -91,27 +95,27 @@ namespace valkyrie{
     /// \requires \c ptr must not be \c nullptr.
     memory_resource_allocator(memory_resource* ptr) noexcept : ptr_(ptr)
         {
-            FOONATHAN_MEMORY_ASSERT(ptr);
+            VK_assert(ptr);
         }
 
     /// \effects Allocates a node by forwarding to the \c allocate() function.
     /// \returns The node as returned by the \ref memory_resource.
     /// \throws Anything thrown by the \c allocate() function.
-    void* allocate_node(std::size_t size, std::size_t alignment)
+    void* allocate_node(u64 size, u64 alignment)
     {
       return ptr_->allocate(size, alignment);
     }
 
     /// \effects Deallocates a node by forwarding to the \c deallocate() function.
-    void deallocate_node(void* ptr, std::size_t size, std::size_t alignment) noexcept
+    void deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
     {
       ptr_->deallocate(ptr, size, alignment);
     }
 
-    /// \returns The maximum alignment which is the maximum value of type \c std::size_t.
-    std::size_t max_alignment() const noexcept
+    /// \returns The maximum alignment which is the maximum value of type \c u64.
+    u64 max_alignment() const noexcept
     {
-      return std::size_t(-1);
+      return u64(-1);
     }
 
     /// \returns A pointer to the used \ref memory_resource, this is never \c nullptr.

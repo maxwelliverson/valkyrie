@@ -39,8 +39,8 @@ class api::command_pool::Impl{
     delete pImpl;
   }
 
-  Atomic<u32>  refCount{1};
-  Atomic<u32>  msgCount{0};
+  atomic<u32>  refCount{1};
+  atomic<u32>  msgCount{0};
 
   AgentMailbox  urgentMailbox = AgentMailbox::deferCreation();
   AgentMailbox defaultMailbox = AgentMailbox::deferCreation();

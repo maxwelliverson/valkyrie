@@ -72,7 +72,7 @@ namespace valkyrie{
 
   class symbol_pool{
     struct symbol{
-      Atomic<u32> refCount;
+      atomic<u32> refCount;
       u32         length;
       utf8        buffer[];
     };

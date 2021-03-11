@@ -2,27 +2,32 @@
 // Created by maxwe on 2021-03-05.
 //
 
-void* static_allocator::allocate_node(std::size_t size, std::size_t alignment)
+#include <valkyrie/memory/error.hpp>
+#include <valkyrie/memory/memory_arena.hpp>
+
+using namespace valkyrie;
+
+void* static_allocator::allocate_node(u64 size, u64 alignment)
 {
   auto mem = stack_.allocate(end_, size, alignment);
-  if (!mem)
-    FOONATHAN_THROW(out_of_fixed_memory(info(), size));
+  //if (!mem) FOONATHAN_THROW(out_of_fixed_memory(info(), size));
   return mem;
 }
 
 allocator_info static_allocator::info() const noexcept
 {
-return {FOONATHAN_MEMORY_LOG_PREFIX "::static_allocator", this};
+return {"valkyrie::static_allocator", this};
 }
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
 template class valkyrie::allocator_traits<static_allocator>;
-#endif
+
 
 memory_block static_block_allocator::allocate_block()
 {
   if (cur_ + block_size_ > end_)
-    FOONATHAN_THROW(out_of_fixed_memory(info(), block_size_));
+    //FOONATHAN_THROW(out_of_fixed_memory(info(), block_size_));
+    return { };
   auto mem = cur_;
   cur_ += block_size_;
   return {mem, block_size_};
@@ -38,5 +43,5 @@ cur_ -= block_size_;
 
 allocator_info static_block_allocator::info() const noexcept
 {
-return {FOONATHAN_MEMORY_LOG_PREFIX "::static_block_allocator", this};
+return {"valkyrie::static_block_allocator", this};
 }

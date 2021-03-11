@@ -299,7 +299,7 @@ namespace valkyrie{
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using size_type = size_t;
-    using difference_type = ptrdiff_t;
+    using difference_type = i64;
 
 
 

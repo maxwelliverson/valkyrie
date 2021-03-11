@@ -5,6 +5,10 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_STACK_HPP
 #define VALKYRIE_MEMORY_MEMORY_STACK_HPP
 
+#include "detail/memory_stack.hpp"
+#include "error.hpp"
+#include "memory_arena.hpp"
+
 namespace valkyrie{
 #if !defined(DOXYGEN)
   template <class Impl>
@@ -15,11 +19,11 @@ namespace valkyrie{
   {
     class stack_marker
     {
-      std::size_t index;
+      u64 index;
       char*       top;
       const char* end;
 
-      stack_marker(std::size_t i, const detail::fixed_memory_stack& s,
+      stack_marker(u64 i, const detail::fixed_memory_stack& s,
                    const char* e) noexcept
           : index(i), top(s.top()), end(e)
           {
@@ -29,7 +33,7 @@ namespace valkyrie{
       {
         if (lhs.index != rhs.index)
           return false;
-        FOONATHAN_MEMORY_ASSERT_MSG(lhs.end == rhs.end, "you must not compare two "
+        VK_assert_msg(lhs.end == rhs.end, "you must not compare two "
                                                         "stack markers from different "
                                                         "stacks");
         return lhs.top == rhs.top;
@@ -44,7 +48,7 @@ namespace valkyrie{
       {
         if (lhs.index != rhs.index)
           return lhs.index < rhs.index;
-        FOONATHAN_MEMORY_ASSERT_MSG(lhs.end == rhs.end, "you must not compare two "
+        VK_assert_msg(lhs.end == rhs.end, "you must not compare two "
                                                         "stack markers from different "
                                                         "stacks");
         return lhs.top < rhs.top;
@@ -66,12 +70,12 @@ namespace valkyrie{
       }
 
       template <class Impl>
-      friend class memory::memory_stack;
+      friend class valkyrie::memory_stack;
     };
 
     struct memory_stack_leak_handler
     {
-      void operator()(std::ptrdiff_t amount);
+      void operator()(i64 amount);
     };
   } // namespace detail
 
@@ -83,7 +87,7 @@ namespace valkyrie{
   /// \ingroup allocator
   template <class BlockOrRawAllocator = default_allocator>
   class memory_stack
-      : FOONATHAN_EBO(detail::default_leak_checker<detail::memory_stack_leak_handler>)
+      : detail::default_leak_checker<detail::memory_stack_leak_handler>
       {
           public:
           using allocator_type = make_block_allocator_t<BlockOrRawAllocator>;
@@ -94,7 +98,7 @@ namespace valkyrie{
           /// \note Due to debug fence sizes, the actual amount of usable memory can vary.
           /// However, this is impossible to compute without knowing the exact allocation pattern before,
           /// so this is just a rough estimate.
-          static constexpr std::size_t min_block_size(std::size_t byte_size) noexcept
+          static constexpr u64 min_block_size(u64 byte_size) noexcept
           {
             return detail::memory_block_stack::implementation_offset() + byte_size;
           }
@@ -102,8 +106,8 @@ namespace valkyrie{
           /// \effects Creates it with a given initial block size and and other constructor arguments for the \concept{concept_blockallocator,BlockAllocator}.
           /// It will allocate the first block and sets the top to its beginning.
           template <typename... Args>
-          explicit memory_stack(std::size_t block_size, Args&&... args)
-          : arena_(block_size, detail::forward<Args>(args)...),
+          explicit memory_stack(u64 block_size, Args&&... args)
+          : arena_(block_size, std::forward<Args>(args)...),
           stack_(arena_.allocate_block().memory)
           {
           }
@@ -117,13 +121,13 @@ namespace valkyrie{
           /// \throws Anything thrown by the \concept{concept_blockallocator,BlockAllocator} on growth
           /// or \ref bad_allocation_size if \c size is too big.
           /// \requires \c size and \c alignment must be valid.
-          void* allocate(std::size_t size, std::size_t alignment)
+          void* allocate(u64 size, u64 alignment)
           {
             auto fence  = detail::debug_fence_size;
             auto offset = detail::align_offset(stack_.top() + fence, alignment);
 
             if (!stack_.top()
-                || fence + offset + size + fence > std::size_t(block_end() - stack_.top()))
+                || fence + offset + size + fence > u64(block_end() - stack_.top()))
             {
               // need to grow
               auto block = arena_.allocate_block();
@@ -144,7 +148,7 @@ namespace valkyrie{
           /// But it does not attempt a growth if the arena is empty.
           /// \returns A \concept{concept_node,node} with given size and alignment
           /// or `nullptr` if there wasn't enough memory available.
-          void* try_allocate(std::size_t size, std::size_t alignment) noexcept
+          void* try_allocate(u64 size, u64 alignment) noexcept
           {
             return stack_.allocate(block_end(), size, alignment);
           }
@@ -155,7 +159,7 @@ namespace valkyrie{
           /// and has all the comparision operators defined for two markers on the same stack.
           /// Two markers are equal, if they are copies or created from two `top()` calls without a call to `unwind()` or `allocate()`.
           /// A marker `a` is less than marker `b`, if after `a` was obtained, there was one or more call to `allocate()` and no call to `unwind()`.
-          using marker = FOONATHAN_IMPL_DEFINED(detail::stack_marker);
+          using marker = detail::stack_marker;
 
           /// \returns A marker to the current top of the stack.
           marker top() const noexcept
@@ -173,14 +177,14 @@ namespace valkyrie{
           /// i.e. it must have been pointed below the top at all time.
           void unwind(marker m) noexcept
           {
-            FOONATHAN_MEMORY_ASSERT(m <= top());
+            VK_assert(m <= top());
             detail::debug_check_pointer([&] { return m.index <= arena_.size() - 1; }, info(),
                                         m.top);
 
-            if (std::size_t to_deallocate = (arena_.size() - 1) - m.index) // different index
+            if (u64 to_deallocate = (arena_.size() - 1) - m.index) // different index
             {
               arena_.deallocate_block();
-              for (std::size_t i = 1; i != to_deallocate; ++i)
+              for (u64 i = 1; i != to_deallocate; ++i)
                 arena_.deallocate_block();
 
               detail::debug_check_pointer(
@@ -191,7 +195,7 @@ namespace valkyrie{
                   info(), m.top);
 
               // mark memory from new top to end of the block as freed
-              detail::debug_fill_free(m.top, std::size_t(m.end - m.top), 0);
+              detail::debug_fill_free(m.top, u64(m.end - m.top), 0);
               stack_ = detail::fixed_memory_stack(m.top);
             }
             else // same index
@@ -213,16 +217,16 @@ namespace valkyrie{
           /// \returns The amount of memory remaining in the current block.
           /// This is the number of bytes that are available for allocation
           /// before the cache or \concept{concept_blockallocator,BlockAllocator} needs to be used.
-          std::size_t capacity_left() const noexcept
+          u64 capacity_left() const noexcept
           {
-            return std::size_t(block_end() - stack_.top());
+            return u64(block_end() - stack_.top());
           }
 
           /// \returns The size of the next memory block after the current block is exhausted and the arena grows.
           /// This function just forwards to the \ref memory_arena.
           /// \note All of it is available for the stack to use, but due to fences and alignment buffers,
           /// this may not be the exact amount of memory usable for the user.
-          std::size_t next_capacity() const noexcept
+          u64 next_capacity() const noexcept
           {
             return arena_.next_block_size();
           }
@@ -237,7 +241,7 @@ namespace valkyrie{
           private:
           allocator_info info() const noexcept
           {
-            return {FOONATHAN_MEMORY_LOG_PREFIX "::memory_stack", this};
+            return {"valkyrie::memory_stack", this};
           }
 
           const char* block_end() const noexcept
@@ -320,7 +324,7 @@ namespace valkyrie{
     /// \requires `will_unwind()` must return `true`.
     void unwind() noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(will_unwind());
+      VK_assert(will_unwind());
       stack_->unwind(marker_);
     }
 
@@ -335,7 +339,7 @@ namespace valkyrie{
     /// \requires `will_unwind()` must return `true`.
     marker_type get_marker() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(will_unwind());
+      VK_assert(will_unwind());
       return marker_;
     }
 
@@ -343,7 +347,7 @@ namespace valkyrie{
     /// \requires `will_unwind()` must return `true`.
     stack_type& get_stack() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(will_unwind());
+      VK_assert(will_unwind());
       return *stack_;
     }
 
@@ -352,10 +356,10 @@ namespace valkyrie{
     stack_type* stack_;
   };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class memory_stack<>;
         extern template class memory_stack_raii_unwind<memory_stack<>>;
-#endif
+
 
   /// Specialization of the \ref allocator_traits for \ref memory_stack classes.
   /// \note It is not allowed to mix calls through the specialization and through the member functions,
@@ -369,8 +373,8 @@ namespace valkyrie{
     using is_stateful    = std::true_type;
 
     /// \returns The result of \ref memory_stack::allocate().
-    static void* allocate_node(allocator_type& state, std::size_t size,
-                               std::size_t alignment)
+    static void* allocate_node(allocator_type& state, u64 size,
+                               u64 alignment)
     {
       auto mem = state.allocate(size, alignment);
       state.on_allocate(size);
@@ -378,8 +382,8 @@ namespace valkyrie{
     }
 
     /// \returns The result of \ref memory_stack::allocate().
-    static void* allocate_array(allocator_type& state, std::size_t count, std::size_t size,
-                                std::size_t alignment)
+    static void* allocate_array(allocator_type& state, u64 count, u64 size,
+                                u64 alignment)
     {
       return allocate_node(state, count * size, alignment);
     }
@@ -387,14 +391,14 @@ namespace valkyrie{
     /// @{
     /// \effects Does nothing besides bookmarking for leak checking, if that is enabled.
     /// Actual deallocation can only be done via \ref memory_stack::unwind().
-    static void deallocate_node(allocator_type& state, void*, std::size_t size,
-                                std::size_t) noexcept
+    static void deallocate_node(allocator_type& state, void*, u64 size,
+                                u64) noexcept
     {
       state.on_deallocate(size);
     }
 
-    static void deallocate_array(allocator_type& state, void* ptr, std::size_t count,
-                                 std::size_t size, std::size_t alignment) noexcept
+    static void deallocate_array(allocator_type& state, void* ptr, u64 count,
+                                 u64 size, u64 alignment) noexcept
     {
       deallocate_node(state, ptr, count * size, alignment);
     }
@@ -402,12 +406,12 @@ namespace valkyrie{
 
     /// @{
     /// \returns The maximum size which is \ref memory_stack::next_capacity().
-    static std::size_t max_node_size(const allocator_type& state) noexcept
+    static u64 max_node_size(const allocator_type& state) noexcept
     {
       return state.next_capacity();
     }
 
-    static std::size_t max_array_size(const allocator_type& state) noexcept
+    static u64 max_array_size(const allocator_type& state) noexcept
     {
       return state.next_capacity();
     }
@@ -415,9 +419,9 @@ namespace valkyrie{
 
     /// \returns The maximum possible value since there is no alignment restriction
     /// (except indirectly through \ref memory_stack::next_capacity()).
-    static std::size_t max_alignment(const allocator_type&) noexcept
+    static u64 max_alignment(const allocator_type&) noexcept
     {
-      return std::size_t(-1);
+      return u64(-1);
     }
   };
 
@@ -430,15 +434,15 @@ namespace valkyrie{
     using allocator_type = memory_stack<BlockAllocator>;
 
     /// \returns The result of \ref memory_stack::try_allocate().
-    static void* try_allocate_node(allocator_type& state, std::size_t size,
-                                   std::size_t alignment) noexcept
+    static void* try_allocate_node(allocator_type& state, u64 size,
+                                   u64 alignment) noexcept
     {
       return state.try_allocate(size, alignment);
     }
 
     /// \returns The result of \ref memory_stack::try_allocate().
-    static void* try_allocate_array(allocator_type& state, std::size_t count,
-                                    std::size_t size, std::size_t alignment) noexcept
+    static void* try_allocate_array(allocator_type& state, u64 count,
+                                    u64 size, u64 alignment) noexcept
     {
       return state.try_allocate(count * size, alignment);
     }
@@ -446,24 +450,24 @@ namespace valkyrie{
     /// @{
     /// \effects Does nothing.
     /// \returns Whether the memory will be deallocated by \ref memory_stack::unwind().
-    static bool try_deallocate_node(allocator_type& state, void* ptr, std::size_t,
-                                    std::size_t) noexcept
+    static bool try_deallocate_node(allocator_type& state, void* ptr, u64,
+                                    u64) noexcept
     {
       return state.arena_.owns(ptr);
     }
 
-    static bool try_deallocate_array(allocator_type& state, void* ptr, std::size_t count,
-                                     std::size_t size, std::size_t alignment) noexcept
+    static bool try_deallocate_array(allocator_type& state, void* ptr, u64 count,
+                                     u64 size, u64 alignment) noexcept
     {
       return try_deallocate_node(state, ptr, count * size, alignment);
     }
     /// @}
   };
 
-#if FOONATHAN_MEMORY_EXTERN_TEMPLATE
+
   extern template class allocator_traits<memory_stack<>>;
         extern template class composable_allocator_traits<memory_stack<>>;
-#endif
+
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_STACK_HPP

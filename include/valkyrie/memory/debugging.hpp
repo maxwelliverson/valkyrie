@@ -5,6 +5,11 @@
 #ifndef VALKYRIE_MEMORY_DEBUGGING_HPP
 #define VALKYRIE_MEMORY_DEBUGGING_HPP
 
+#include <valkyrie/primitives.hpp>
+#include <valkyrie/adt/string_view.hpp>
+
+#include "detail/debug_helpers.hpp"
+
 namespace valkyrie{
   struct allocator_info;
 
@@ -41,7 +46,7 @@ namespace valkyrie{
   /// \defaultbe On a hosted implementation it logs the leak to \c stderr and returns, continuing execution.
   /// On a freestanding implementation it does nothing.
   /// \ingroup core
-  using leak_handler = void (*)(const allocator_info& info, std::ptrdiff_t amount);
+  using leak_handler = void (*)(const allocator_info& info, i64 amount);
 
   /// Exchanges the \ref leak_handler.
   /// \effects Sets \c h as the new \ref leak_handler in an atomic operation.
@@ -86,7 +91,7 @@ namespace valkyrie{
   /// \defaultbe On a hosted implementation it logs the information to \c stderr and calls \c std::abort().
   /// On a freestanding implementation it only calls \c std::abort().
   /// \ingroup core
-  using buffer_overflow_handler = void (*)(const void* memory, std::size_t size,
+  using buffer_overflow_handler = void (*)(const void* memory, u64 size,
                                            const void* write_ptr);
 
   /// Exchanges the \ref buffer_overflow_handler.
@@ -100,6 +105,10 @@ namespace valkyrie{
   /// \returns The current \ref buffer_overflow_handler. This is never \c nullptr.
   /// \ingroup core
   buffer_overflow_handler get_buffer_overflow_handler();
+
+
+  string_view get_log_prefix() noexcept;
+  void        set_log_prefix(string_view new_prefix, bool copy = true) noexcept;
 }
 
 #endif//VALKYRIE_MEMORY_DEBUGGING_HPP

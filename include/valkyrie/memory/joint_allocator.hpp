@@ -5,6 +5,14 @@
 #ifndef VALKYRIE_MEMORY_JOINT_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_JOINT_ALLOCATOR_HPP
 
+
+#include "detail/align.hpp"
+#include "detail/memory_stack.hpp"
+#include "detail/utility.hpp"
+#include "allocator_storage.hpp"
+#include "default_allocator.hpp"
+#include "error.hpp"
+
 namespace valkyrie{
   template <typename T, class RawAllocator>
   class joint_ptr;
@@ -18,19 +26,19 @@ namespace valkyrie{
     class joint_stack
     {
     public:
-      joint_stack(void* mem, std::size_t cap) noexcept
+      joint_stack(void* mem, u64 cap) noexcept
           : stack_(static_cast<char*>(mem)), end_(static_cast<char*>(mem) + cap)
       {
       }
 
-      void* allocate(std::size_t size, std::size_t alignment) noexcept
+      void* allocate(u64 size, u64 alignment) noexcept
       {
         return stack_.allocate(end_, size, alignment, 0u);
       }
 
-      bool bump(std::size_t offset) noexcept
+      bool bump(u64 offset) noexcept
       {
-        if (offset > std::size_t(end_ - stack_.top()))
+        if (offset > u64(end_ - stack_.top()))
           return false;
         stack_.bump(offset);
         return true;
@@ -51,19 +59,19 @@ namespace valkyrie{
         stack_.unwind(static_cast<char*>(ptr));
       }
 
-      std::size_t capacity(const char* mem) const noexcept
+      u64 capacity(const char* mem) const noexcept
       {
-        return std::size_t(end_ - mem);
+        return u64(end_ - mem);
       }
 
-      std::size_t capacity_left() const noexcept
+      u64 capacity_left() const noexcept
       {
-        return std::size_t(end_ - top());
+        return u64(end_ - top());
       }
 
-      std::size_t capacity_used(const char* mem) const noexcept
+      u64 capacity_used(const char* mem) const noexcept
       {
-        return std::size_t(top() - mem);
+        return u64(top() - mem);
       }
 
     private:
@@ -84,9 +92,9 @@ namespace valkyrie{
   /// \ingroup allocator
   class joint
   {
-    joint(std::size_t cap) noexcept : capacity(cap) {}
+    joint(u64 cap) noexcept : capacity(cap) {}
 
-    std::size_t capacity;
+    u64 capacity;
 
     template <typename T, class RawAllocator>
     friend class joint_ptr;
@@ -100,9 +108,9 @@ namespace valkyrie{
   /// \ingroup allocator
   struct joint_size
   {
-    std::size_t size;
+    u64 size;
 
-    explicit joint_size(std::size_t s) noexcept : size(s) {}
+    explicit joint_size(u64 s) noexcept : size(s) {}
   };
 
   /// CRTP base class for all objects that want to use joint memory.
@@ -164,8 +172,8 @@ return static_cast<const char*>(mem) + sizeof(T);
 template <typename T>
 joint_type<T>::joint_type(joint j) noexcept : stack_(detail::get_memory(*this), j.capacity)
 {
-FOONATHAN_MEMORY_ASSERT(stack_.top() == detail::get_memory(*this));
-FOONATHAN_MEMORY_ASSERT(stack_.capacity_left() == j.capacity);
+VK_assert(stack_.top() == detail::get_memory(*this));
+VK_assert(stack_.capacity_left() == j.capacity);
 }
 
 /// A pointer to an object where all allocations are joint.
@@ -193,7 +201,7 @@ FOONATHAN_MEMORY_ASSERT(stack_.capacity_left() == j.capacity);
 /// it is stored in an \ref allocator_reference and not owned by the pointer directly.
 /// \ingroup allocator
 template <typename T, class RawAllocator>
-class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
+class joint_ptr : allocator_reference<RawAllocator>
     {
         static_assert(std::is_base_of<joint_type<T>, T>::value,
                       "T must be derived of joint_type<T>");
@@ -224,21 +232,21 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
     joint_ptr(allocator_type& alloc, joint_size additional_size, Args&&... args)
     : joint_ptr(alloc)
     {
-      create(additional_size.size, detail::forward<Args>(args)...);
+      create(additional_size.size, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
     joint_ptr(const allocator_type& alloc, joint_size additional_size, Args&&... args)
     : joint_ptr(alloc)
     {
-      create(additional_size.size, detail::forward<Args>(args)...);
+      create(additional_size.size, std::forward<Args>(args)...);
     }
     /// @}
 
     /// \effects Move-constructs the pointer.
     /// Ownership will be transferred from `other` to the new object.
     joint_ptr(joint_ptr&& other) noexcept
-    : allocator_reference<RawAllocator>(detail::move(other)), ptr_(other.ptr_)
+    : allocator_reference<RawAllocator>(std::move(other)), ptr_(other.ptr_)
     {
       other.ptr_ = nullptr;
     }
@@ -254,7 +262,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
     /// and ownership of `other` transferred.
     joint_ptr& operator=(joint_ptr&& other) noexcept
     {
-      joint_ptr tmp(detail::move(other));
+      joint_ptr tmp(std::move(other));
       swap(*this, tmp);
       return *this;
     }
@@ -269,9 +277,9 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
     /// \effects Swaps to pointers and their ownership and allocator.
     friend void swap(joint_ptr& a, joint_ptr& b) noexcept
     {
-      detail::adl_swap(static_cast<allocator_reference<RawAllocator>&>(a),
+      std::swap(static_cast<allocator_reference<RawAllocator>&>(a),
                        static_cast<allocator_reference<RawAllocator>&>(b));
-      detail::adl_swap(a.ptr_, b.ptr_);
+      std::swap(a.ptr_, b.ptr_);
     }
 
     //=== modifiers ===//
@@ -304,7 +312,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
     /// i.e. `operator bool()` must return `true`.
     element_type& operator*() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(ptr_);
+      VK_assert(ptr_);
       return *get();
     }
 
@@ -313,7 +321,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
     /// i.e. `operator bool()` must return `true`.
     element_type* operator->() const noexcept
     {
-      FOONATHAN_MEMORY_ASSERT(ptr_);
+      VK_assert(ptr_);
       return get();
     }
 
@@ -333,7 +341,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
 
     private:
     template <typename... Args>
-    void create(std::size_t additional_size, Args&&... args)
+    void create(u64 additional_size, Args&&... args)
     {
       auto mem = this->allocate_node(sizeof(element_type) + additional_size,
                                      alignof(element_type));
@@ -343,7 +351,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
       try
                 {
                     ptr = ::new (mem)
-                        element_type(joint(additional_size), detail::forward<Args>(args)...);
+                        element_type(joint(additional_size), std::forward<Args>(args)...);
                 }
                 catch (...)
                 {
@@ -353,7 +361,7 @@ class joint_ptr : FOONATHAN_EBO(allocator_reference<RawAllocator>)
                 }
 #else
       ptr = ::new (mem)
-          element_type(joint(additional_size), detail::forward<Args>(args)...);
+          element_type(joint(additional_size), std::forward<Args>(args)...);
 #endif
       ptr_ = ptr;
     }
@@ -440,7 +448,7 @@ auto allocate_joint(RawAllocator& alloc, joint_size additional_size, Args&&... a
 -> joint_ptr<T, RawAllocator>
 {
   return joint_ptr<T, RawAllocator>(alloc, additional_size,
-                                    detail::forward<Args>(args)...);
+                                    std::forward<Args>(args)...);
 }
 
 template <typename T, class RawAllocator, typename... Args>
@@ -448,7 +456,7 @@ auto allocate_joint(const RawAllocator& alloc, joint_size additional_size, Args&
 -> joint_ptr<T, RawAllocator>
 {
   return joint_ptr<T, RawAllocator>(alloc, additional_size,
-                                    detail::forward<Args>(args)...);
+                                    std::forward<Args>(args)...);
 }
 /// @}
 
@@ -505,9 +513,9 @@ public:
   /// \returns A pointer to the new node.
   /// \throws \ref out_of_fixed_memory exception if this function has been called for a second time
   /// or the joint memory block is exhausted.
-  void* allocate_node(std::size_t size, std::size_t alignment)
+  void* allocate_node(u64 size, u64 alignment)
   {
-    FOONATHAN_MEMORY_ASSERT(stack_);
+    VK_assert(stack_);
     auto mem = stack_->allocate(size, alignment);
     if (!mem)
       FOONATHAN_THROW(out_of_fixed_memory(info(), size));
@@ -516,9 +524,9 @@ public:
 
   /// \effects Deallocates the node, if possible.
   /// \note It is only possible if it was the last allocation.
-  void deallocate_node(void* ptr, std::size_t size, std::size_t) noexcept
+  void deallocate_node(void* ptr, u64 size, u64) noexcept
   {
-    FOONATHAN_MEMORY_ASSERT(stack_);
+    VK_assert(stack_);
     auto end = static_cast<char*>(ptr) + size;
     if (end == stack_->top())
       stack_->unwind(ptr);
@@ -623,7 +631,7 @@ public:
   /// and anything thrown by `T`s constructor.
   /// If an allocation is thrown, the memory will be released directly.
   template <typename JointType>
-  joint_array(std::size_t size, joint_type<JointType>& j)
+  joint_array(u64 size, joint_type<JointType>& j)
       : joint_array(detail::get_stack(j), size)
   {
   }
@@ -633,7 +641,7 @@ public:
   /// and anything thrown by `T`s constructor.
   /// If an allocation is thrown, the memory will be released directly.
   template <typename JointType>
-  joint_array(std::size_t size, const value_type& val, joint_type<JointType>& j)
+  joint_array(u64 size, const value_type& val, joint_type<JointType>& j)
       : joint_array(detail::get_stack(j), size, val)
   {
   }
@@ -679,7 +687,7 @@ public:
   /// If an allocation is thrown, the memory will be released directly.
   template <typename JointType>
   joint_array(joint_array&& other, joint_type<JointType>& j)
-      : joint_array(detail::get_stack(j), detail::move(other))
+      : joint_array(detail::get_stack(j), std::move(other))
   {
   }
 
@@ -687,7 +695,7 @@ public:
   /// but does not release the storage.
   ~joint_array() noexcept
   {
-    for (std::size_t i = 0u; i != size_; ++i)
+    for (u64 i = 0u; i != size_; ++i)
       ptr_[i].~T();
   }
 
@@ -698,15 +706,15 @@ public:
   /// @{
   /// \returns A reference to the `i`th object.
   /// \requires `i < size()`.
-  value_type& operator[](std::size_t i) noexcept
+  value_type& operator[](u64 i) noexcept
   {
-    FOONATHAN_MEMORY_ASSERT(i < size_);
+    VK_assert(i < size_);
     return ptr_[i];
   }
 
-  const value_type& operator[](std::size_t i) const noexcept
+  const value_type& operator[](u64 i) const noexcept
   {
-    FOONATHAN_MEMORY_ASSERT(i < size_);
+    VK_assert(i < size_);
     return ptr_[i];
   }
   /// @}
@@ -752,7 +760,7 @@ public:
   /// @}
 
   /// \returns The number of elements in the array.
-  std::size_t size() const noexcept
+  u64 size() const noexcept
   {
     return size_;
   }
@@ -768,7 +776,7 @@ private:
   struct allocate_only
   {
   };
-  joint_array(allocate_only, detail::joint_stack& stack, std::size_t size)
+  joint_array(allocate_only, detail::joint_stack& stack, u64 size)
       : ptr_(nullptr), size_(0u)
   {
     ptr_ = static_cast<T*>(stack.allocate(size * sizeof(T), alignof(T)));
@@ -786,7 +794,7 @@ private:
 
     ~builder() noexcept
     {
-      for (std::size_t i = 0u; i != size_; ++i)
+      for (u64 i = 0u; i != size_; ++i)
         objects_[i].~T();
 
       if (size_)
@@ -800,17 +808,17 @@ private:
     T* create(Args&&... args)
     {
       auto ptr = ::new (static_cast<void*>(&objects_[size_]))
-          T(detail::forward<Args>(args)...);
+          T(std::forward<Args>(args)...);
       ++size_;
       return ptr;
     }
 
-    std::size_t size() const noexcept
+    u64 size() const noexcept
     {
       return size_;
     }
 
-    std::size_t release() noexcept
+    u64 release() noexcept
     {
       auto res = size_;
       size_    = 0u;
@@ -820,10 +828,10 @@ private:
   private:
     detail::joint_stack* stack_;
     T*                   objects_;
-    std::size_t          size_;
+    u64          size_;
   };
 
-  joint_array(detail::joint_stack& stack, std::size_t size)
+  joint_array(detail::joint_stack& stack, u64 size)
       : joint_array(allocate_only{}, stack, size)
   {
     builder b(stack, ptr_);
@@ -832,7 +840,7 @@ private:
     size_ = b.release();
   }
 
-  joint_array(detail::joint_stack& stack, std::size_t size, const value_type& value)
+  joint_array(detail::joint_stack& stack, u64 size, const value_type& value)
       : joint_array(allocate_only{}, stack, size)
   {
     builder b(stack, ptr_);
@@ -864,7 +872,7 @@ private:
   {
     builder b(stack, ptr_);
     for (auto& elem : other)
-      b.create(detail::move(elem));
+      b.create(std::move(elem));
     size_ = b.release();
   }
 
@@ -889,7 +897,7 @@ private:
         FOONATHAN_THROW(out_of_fixed_memory(info(), b.size() * sizeof(T)));
 
       auto cur = b.create(*begin);
-      FOONATHAN_MEMORY_ASSERT(last + 1 == cur);
+      VK_assert(last + 1 == cur);
       last = cur;
     }
 
@@ -902,7 +910,7 @@ private:
   }
 
   value_type* ptr_;
-  std::size_t size_;
+  u64 size_;
 };
 }
 

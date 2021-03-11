@@ -5,46 +5,39 @@
 #ifndef VALKYRIE_FREE_LIST_UTILS_HPP
 #define VALKYRIE_FREE_LIST_UTILS_HPP
 
+#include <valkyrie/preprocessor.hpp>
+#include <valkyrie/primitives.hpp>
+
+#include <cstring>
+
 namespace valkyrie{
   namespace detail
   {
     //=== storage ===///
     // reads stored integer value
-    inline std::uintptr_t get_int(void *address) noexcept
+    inline u64 get_int(void *address) noexcept
   {
-    FOONATHAN_MEMORY_ASSERT(address);
-    std::uintptr_t res;
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-    std::memcpy(&res, address, sizeof(std::uintptr_t));
-#else
-    auto mem = static_cast<char*>(static_cast<void*>(&res));
-    for (auto i = 0u; i != sizeof(std::uintptr_t); ++i)
-    mem[i] = static_cast<char*>(address)[i];
-#endif
+    VK_assert(address);
+    u64 res;
+    std::memcpy(&res, address, sizeof(u64));
     return res;
   }
 
   // sets stored integer value
-  inline void set_int(void *address, std::uintptr_t i) noexcept
+  inline void set_int(void *address, u64 i) noexcept
 {
-  FOONATHAN_MEMORY_ASSERT(address);
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-  std::memcpy(address, &i, sizeof(std::uintptr_t));
-#else
-  auto mem = static_cast<char*>(static_cast<void*>(&i));
-  for (auto i = 0u; i != sizeof(std::uintptr_t); ++i)
-  static_cast<char*>(address)[i] = mem[i];
-#endif
+  VK_assert(address);
+  std::memcpy(address, &i, sizeof(u64));
 }
 
 // pointer to integer
-inline std::uintptr_t to_int(char *ptr) noexcept
+inline u64 to_int(char *ptr) noexcept
 {
-return reinterpret_cast<std::uintptr_t>(ptr);
+return reinterpret_cast<u64>(ptr);
 }
 
 // integer to pointer
-inline char *from_int(std::uintptr_t i) noexcept
+inline char *from_int(u64 i) noexcept
 {
 return reinterpret_cast<char *>(i);
 }
@@ -78,7 +71,7 @@ set_int(address, to_int(prev) ^ to_int(next));
 // changes other pointer given one pointer
 inline void xor_list_change(void *address, char *old_ptr, char *new_ptr) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(address);
+VK_assert(address);
 auto other = xor_list_get_other(address, old_ptr);
 xor_list_set(address, other, new_ptr);
 }
@@ -103,11 +96,7 @@ xor_list_change(next, prev, new_node); // change next's prev to new_node
 // if std::less/std::greater not available compare integer representation and hope it works
 inline bool less(void *a, void *b) noexcept
 {
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-return std::less<void*>()(a, b);
-#else
-return to_int(a) < to_int(b);
-#endif
+  return std::less<void*>()(a, b);
 }
 
 inline bool less_equal(void *a, void *b) noexcept
@@ -117,11 +106,7 @@ return a == b || less(a, b);
 
 inline bool greater(void *a, void *b) noexcept
 {
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-return std::greater<void*>()(a, b);
-#else
-return to_int(a) < to_int(b);
-#endif
+  return std::greater<void*>()(a, b);
 }
 
 inline bool greater_equal(void *a, void *b) noexcept

@@ -2,6 +2,24 @@
 // Created by maxwe on 2021-03-05.
 //
 
+
+
+#include <valkyrie/preprocessor.hpp>
+#include <valkyrie/primitives.hpp>
+
+
+#include <valkyrie/memory/detail/free_list.hpp>
+
+#include <valkyrie/memory/detail/align.hpp>
+#include <valkyrie/memory/detail/debug_helpers.hpp>
+#include <valkyrie/memory/debugging.hpp>
+#include <valkyrie/memory/error.hpp>
+
+#include "free_list_utils.hpp"
+
+using namespace valkyrie;
+using namespace valkyrie::detail;
+
 namespace
 {
   // i.e. array
@@ -13,12 +31,12 @@ namespace
     char* next;  // first after
 
     // number of nodes in the interval
-    std::size_t size(std::size_t node_size) const noexcept
+    u64 size(u64 node_size) const noexcept
     {
       // last is inclusive, so add actual_size to it
       // note: cannot use next, might not be directly after
-      auto end = last + node_size;
-      FOONATHAN_MEMORY_ASSERT((end - first) % node_size == 0u);
+      char* end = last + node_size;
+      VK_assert(((end - first)) % node_size == 0u);
       return (end - first) / node_size;
     }
   };
@@ -27,8 +45,8 @@ namespace
   // begin and end are the proxy nodes
   // assumes list is not empty
   // similar to list_search_array()
-  interval list_search_array(char* first, std::size_t bytes_needed,
-                             std::size_t node_size) noexcept
+  interval list_search_array(char* first, u64 bytes_needed,
+                             u64 node_size) noexcept
 {
   interval i;
   i.prev  = nullptr;
@@ -68,8 +86,8 @@ return {nullptr, nullptr, nullptr, nullptr};
 
 // similar to list_search_array()
 // begin/end are proxy nodes
-interval xor_list_search_array(char* begin, char* end, std::size_t bytes_needed,
-                               std::size_t node_size) noexcept
+interval xor_list_search_array(char* begin, char* end, u64 bytes_needed,
+                               u64 node_size) noexcept
 {
 interval i;
 i.prev  = begin;
@@ -108,18 +126,18 @@ return {nullptr, nullptr, nullptr, nullptr};
 }
 } // namespace
 
-constexpr std::size_t free_memory_list::min_element_size;
-constexpr std::size_t free_memory_list::min_element_alignment;
+constexpr u64 free_memory_list::min_element_size;
+constexpr u64 free_memory_list::min_element_alignment;
 
-free_memory_list::free_memory_list(std::size_t node_size) noexcept
+free_memory_list::free_memory_list(u64 node_size) noexcept
 : first_(nullptr),
 node_size_(node_size > min_element_size ? node_size : min_element_size),
 capacity_(0u)
 {
 }
 
-free_memory_list::free_memory_list(std::size_t node_size, void* mem,
-                                   std::size_t size) noexcept
+free_memory_list::free_memory_list(u64 node_size, void* mem,
+                                   u64 size) noexcept
 : free_memory_list(node_size)
     {
         insert(mem, size);
@@ -136,22 +154,22 @@ other.capacity_ = 0u;
 
 free_memory_list& free_memory_list::operator=(free_memory_list&& other) noexcept
 {
-free_memory_list tmp(detail::move(other));
+free_memory_list tmp(std::move(other));
 swap(*this, tmp);
 return *this;
 }
 
 void valkyrie::detail::swap(free_memory_list& a, free_memory_list& b) noexcept
 {
-detail::adl_swap(a.first_, b.first_);
-detail::adl_swap(a.node_size_, b.node_size_);
-detail::adl_swap(a.capacity_, b.capacity_);
+std::swap(a.first_, b.first_);
+std::swap(a.node_size_, b.node_size_);
+std::swap(a.capacity_, b.capacity_);
 }
 
-void free_memory_list::insert(void* mem, std::size_t size) noexcept
+void free_memory_list::insert(void* mem, u64 size) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(mem);
-FOONATHAN_MEMORY_ASSERT(is_aligned(mem, alignment()));
+VK_assert(mem);
+VK_assert(is_aligned(mem, alignment()));
 detail::debug_fill_internal(mem, size, false);
 
 insert_impl(mem, size);
@@ -159,7 +177,7 @@ insert_impl(mem, size);
 
 void* free_memory_list::allocate() noexcept
 {
-FOONATHAN_MEMORY_ASSERT(!empty());
+VK_assert(!empty());
 --capacity_;
 
 auto mem = first_;
@@ -167,9 +185,9 @@ first_   = list_get_next(first_);
 return debug_fill_new(mem, node_size_, fence_size());
 }
 
-void* free_memory_list::allocate(std::size_t n) noexcept
+void* free_memory_list::allocate(u64 n) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(!empty());
+VK_assert(!empty());
 if (n <= node_size_)
 return allocate();
 
@@ -197,7 +215,7 @@ list_set_next(node, first_);
 first_ = node;
 }
 
-void free_memory_list::deallocate(void* ptr, std::size_t n) noexcept
+void free_memory_list::deallocate(void* ptr, u64 n) noexcept
 {
 if (n <= node_size_)
 deallocate(ptr);
@@ -208,25 +226,25 @@ insert_impl(mem, n + 2 * fence_size());
 }
 }
 
-std::size_t free_memory_list::alignment() const noexcept
+u64 free_memory_list::alignment() const noexcept
 {
 return alignment_for(node_size_);
 }
 
-std::size_t free_memory_list::fence_size() const noexcept
+u64 free_memory_list::fence_size() const noexcept
 {
 // fence size is max alignment
 return debug_fence_size ? max_alignment : 0u;
 }
 
-void free_memory_list::insert_impl(void* mem, std::size_t size) noexcept
+void free_memory_list::insert_impl(void* mem, u64 size) noexcept
 {
 auto actual_size = node_size_ + 2 * fence_size();
 auto no_nodes    = size / actual_size;
-FOONATHAN_MEMORY_ASSERT(no_nodes > 0);
+VK_assert(no_nodes > 0);
 
 auto cur = static_cast<char*>(mem);
-for (std::size_t i = 0u; i != no_nodes - 1; ++i)
+for (u64 i = 0u; i != no_nodes - 1; ++i)
 {
 list_set_next(cur, cur + actual_size);
 cur += actual_size;
@@ -240,14 +258,14 @@ capacity_ += no_nodes;
 namespace
 {
   // converts a block into a linked list
-  void xor_link_block(void* memory, std::size_t node_size, std::size_t no_nodes, char* prev,
+  void xor_link_block(void* memory, u64 node_size, u64 no_nodes, char* prev,
                       char* next) noexcept
 {
   auto cur = static_cast<char*>(memory);
   xor_list_change(prev, next, cur); // change next pointer of prev
 
   auto last_cur = prev;
-  for (std::size_t i = 0u; i != no_nodes - 1; ++i)
+  for (u64 i = 0u; i != no_nodes - 1; ++i)
 {
   xor_list_set(cur, last_cur,
       cur + node_size); // cur gets last_cur and next node in continous memory
@@ -269,7 +287,7 @@ pos find_pos_interval(const allocator_info& info, char* memory, char* first_prev
                       char* last, char* last_next) noexcept
 {
 // note: first_prev/last_next can be the proxy nodes, then first_prev isn't necessarily less than first!
-FOONATHAN_MEMORY_ASSERT(less(first, memory) && less(memory, last));
+VK_assert(less(first, memory) && less(memory, last));
 
 // need to insert somewhere in the middle
 // search through the entire list
@@ -322,15 +340,15 @@ else if (greater(memory, last_dealloc))
 // insert into (last_dealloc, last]
 return find_pos_interval(info, memory, last_dealloc_prev, last_dealloc, last, end_node);
 
-FOONATHAN_MEMORY_UNREACHABLE("memory must be in some half or outside");
+VK_unreachable;
 return {nullptr, nullptr};
 }
 } // namespace
 
-constexpr std::size_t ordered_free_memory_list::min_element_size;
-constexpr std::size_t ordered_free_memory_list::min_element_alignment;
+constexpr u64 ordered_free_memory_list::min_element_size;
+constexpr u64 ordered_free_memory_list::min_element_alignment;
 
-ordered_free_memory_list::ordered_free_memory_list(std::size_t node_size) noexcept
+ordered_free_memory_list::ordered_free_memory_list(u64 node_size) noexcept
 : node_size_(node_size > min_element_size ? node_size : min_element_size),
 capacity_(0u),
 last_dealloc_(end_node()),
@@ -404,8 +422,8 @@ xor_list_set(a.begin_node(), nullptr, a.end_node());
 xor_list_set(a.end_node(), a.begin_node(), nullptr);
 }
 
-detail::adl_swap(a.node_size_, b.node_size_);
-detail::adl_swap(a.capacity_, b.capacity_);
+std::swap(a.node_size_, b.node_size_);
+std::swap(a.capacity_, b.capacity_);
 
 // for programming convenience, last_dealloc is reset
 a.last_dealloc_prev_ = a.begin_node();
@@ -415,10 +433,10 @@ b.last_dealloc_prev_ = b.begin_node();
 b.last_dealloc_      = xor_list_get_other(b.last_dealloc_prev_, nullptr);
 }
 
-void ordered_free_memory_list::insert(void* mem, std::size_t size) noexcept
+void ordered_free_memory_list::insert(void* mem, u64 size) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(mem);
-FOONATHAN_MEMORY_ASSERT(is_aligned(mem, alignment()));
+VK_assert(mem);
+VK_assert(is_aligned(mem, alignment()));
 debug_fill_internal(mem, size, false);
 
 insert_impl(mem, size);
@@ -426,7 +444,7 @@ insert_impl(mem, size);
 
 void* ordered_free_memory_list::allocate() noexcept
 {
-FOONATHAN_MEMORY_ASSERT(!empty());
+VK_assert(!empty());
 
 // remove first node
 auto prev = begin_node();
@@ -441,15 +459,15 @@ if (node == last_dealloc_)
 {
 // move last_dealloc_ one further in
 last_dealloc_ = next;
-FOONATHAN_MEMORY_ASSERT(last_dealloc_prev_ == prev);
+VK_assert(last_dealloc_prev_ == prev);
 }
 
 return debug_fill_new(node, node_size_, fence_size());
 }
 
-void* ordered_free_memory_list::allocate(std::size_t n) noexcept
+void* ordered_free_memory_list::allocate(u64 n) noexcept
 {
-FOONATHAN_MEMORY_ASSERT(!empty());
+VK_assert(!empty());
 
 if (n <= node_size_)
 return allocate();
@@ -480,7 +498,7 @@ void ordered_free_memory_list::deallocate(void* ptr) noexcept
 auto node = static_cast<char*>(debug_fill_free(ptr, node_size_, fence_size()));
 
 auto p =
-    find_pos(allocator_info(FOONATHAN_MEMORY_LOG_PREFIX "::detail::ordered_free_memory_list",
+    find_pos(allocator_info("valkyrie::detail::ordered_free_memory_list",
 this),
 node, begin_node(), end_node(), last_dealloc_, last_dealloc_prev_);
 
@@ -491,7 +509,7 @@ last_dealloc_      = node;
 last_dealloc_prev_ = p.prev;
 }
 
-void ordered_free_memory_list::deallocate(void* ptr, std::size_t n) noexcept
+void ordered_free_memory_list::deallocate(void* ptr, u64 n) noexcept
 {
 if (n <= node_size_)
 deallocate(ptr);
@@ -505,25 +523,25 @@ last_dealloc_prev_ = prev;
 }
 }
 
-std::size_t ordered_free_memory_list::alignment() const noexcept
+u64 ordered_free_memory_list::alignment() const noexcept
 {
 return alignment_for(node_size_);
 }
 
-std::size_t ordered_free_memory_list::fence_size() const noexcept
+u64 ordered_free_memory_list::fence_size() const noexcept
 {
 // node size is fence size
 return debug_fence_size ? node_size_ : 0u;
 }
 
-char* ordered_free_memory_list::insert_impl(void* mem, std::size_t size) noexcept
+char* ordered_free_memory_list::insert_impl(void* mem, u64 size) noexcept
 {
 auto actual_size = node_size_ + 2 * fence_size();
 auto no_nodes    = size / actual_size;
-FOONATHAN_MEMORY_ASSERT(no_nodes > 0);
+VK_assert(no_nodes > 0);
 
 auto p =
-    find_pos(allocator_info(FOONATHAN_MEMORY_LOG_PREFIX "::detail::ordered_free_memory_list",
+    find_pos(allocator_info("valkyrie::detail::ordered_free_memory_list",
 this),
 static_cast<char*>(mem), begin_node(), end_node(), last_dealloc_,
     last_dealloc_prev_);

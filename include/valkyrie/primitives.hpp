@@ -31,9 +31,9 @@ namespace valkyrie{
 
 
   template <typename Ret, typename ...Args>
-  using function_ptr = Ret(*)(Args...);
+  using function_ptr = Ret(*)(Args...);/*
   template <typename Ret, typename ...Args>
-  using noreturn_function_ptr = Ret(* __attribute__((noreturn)))(Args...);
+  using noreturn_function_ptr = Ret(* __attribute__((noreturn)))(Args...);*/
 }
 
 #endif//VALKYRIE_CORE_TYPES_HPP

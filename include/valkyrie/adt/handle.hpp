@@ -44,7 +44,7 @@ namespace valkyrie{
   struct EmptyBase{};
   template <typename T, typename Base = EmptyBase>
   class IntrusiveReferenceCount : public Base{
-    mutable Atomic<u32> refCount = 0;
+    mutable atomic<u32> refCount = 0;
   public:
     using Base::Base;
 
@@ -69,8 +69,8 @@ namespace valkyrie{
   };
 
   struct SharedObjectControlBlock{
-    Atomic<u32> sharedCount;
-    Atomic<u32> weakCount;
+    atomic<u32> sharedCount;
+    atomic<u32> weakCount;
     void* object;
     void(* const pDelete)(void* pObject, void* pUserData) noexcept;
     void*  const pUserData;

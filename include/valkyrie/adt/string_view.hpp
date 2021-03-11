@@ -145,27 +145,27 @@ namespace valkyrie{
     };
     template <size_t N>
     struct StringInfo<small_string<N>>{
-      inline constexpr static const utf8* data(const SmallString<N>& str) noexcept;
-      inline constexpr static u32 byteLength(const SmallString<N>& str) noexcept;
-      inline constexpr static u32 length(const SmallString<N>& str) noexcept;
+      inline constexpr static const utf8* data(const small_string<N>& str) noexcept;
+      inline constexpr static u32 byteLength(const small_string<N>& str) noexcept;
+      inline constexpr static u32 length(const small_string<N>& str) noexcept;
     };
     template <size_t N>
     struct StringInfo<static_string<N>>{
-      inline constexpr static const utf8* data(const StaticString<N>& str) noexcept;
-      inline constexpr static u32 byteLength(const StaticString<N>& str) noexcept;
-      inline constexpr static u32 length(const StaticString<N>& str) noexcept;
+      inline constexpr static const utf8* data(const static_string<N>& str) noexcept;
+      inline constexpr static u32 byteLength(const static_string<N>& str) noexcept;
+      inline constexpr static u32 length(const static_string<N>& str) noexcept;
     };
     template <size_t N>
     struct StringInfo<raw_string<N>>{
-      inline constexpr static const utf8* data(const RawString<N>& str) noexcept;
-      inline constexpr static u32 byteLength(const RawString<N>& str) noexcept;
-      inline constexpr static u32 length(const RawString<N>& str) noexcept;
+      inline constexpr static const utf8* data(const raw_string<N>& str) noexcept;
+      inline constexpr static u32 byteLength(const raw_string<N>& str) noexcept;
+      inline constexpr static u32 length(const raw_string<N>& str) noexcept;
     };
     template <>
     struct StringInfo<lazy_string>{
-      inline constexpr static const utf8* data(const LazyString& str) noexcept;
-      inline constexpr static u32 byteLength(const LazyString& str) noexcept;
-      inline constexpr static u32 length(const LazyString& str) noexcept;
+      inline constexpr static const utf8* data(const lazy_string& str) noexcept;
+      inline constexpr static u32 byteLength(const lazy_string& str) noexcept;
+      inline constexpr static u32 length(const lazy_string& str) noexcept;
     };
 
     template <>

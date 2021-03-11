@@ -5,6 +5,9 @@
 #ifndef VALKYRIE_MEMORY_TEMPORARY_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_TEMPORARY_ALLOCATOR_HPP
 
+#include "default_allocator.hpp"
+#include "memory_stack.hpp"
+
 namespace valkyrie{
   class temporary_allocator;
   class temporary_stack;
@@ -14,18 +17,18 @@ namespace valkyrie{
     class temporary_block_allocator
     {
     public:
-      explicit temporary_block_allocator(std::size_t block_size) noexcept;
+      explicit temporary_block_allocator(u64 block_size) noexcept;
 
       memory_block allocate_block();
 
       void deallocate_block(memory_block block);
 
-      std::size_t next_block_size() const noexcept
+      u64 next_block_size() const noexcept
       {
         return block_size_;
       }
 
-      using growth_tracker = void (*)(std::size_t size);
+      using growth_tracker = void (*)(u64 size);
 
       growth_tracker set_growth_tracker(growth_tracker t) noexcept;
 
@@ -33,7 +36,7 @@ namespace valkyrie{
 
     private:
       growth_tracker tracker_;
-      std::size_t    block_size_;
+      u64    block_size_;
     };
 
     using temporary_stack_impl = memory_stack<temporary_block_allocator>;
@@ -80,7 +83,7 @@ namespace valkyrie{
   /// A wrapper around the \ref memory_stack that is used by the \ref temporary_allocator.
   /// There should be at least one per-thread.
   /// \ingroup allocator
-  class temporary_stack : FOONATHAN_EBO(detail::temporary_stack_list_node)
+  class temporary_stack : detail::temporary_stack_list_node
       {
           public:
           /// The type of the handler called when the internal \ref memory_stack grows.
@@ -108,18 +111,18 @@ namespace valkyrie{
           /// \effects Creates it with a given initial size of the stack.
           /// It can grow if needed, although that is expensive.
           /// \requires `initial_size` must be greater than `0`.
-          explicit temporary_stack(std::size_t initial_size) : stack_(initial_size), top_(nullptr)
+          explicit temporary_stack(u64 initial_size) : stack_(initial_size), top_(nullptr)
           {
           }
 
           /// \returns `next_capacity()` of the internal `memory_stack`.
-          std::size_t next_capacity() const noexcept
+          u64 next_capacity() const noexcept
           {
             return stack_.next_capacity();
           }
 
           private:
-          temporary_stack(int i, std::size_t initial_size)
+          temporary_stack(int i, u64 initial_size)
           : detail::temporary_stack_list_node(i), stack_(initial_size), top_(nullptr)
           {
           }
@@ -161,7 +164,7 @@ namespace valkyrie{
   class temporary_stack_initializer
   {
   public:
-    static constexpr std::size_t default_stack_size = 4096u;
+    static constexpr u64 default_stack_size = 4096u;
 
     static const struct defer_create_t
     {
@@ -177,7 +180,7 @@ namespace valkyrie{
     /// \requires `initial_size` must not be `0` if `FOONATHAN_MEMORY_TEMPORARY_STACK_MODE != 0`.
     /// \note If `FOONATHAN_MEMORY_TEMPORARY_STACK_MODE == 0`, this function will issue a warning in debug mode.
     /// This can be disabled by passing `0` as the initial size.
-    temporary_stack_initializer(std::size_t initial_size = default_stack_size);
+    temporary_stack_initializer(u64 initial_size = default_stack_size);
 
     /// \effects Destroys the per-thread stack if it isn't already destroyed.
     ~temporary_stack_initializer() noexcept;
@@ -195,7 +198,7 @@ namespace valkyrie{
   /// But if there is no \ref temporary_stack_initializer, it won't be destroyed.
   /// \relatesalso temporary_stack
   temporary_stack& get_temporary_stack(
-      std::size_t initial_size = temporary_stack_initializer::default_stack_size);
+      u64 initial_size = temporary_stack_initializer::default_stack_size);
 
   /// A stateful \concept{concept_rawallocator,RawAllocator} that handles temporary allocations.
   /// It works similar to \c alloca() but uses a seperate \ref memory_stack for the allocations,
@@ -222,7 +225,7 @@ namespace valkyrie{
     /// \effects Allocates memory from the internal \ref memory_stack by forwarding to it.
     /// \returns The result of \ref memory_stack::allocate().
     /// \requires `is_active()` must return `true`.
-    void* allocate(std::size_t size, std::size_t alignment);
+    void* allocate(u64 size, u64 alignment);
 
     /// \returns Whether or not the allocator object is active.
     /// \note The active allocator object is the last object created for one stack.
@@ -264,20 +267,19 @@ namespace valkyrie{
     using is_stateful    = std::true_type;
 
     /// \returns The result of \ref temporary_allocator::allocate().
-    static void* allocate_node(allocator_type& state, std::size_t size,
-                               std::size_t alignment)
+    static void* allocate_node(allocator_type& state, u64 size,
+                               u64 alignment)
     {
       detail::check_allocation_size<bad_node_size>(size,
                                                    [&] { return max_node_size(state); },
-                                                   {FOONATHAN_MEMORY_LOG_PREFIX
-                                                       "::temporary_allocator",
+                                                   { "valkyrie::temporary_allocator",
                                                        &state});
       return state.allocate(size, alignment);
     }
 
     /// \returns The result of \ref temporary_allocator::allocate().
-    static void* allocate_array(allocator_type& state, std::size_t count, std::size_t size,
-                                std::size_t alignment)
+    static void* allocate_array(allocator_type& state, u64 count, u64 size,
+                                u64 alignment)
     {
       return allocate_node(state, count * size, alignment);
     }
@@ -285,25 +287,25 @@ namespace valkyrie{
     /// @{
     /// \effects Does nothing besides bookmarking for leak checking, if that is enabled.
     /// Actual deallocation will be done automatically if the allocator object goes out of scope.
-    static void deallocate_node(const allocator_type&, void*, std::size_t,
-                                std::size_t) noexcept
+    static void deallocate_node(const allocator_type&, void*, u64,
+                                u64) noexcept
     {
     }
 
-    static void deallocate_array(const allocator_type&, void*, std::size_t, std::size_t,
-                                 std::size_t) noexcept
+    static void deallocate_array(const allocator_type&, void*, u64, u64,
+                                 u64) noexcept
     {
     }
     /// @}
 
     /// @{
     /// \returns The maximum size which is \ref memory_stack::next_capacity() of the internal stack.
-    static std::size_t max_node_size(const allocator_type& state) noexcept
+    static u64 max_node_size(const allocator_type& state) noexcept
     {
       return state.get_stack().next_capacity();
     }
 
-    static std::size_t max_array_size(const allocator_type& state) noexcept
+    static u64 max_array_size(const allocator_type& state) noexcept
     {
       return max_node_size(state);
     }
@@ -311,9 +313,9 @@ namespace valkyrie{
 
     /// \returns The maximum possible value since there is no alignment restriction
     /// (except indirectly through \ref memory_stack::next_capacity()).
-    static std::size_t max_alignment(const allocator_type&) noexcept
+    static u64 max_alignment(const allocator_type&) noexcept
     {
-      return std::size_t(-1);
+      return u64(-1);
     }
   };
 }

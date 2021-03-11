@@ -24,8 +24,8 @@ namespace valkyrie{
 
   /*namespace detail{
     class SingleProducerManyConsumerMutex {
-      Atomic<i32> ownerCount;
-      Atomic<u32> readLockWaiters;
+      atomic<i32> ownerCount;
+      atomic<u32> readLockWaiters;
     public:
       SingleProducerManyConsumerMutex() noexcept : ownerCount(), readLockWaiters(){}
       SingleProducerManyConsumerMutex(const SingleProducerManyConsumerMutex &) = delete;
@@ -65,9 +65,9 @@ namespace valkyrie{
     };
     class ManyProducerManyConsumerMutex {
 
-      Atomic<i32> ownerCount;
-      Atomic<i32> writeLockWaiterCount;
-      Atomic<i32> readLockWaiterCount;
+      atomic<i32> ownerCount;
+      atomic<i32> writeLockWaiterCount;
+      atomic<i32> readLockWaiterCount;
 
     public:
       ManyProducerManyConsumerMutex() noexcept : ownerCount(0), writeLockWaiterCount(0), readLockWaiterCount(0){}
@@ -164,8 +164,8 @@ namespace valkyrie{
   class Mutex;
   template <>
   class Mutex<Capacity::One, Capacity::Many>{
-    Atomic<i32> ownerCount;
-    Atomic<u32> readLockWaiters;
+    atomic<i32> ownerCount;
+    atomic<u32> readLockWaiters;
   public:
     Mutex() noexcept : ownerCount(), readLockWaiters(){}
     Mutex(const Mutex &) = delete;
@@ -209,9 +209,9 @@ namespace valkyrie{
   };
   template <>
   class Mutex<Capacity::Many, Capacity::Many>{
-    Atomic<i32> ownerCount;
-    Atomic<i32> writeLockWaiterCount;
-    Atomic<i32> readLockWaiterCount;
+    atomic<i32> ownerCount;
+    atomic<i32> writeLockWaiterCount;
+    atomic<i32> readLockWaiterCount;
 
   public:
     Mutex() noexcept : ownerCount(0), writeLockWaiterCount(0), readLockWaiterCount(0){}
