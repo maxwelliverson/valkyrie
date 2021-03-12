@@ -5,6 +5,13 @@
 #ifndef VALKYRIE_MEMORY_ALLOCATOR_STORAGE_HPP
 #define VALKYRIE_MEMORY_ALLOCATOR_STORAGE_HPP
 
+#include <new>
+
+
+#include "detail/concepts.hpp"
+#include "threading.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   namespace detail
   {
@@ -43,7 +50,8 @@ return composable_allocator_traits<Alloc>::try_deallocate_array(alloc, ptr, coun
 template <class Alloc>
 void* try_allocate_node(std::false_type, Alloc&, u64, u64) noexcept
 {
-FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
+
+VK_unreachable;
 return nullptr;
 }
 
@@ -51,7 +59,7 @@ template <class Alloc>
 void* try_allocate_array(std::false_type, Alloc&, u64, u64,
                          u64) noexcept
 {
-FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
+  VK_unreachable;
 return nullptr;
 }
 
@@ -59,7 +67,7 @@ template <class Alloc>
 bool try_deallocate_node(std::false_type, Alloc&, void*, u64,
                          u64) noexcept
 {
-FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
+  VK_unreachable;
 return false;
 }
 
@@ -67,7 +75,7 @@ template <class Alloc>
 bool try_deallocate_array(std::false_type, Alloc&, void*, u64, u64,
                           u64) noexcept
 {
-FOONATHAN_MEMORY_UNREACHABLE("Allocator is not compositioning");
+VK_unreachable;
 return false;
 }
 } // namespace detail
@@ -76,7 +84,7 @@ return false;
 /// The \concept{concept_storagepolicy,StoragePolicy} defines the allocator type being stored and how it is stored.
 /// The \c Mutex controls synchronization of the access.
 /// \ingroup storage
-template <class StoragePolicy, class Mutex>
+template <memory_storage_policy StoragePolicy, class Mutex>
 class allocator_storage
     : StoragePolicy,
     detail::mutex_storage<
@@ -105,14 +113,10 @@ allocator_storage() = default;
 /// The allocator will be forwarded to the \c StoragePolicy, it decides whether it will be moved, its address stored or something else.
 /// \requires The expression <tt>new storage_policy(std::forward<Alloc>(alloc))</tt> must be well-formed,
 /// otherwise this constructor does not participate in overload resolution.
-template <
-    class Alloc,
-    // MSVC seems to ignore access rights in SFINAE below
-    // use this to prevent this constructor being chosen instead of move for types inheriting from it
-    FOONATHAN_REQUIRES(
-        (!std::is_base_of<allocator_storage, typename std::decay<Alloc>::type>::value))>
-allocator_storage(Alloc&& alloc,
-FOONATHAN_SFINAE(new storage_policy(std::forward<Alloc>(alloc))))
+template <typename Alloc>
+allocator_storage(Alloc&& alloc)
+    requires(!std::derived_from<std::remove_cvref_t<Alloc>, allocator_storage> &&
+              std::constructible_from<storage_policy, Alloc>)
 : storage_policy(std::forward<Alloc>(alloc))
 {
 }
@@ -122,8 +126,7 @@ FOONATHAN_SFINAE(new storage_policy(std::forward<Alloc>(alloc))))
 /// \requires The expression <tt>new storage_policy(other.get_allocator())</tt> must be well-formed,
 /// otherwise this constructor does not participate in overload resolution.
 template <class OtherPolicy>
-allocator_storage(const allocator_storage<OtherPolicy, Mutex>& other,
-                  FOONATHAN_SFINAE(new storage_policy(other.get_allocator())))
+allocator_storage(const allocator_storage<OtherPolicy, Mutex>& other) requires(requires{ storage_policy(other.get_allocator()); })
 : storage_policy(other.get_allocator())
 {
 }
@@ -216,8 +219,7 @@ u64 max_alignment() const
 /// i.e. \ref is_composable() must return `true`.
 /// \note This check is done at compile-time where possible,
 /// and at runtime in the case of type-erased storage.
-FOONATHAN_ENABLE_IF(composable::value)
-void* try_allocate_node(u64 size, u64 alignment) noexcept
+void* try_allocate_node(u64 size, u64 alignment) noexcept requires(composable::value)
 {
 VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
@@ -225,9 +227,8 @@ auto&&                        alloc = get_allocator();
 return composable_traits::try_allocate_node(alloc, size, alignment);
 }
 
-FOONATHAN_ENABLE_IF(composable::value)
 void* try_allocate_array(u64 count, u64 size,
-                         u64 alignment) noexcept
+                         u64 alignment) noexcept requires(composable::value)
 {
 VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
@@ -235,8 +236,7 @@ auto&&                        alloc = get_allocator();
 return composable_traits::try_allocate_array(alloc, count, size, alignment);
 }
 
-FOONATHAN_ENABLE_IF(composable::value)
-bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
+bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept requires(composable::value)
 {
 VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
@@ -244,9 +244,8 @@ auto&&                        alloc = get_allocator();
 return composable_traits::try_deallocate_node(alloc, ptr, size, alignment);
 }
 
-FOONATHAN_ENABLE_IF(composable::value)
 bool try_deallocate_array(void* ptr, u64 count, u64 size,
-                          u64 alignment) noexcept
+                          u64 alignment) noexcept requires(composable::value)
 {
 VK_assert(is_composable());
 std::lock_guard<actual_mutex> lock(*this);
@@ -276,15 +275,12 @@ return storage_policy::get_allocator();
 /// \returns A proxy object that acts like a pointer to the stored allocator.
 /// It cannot be reassigned to point to another allocator object and only moving is supported, which is destructive.
 /// As long as the proxy object lives and is not moved from, the \c Mutex will be kept locked.
-auto lock() noexcept -> FOONATHAN_IMPL_DEFINED(decltype(detail::lock_allocator(
-    std::declval<storage_policy>().get_allocator(), std::declval<actual_mutex&>())))
+auto lock() noexcept -> decltype(detail::lock_allocator(std::declval<storage_policy>().get_allocator(), std::declval<actual_mutex&>()))
 {
 return detail::lock_allocator(get_allocator(), static_cast<actual_mutex&>(*this));
 }
 
-auto lock() const noexcept -> FOONATHAN_IMPL_DEFINED(decltype(
-    detail::lock_allocator(std::declval<const storage_policy>().get_allocator(),
-                           std::declval<actual_mutex&>())))
+auto lock() const noexcept -> decltype(detail::lock_allocator(std::declval<const storage_policy>().get_allocator(), std::declval<actual_mutex&>()))
 {
 return detail::lock_allocator(get_allocator(), static_cast<actual_mutex&>(*this));
 }
@@ -368,8 +364,7 @@ class direct_storage : allocator_traits<RawAllocator>::allocator_type
 /// avoiding the need to wrap it inside the \ref allocator_traits.
 /// \ingroup storage
 template <class RawAllocator>
-FOONATHAN_ALIAS_TEMPLATE(allocator_adapter,
-    allocator_storage<direct_storage<RawAllocator>, no_mutex>);
+using allocator_adapter = allocator_storage<direct_storage<RawAllocator>, no_mutex>;
 
 /// \returns A new \ref allocator_adapter object created by forwarding to the constructor.
 /// \relates allocator_adapter
@@ -385,26 +380,15 @@ return {std::forward<RawAllocator>(allocator)};
 /// The \c Mutex will default to \c std::mutex if threading is supported,
 /// otherwise there is no default.
 /// \ingroup storage
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-template <class RawAllocator, class Mutex = std::mutex>
-        FOONATHAN_ALIAS_TEMPLATE(thread_safe_allocator,
-                                 allocator_storage<direct_storage<RawAllocator>, Mutex>);
-#else
-template <class RawAllocator, class Mutex>
-FOONATHAN_ALIAS_TEMPLATE(thread_safe_allocator,
-    allocator_storage<direct_storage<RawAllocator>, Mutex>);
-#endif
+  template <class RawAllocator, class Mutex = std::mutex>
+  using thread_safe_allocator = allocator_storage<direct_storage<RawAllocator>, Mutex>;
 
-#if FOONATHAN_HOSTED_IMPLEMENTATION
-/// \returns A new \ref thread_safe_allocator object created by forwarding to the constructor/
-        /// \relates thread_safe_allocator
-        template <class RawAllocator>
-        auto make_thread_safe_allocator(RawAllocator&& allocator)
-            -> thread_safe_allocator<typename std::decay<RawAllocator>::type>
-        {
-            return std::forward<RawAllocator>(allocator);
-        }
-#endif
+  template <class RawAllocator>
+  auto make_thread_safe_allocator(RawAllocator&& allocator)
+  -> thread_safe_allocator<typename std::decay<RawAllocator>::type>
+  {
+    return std::forward<RawAllocator>(allocator);
+  }
 
 /// \returns A new \ref thread_safe_allocator object created by forwarding to the constructor,
 /// specifying a certain mutex type.
@@ -528,13 +512,11 @@ struct is_shared_allocator : std::false_type
 /// \ingroup storage
 template <class RawAllocator>
 class reference_storage
-#ifndef DOXYGEN
     : detail::reference_storage_impl<
-    typename allocator_traits<RawAllocator>::allocator_type,
-    decltype(detail::reference_type(
-        typename allocator_traits<RawAllocator>::is_stateful{},
-        is_shared_allocator<RawAllocator>{})>)
-#endif
+        typename allocator_traits<RawAllocator>::allocator_type,
+        decltype(detail::reference_type(
+            typename allocator_traits<RawAllocator>::is_stateful{},
+            is_shared_allocator<RawAllocator>{}))>
     {
         using storage = detail::reference_storage_impl<
         typename allocator_traits<RawAllocator>::allocator_type,
@@ -694,7 +676,7 @@ class reference_storage<any_allocator>
   };
 
 public:
-  using allocator_type = FOONATHAN_IMPL_DEFINED(base_allocator);
+  using allocator_type = base_allocator;
 
   /// \effects Creates it from a reference to any stateful \concept{concept_rawallocator,RawAllocator}.
   /// It will store a pointer to this allocator object.
@@ -713,8 +695,7 @@ public:
   /// \requires The \c RawAllocator is stateless.
   template <class RawAllocator>
   reference_storage(
-      const RawAllocator& alloc,
-      FOONATHAN_REQUIRES(!allocator_traits<RawAllocator>::is_stateful::value)) noexcept
+      const RawAllocator& alloc) noexcept requires(!allocator_traits<RawAllocator>::is_stateful::value)
   {
     static_assert(sizeof(basic_allocator<RawAllocator>)
                   <= sizeof(basic_allocator<default_instantiation>),
@@ -725,7 +706,7 @@ public:
   /// \effects Creates it from the internal base class for the type-erasure.
   /// Has the same effect as if the actual stored allocator were passed to the other constructor overloads.
   /// \note This constructor is used internally to avoid double-nesting.
-  reference_storage(const FOONATHAN_IMPL_DEFINED(base_allocator) & alloc) noexcept
+  reference_storage(const base_allocator& alloc) noexcept
   {
     alloc.clone(&storage_);
   }
@@ -873,8 +854,7 @@ private:
 /// Wrap the allocator in a \ref thread_safe_allocator if you want thread safety.
 /// \ingroup storage
 template <class RawAllocator>
-FOONATHAN_ALIAS_TEMPLATE(allocator_reference,
-    allocator_storage<reference_storage<RawAllocator>, no_mutex>);
+using allocator_reference = allocator_storage<reference_storage<RawAllocator>, no_mutex>;
 
 /// \returns A new \ref allocator_reference object by forwarding the allocator to the constructor.
 /// \relates allocator_reference

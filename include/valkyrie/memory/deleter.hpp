@@ -118,8 +118,8 @@ namespace valkyrie{
 
           /// \effects Creates it from a deallocator for a derived type.
           /// It will deallocate the memory as if done by the derived type.
-          template <typename T, FOONATHAN_REQUIRES((std::is_base_of<BaseType, T>::value))>
-          allocator_polymorphic_deallocator(allocator_deallocator<T, RawAllocator> dealloc)
+          template <typename T>
+          allocator_polymorphic_deallocator(allocator_deallocator<T, RawAllocator> dealloc) requires(std::is_base_of<BaseType, T>::value)
           : allocator_reference<RawAllocator>(dealloc.get_allocator()),
           derived_size_(sizeof(T)),
           derived_alignment_(alignof(T))
@@ -259,8 +259,8 @@ namespace valkyrie{
 
           /// \effects Creates it from a deleter for a derived type.
           /// It will deallocate the memory as if done by the derived type.
-          template <typename T, FOONATHAN_REQUIRES((std::is_base_of<BaseType, T>::value))>
-          allocator_polymorphic_deleter(allocator_deleter<T, RawAllocator> deleter)
+          template <typename T>
+          allocator_polymorphic_deleter(allocator_deleter<T, RawAllocator> deleter) requires(std::is_base_of<BaseType, T>::value)
           : allocator_reference<RawAllocator>(deleter.get_allocator()),
           derived_size_(sizeof(T)),
           derived_alignment_(alignof(T))

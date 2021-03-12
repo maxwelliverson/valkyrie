@@ -6,9 +6,7 @@
 #define VALKYRIE_MEMORY_STD_ALLOCATOR_HPP
 
 #include "detail/utility.hpp"
-#include "config.hpp"
 #include "allocator_storage.hpp"
-#include "threading.hpp"
 
 namespace valkyrie{
   namespace traits_detail
@@ -120,12 +118,8 @@ namespace valkyrie{
           /// If the requirement is not fulfilled this function does not participate in overload resolution.
           /// \note The caller has to ensure that the lifetime of the \c RawAllocator is at least as long as the lifetime
           /// of this \ref std_allocator object.
-          template <
-          class RawAlloc,
-          // MSVC seems to ignore access rights in decltype SFINAE below
-          // use this to prevent this constructor being chosen instead of move/copy for types inheriting from it
-          FOONATHAN_REQUIRES((!std::is_base_of<std_allocator, RawAlloc>::value))>
-          std_allocator(RawAlloc& alloc, FOONATHAN_SFINAE(alloc_reference(alloc))) noexcept
+          template <typename RawAlloc>
+          std_allocator(RawAlloc& alloc) noexcept requires( !std::is_base_of_v<std_allocator, RawAlloc> && std::constructible_from<alloc_reference, RawAlloc&>)
           : alloc_reference(alloc)
           {
           }
@@ -135,12 +129,8 @@ namespace valkyrie{
           /// \requires The \c RawAllocator is stateless
           /// and the expression <tt>allocator_reference<RawAllocator>(alloc)</tt> is well-formed as above,
           /// otherwise this function does not participate in overload resolution.
-          template <
-          class RawAlloc,
-          // MSVC seems to ignore access rights in decltype SFINAE below
-          // use this to prevent this constructor being chosen instead of move/copy for types inheriting from it
-          FOONATHAN_REQUIRES((!std::is_base_of<std_allocator, RawAlloc>::value))>
-          std_allocator(const RawAlloc& alloc, FOONATHAN_SFINAE(alloc_reference(alloc))) noexcept
+          template <typename RawAlloc>
+          std_allocator(const RawAlloc& alloc) noexcept requires(!std::is_base_of_v<std_allocator, RawAlloc> && std::constructible_from<alloc_reference, const RawAlloc&>)
           : alloc_reference(alloc)
           {
           }
@@ -336,7 +326,7 @@ return {std::forward<RawAllocator>(allocator)};
 /// The implementation is optimized to call fewer virtual functions.
 /// \ingroup adapter
 template <typename T>
-FOONATHAN_ALIAS_TEMPLATE(any_std_allocator, std_allocator<T, any_allocator>);
+using any_std_allocator = std_allocator<T, any_allocator>;
 
 /// \returns A new \ref any_std_allocator for a given type using a certain allocator object.
 /// \relates any_std_allocator

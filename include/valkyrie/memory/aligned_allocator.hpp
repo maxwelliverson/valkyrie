@@ -5,6 +5,12 @@
 #ifndef VALKYRIE_MEMORY_ALIGNED_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_ALIGNED_ALLOCATOR_HPP
 
+#include <valkyrie/meta.hpp>
+#include <valkyrie/primitives.hpp>
+
+#include "detail/align.hpp"
+#include "allocator_traits.hpp"
+
 namespace valkyrie{
   /// A \concept{concept_rawallocator,RawAllocator} adapter that ensures a minimum alignment.
   /// It adjusts the alignment value so that it is always larger than the minimum and forwards to the specified allocator.
@@ -81,36 +87,27 @@ namespace valkyrie{
           /// \effects Forwards to the underlying allocator through the \ref composable_allocator_traits.
           /// If the \c alignment is less than the \c min_alignment(), it is set to the minimum alignment.
           /// \requires The underyling allocator must be composable.
-          FOONATHAN_ENABLE_IF(composable::value)
-          void* try_allocate_node(u64 size, u64 alignment) noexcept
+          void* try_allocate_node(u64 size, u64 alignment) noexcept requires(composable::value)
           {
             if (min_alignment_ > alignment)
               alignment = min_alignment_;
             return composable_traits::try_allocate_node(get_allocator(), size, alignment);
           }
-
-          FOONATHAN_ENABLE_IF(composable::value)
-          void* try_allocate_array(u64 count, u64 size,
-          u64 alignment) noexcept
+          void* try_allocate_array(u64 count, u64 size, u64 alignment) noexcept requires(composable::value)
           {
             if (min_alignment_ > alignment)
               alignment = min_alignment_;
             return composable_traits::try_allocate_array(get_allocator(), count, size,
                                                          alignment);
           }
-
-          FOONATHAN_ENABLE_IF(composable::value)
-          bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
+          bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept requires(composable::value)
           {
             if (min_alignment_ > alignment)
               alignment = min_alignment_;
             return composable_traits::try_deallocate_node(get_allocator(), ptr, size,
                                                           alignment);
           }
-
-          FOONATHAN_ENABLE_IF(composable::value)
-          bool try_deallocate_array(void* ptr, u64 count, u64 size,
-          u64 alignment) noexcept
+          bool try_deallocate_array(void* ptr, u64 count, u64 size, u64 alignment) noexcept requires(composable::value)
           {
             if (min_alignment_ > alignment)
               alignment = min_alignment_;

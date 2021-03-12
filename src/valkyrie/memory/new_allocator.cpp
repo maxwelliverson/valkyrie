@@ -2,6 +2,7 @@
 // Created by maxwe on 2021-03-05.
 //
 
+#include <valkyrie/memory/error.hpp>
 #include <valkyrie/memory/new_allocator.hpp>
 
 using namespace valkyrie;

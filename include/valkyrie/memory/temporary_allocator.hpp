@@ -43,7 +43,6 @@ namespace valkyrie{
 
     class temporary_stack_list;
 
-#if FOONATHAN_MEMORY_TEMPORARY_STACK_MODE >= 2
     class temporary_stack_list_node
             {
             public:
@@ -61,23 +60,12 @@ namespace valkyrie{
                 friend temporary_stack_list;
             };
 
-            static class temporary_allocator_dtor_t
-            {
-            public:
-                temporary_allocator_dtor_t() noexcept;
-                ~temporary_allocator_dtor_t() noexcept;
-            } temporary_allocator_dtor;
-#else
-    class temporary_stack_list_node
+    static class temporary_allocator_dtor_t
     {
-    protected:
-      temporary_stack_list_node() noexcept {}
-
-      temporary_stack_list_node(int) noexcept {}
-
-      ~temporary_stack_list_node() noexcept {}
-    };
-#endif
+    public:
+        temporary_allocator_dtor_t() noexcept;
+        ~temporary_allocator_dtor_t() noexcept;
+    } temporary_allocator_dtor;
   } // namespace detail
 
   /// A wrapper around the \ref memory_stack that is used by the \ref temporary_allocator.

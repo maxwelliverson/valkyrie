@@ -9,6 +9,16 @@
 
 namespace valkyrie{
 
+  namespace detail{
+    template <typename T>
+    struct protected_is_composable_test : T{
+
+      meta::true_type test_is_composable() const requires(requires{ { this->is_composable() } -> same_as<bool>; });
+      meta::false_type test_is_composable() const;
+
+    };
+  }
+
   class memory_block;
 
   template <typename T>
@@ -67,8 +77,7 @@ namespace valkyrie{
     typename T::allocator_type;
     { policy.get_allocator() } -> std::convertible_to<typename T::allocator_type&>;
     { cpolicy.get_allocator() } -> std::convertible_to<const typename T::allocator_type&>;
-    { cpolicy.is_composable() } -> same_as<bool>;
-  };
+  } && decltype(std::declval<const detail::protected_is_composable_test<T>&>().test_is_composable())::value;
   template <typename T>
   concept segregatable_allocator = requires(T& seg, const T& cseg, u64 count, u64 size, u64 align){
     requires raw_allocator<typename T::allocator_type>;

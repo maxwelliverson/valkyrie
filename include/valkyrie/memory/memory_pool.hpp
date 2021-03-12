@@ -167,7 +167,7 @@ namespace valkyrie{
           /// i.e. either this allocator object or a new object created by moving this to it.
           void deallocate_array(void* ptr, u64 n) noexcept
           {
-            VK_assert_MSG(pool_type::value, "does not support array allocations");
+            VK_assert_msg(pool_type::value, "does not support array allocations");
             free_list_.deallocate(ptr, n * node_size());
           }
 
@@ -213,7 +213,7 @@ namespace valkyrie{
           private:
           allocator_info info() const noexcept
           {
-            return {FOONATHAN_MEMORY_LOG_PREFIX "::memory_pool", this};
+            return {"valkyrie::memory_pool", this};
           }
 
           void allocate_block()
@@ -229,8 +229,8 @@ namespace valkyrie{
             {
               allocate_block();
               mem = free_list_.allocate(n * node_size);
-              if (!mem)
-                FOONATHAN_THROW(bad_array_size(info(), n * node_size, capacity_left()));
+              //if (!mem)
+                //FOONATHAN_THROW(bad_array_size(info(), n * node_size, capacity_left()));
             }
             return mem;
           }

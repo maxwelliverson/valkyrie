@@ -6,6 +6,7 @@
 #define VALKYRIE_MEMORY_DETAIL_ALIGN_HPP
 
 #include <valkyrie/preprocessor.hpp>
+#include <valkyrie/primitives.hpp>
 
 namespace valkyrie::detail{
   // whether or not an alignment is valid, i.e. a power of two not zero

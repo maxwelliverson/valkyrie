@@ -10,6 +10,8 @@
 #include "detail/utility.hpp"
 #include "allocator_traits.hpp"
 
+#include <valkyrie/meta.hpp>
+
 namespace valkyrie{
   /// A \concept{raw_allocator,RawAllocator} with a fallback.
   /// Allocation first tries `Default`, if it fails,
@@ -20,27 +22,23 @@ namespace valkyrie{
   template <class Default, class Fallback>
   class fallback_allocator
       : detail::ebo_storage<0, typename allocator_traits<Default>::allocator_type>,
-  detail::ebo_storage<1, typename allocator_traits<Fallback>::allocator_type>
+        detail::ebo_storage<1, typename allocator_traits<Fallback>::allocator_type>
   {
     using default_traits             = allocator_traits<Default>;
     using default_composable_traits  = composable_allocator_traits<Default>;
     using fallback_traits            = allocator_traits<Fallback>;
     using fallback_composable_traits = composable_allocator_traits<Fallback>;
-    using fallback_composable =
-    is_composable_allocator<typename fallback_traits::allocator_type>;
+    using fallback_composable        = is_composable_allocator<typename fallback_traits::allocator_type>;
 
     public:
-    using default_allocator_type  = typename allocator_traits<Default>::allocator_type;
-    using fallback_allocator_type = typename allocator_traits<Fallback>::allocator_type;
+    using default_allocator_type     = typename allocator_traits<Default>::allocator_type;
+    using fallback_allocator_type    = typename allocator_traits<Fallback>::allocator_type;
 
-    using is_stateful =
-    std::integral_constant<bool, default_traits::is_stateful::value
-                                 || fallback_traits::is_stateful::value>;
+    using is_stateful                = std::disjunction<default_traits::is_stateful, fallback_traits::is_stateful>;
 
     /// \effects Default constructs both allocators.
     /// \notes This function only participates in overload resolution, if both allocators are not stateful.
-    FOONATHAN_ENABLE_IF(!is_stateful::value)
-    fallback_allocator()
+    fallback_allocator() requires(!is_stateful::value)
     : detail::ebo_storage<0, default_allocator_type>({}),
         detail::ebo_storage<1, fallback_allocator_type>({})
     {
@@ -48,7 +46,7 @@ namespace valkyrie{
 
     /// \effects Constructs the allocator by passing in the two allocators it has.
     explicit fallback_allocator(default_allocator_type&&  default_alloc,
-        fallback_allocator_type&& fallback_alloc = {})
+                                fallback_allocator_type&& fallback_alloc = {})
     : detail::ebo_storage<0, default_allocator_type>(std::move(default_alloc)),
         detail::ebo_storage<1, fallback_allocator_type>(std::move(fallback_alloc))
     {
@@ -101,8 +99,7 @@ namespace valkyrie{
     /// \effects First calls the compositioning (de)allocation function on the `default_allocator_type`.
     /// If that fails, uses the compositioning function of the `fallback_allocator_type`.
     /// \requires The `fallback_allocator_type` msut be composable.
-    FOONATHAN_ENABLE_IF(fallback_composable::value)
-    void* try_allocate_node(u64 size, u64 alignment) noexcept
+    void* try_allocate_node(u64 size, u64 alignment) noexcept requires(fallback_composable::value)
     {
       auto ptr = default_composable_traits::try_allocate_node(get_default_allocator(),
                                                               size, alignment);
@@ -111,10 +108,7 @@ namespace valkyrie{
                                                             size, alignment);
       return ptr;
     }
-
-    FOONATHAN_ENABLE_IF(fallback_composable::value)
-    void* allocate_array(u64 count, u64 size,
-    u64 alignment) noexcept
+    void* allocate_array(u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
     {
       auto ptr = default_composable_traits::try_allocate_array(get_default_allocator(),
                                                                count, size, alignment);
@@ -124,8 +118,7 @@ namespace valkyrie{
       return ptr;
     }
 
-    FOONATHAN_ENABLE_IF(fallback_composable::value)
-    bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
+    bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
     {
       auto res = default_composable_traits::try_deallocate_node(get_default_allocator(),
                                                                 ptr, size, alignment);
@@ -135,9 +128,7 @@ namespace valkyrie{
       return res;
     }
 
-    FOONATHAN_ENABLE_IF(fallback_composable::value)
-    bool try_deallocate_array(void* ptr, u64 count, u64 size,
-    u64 alignment) noexcept
+    bool try_deallocate_array(void* ptr, u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
     {
       auto res =
           default_composable_traits::try_deallocate_array(get_default_allocator(), ptr,

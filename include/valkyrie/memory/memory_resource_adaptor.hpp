@@ -5,14 +5,15 @@
 #ifndef VALKYRIE_MEMORY_MEMORY_RESOURCE_ADAPTOR_HPP
 #define VALKYRIE_MEMORY_MEMORY_RESOURCE_ADAPTOR_HPP
 
-#include "detail/assert.hpp"
+#include <memory_resource>
+
 #include "detail/utility.hpp"
 #include "allocator_traits.hpp"
 
 namespace valkyrie{
   /// The \c memory_resource abstract base class used in the implementation.
   /// \ingroup adapter
-  FOONATHAN_ALIAS_TEMPLATE(memory_resource, foonathan_memory_pmr::memory_resource);
+  using std::pmr::memory_resource;
 
   /// Wraps a \concept{concept_rawallocator,RawAllocator} and makes it a \ref memory_resource.
   /// \ingroup adapter
@@ -144,10 +145,8 @@ return !(lhs == rhs);
 }
 /// @}
 
-#if !defined(DOXYGEN)
 template <class RawAllocator>
 struct is_shared_allocator;
-#endif
 
 /// Specialization of \ref is_shared_allocator to mark \ref memory_resource_allocator as shared.
 /// This allows using it as \ref allocator_reference directly.

@@ -26,7 +26,7 @@ namespace valkyrie::detail{
         {
             array_ = static_cast<FreeList*>(
                 stack.allocate(end, no_elements_ * sizeof(FreeList), alignof(FreeList)));
-        VK_assert_MSG(array_, "insufficient memory for free lists");
+        VK_assert_msg(array_, "insufficient memory for free lists");
         for (u64 i = 0u; i != no_elements_; ++i)
         {
           auto node_size = AccessPolicy::size_from_index(i + min_size_index);

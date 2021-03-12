@@ -264,7 +264,7 @@ namespace valkyrie{
           /// \c capacity_left must be less than \ref next_capacity().
           void reserve(u64 node_size, u64 capacity)
           {
-            VK_assert_MSG(node_size <= max_node_size(), "node_size too big");
+            VK_assert_msg(node_size <= max_node_size(), "node_size too big");
             auto& pool = pools_.get(node_size);
             reserve_memory(pool, capacity);
           }
@@ -282,7 +282,7 @@ namespace valkyrie{
           /// \note Array allocations may lead to a growth even if the capacity_left is big enough.
           u64 pool_capacity_left(u64 node_size) const noexcept
           {
-            VK_assert_MSG(node_size <= max_node_size(), "node_size too big");
+            VK_assert_msg(node_size <= max_node_size(), "node_size too big");
             return pools_.get(node_size).capacity();
           }
 
@@ -313,7 +313,7 @@ namespace valkyrie{
           private:
           allocator_info info() const noexcept
           {
-            return {FOONATHAN_MEMORY_LOG_PREFIX "::memory_pool_collection", this};
+            return {"valkyrie::memory_pool_collection", this};
           }
 
           u64 def_capacity() const noexcept
@@ -394,8 +394,7 @@ namespace valkyrie{
   /// and a \c PoolType defaulting to \ref node_pool.
   /// \ingroup allocator
   template <class PoolType = node_pool, class ImplAllocator = default_allocator>
-  FOONATHAN_ALIAS_TEMPLATE(bucket_allocator,
-      memory_pool_collection<PoolType, identity_buckets, ImplAllocator>);
+  using bucket_allocator = memory_pool_collection<PoolType, identity_buckets, ImplAllocator>;
 
   template <class Allocator>
   class allocator_traits;

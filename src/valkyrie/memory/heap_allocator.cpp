@@ -5,6 +5,8 @@
 #include <valkyrie/memory/error.hpp>
 #include <valkyrie/memory/heap_allocator.hpp>
 
+#define NOMINMAX
+#include <windows.h>
 #include <heapapi.h>
 
 using namespace valkyrie;

@@ -86,7 +86,7 @@ namespace valkyrie{
     /// \requires Must not be called.
     void deallocate_node(void*, u64, u64) noexcept
     {
-      FOONATHAN_MEMORY_UNREACHABLE("cannot be called with proper values");
+      VK_unreachable;
     }
 
     /// \effects Does nothing.
@@ -106,7 +106,7 @@ namespace valkyrie{
   private:
     allocator_info info() const noexcept
     {
-      return {FOONATHAN_MEMORY_LOG_PREFIX "::null_allocator", this};
+      return {"valkyrie::null_allocator", this};
     }
   };
 
@@ -371,8 +371,7 @@ namespace valkyrie{
   /// using the last parameter as final fallback.
   /// \ingroup adapter
   template <class... Allocators>
-  FOONATHAN_ALIAS_TEMPLATE(segregator,
-  typename detail::make_segregator_t<Allocators...>::type);
+  using segregator = typename detail::make_segregator_t<Allocators...>::type;
 
   /// \returns A \ref segregator created from the allocators `args`.
   /// \relates segregator
