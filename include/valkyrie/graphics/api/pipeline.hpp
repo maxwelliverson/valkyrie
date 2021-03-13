@@ -36,7 +36,7 @@ namespace valkyrie::graphics::api {
       PrimitiveTopology topology;
       bool enableRestart;
     };
-    small_array<Info, 8> state;
+    small_vector<Info, 8> state;
   };
   class ViewportState{
     struct Info{
@@ -52,7 +52,7 @@ namespace valkyrie::graphics::api {
         u32 height;
       } scissors;
     };
-    small_array<Info, 1> viewports;
+    small_vector<Info, 1> viewports;
   };
   class RasterizerState{
     bool enableDepthClamp;
@@ -124,10 +124,10 @@ namespace valkyrie::graphics::api {
       float b;
       float a;
     } blendConstant;
-    small_array<Attachment, 2> inputAttachmentStates;
+    small_vector<Attachment, 2> inputAttachmentStates;
   };
   class DynamicState{
-    small_array<DynamicStateFlags> dynamicStates;
+    small_vector<DynamicStateFlags> dynamicStates;
   };
 
   struct DescriptorSetLayoutBinding{

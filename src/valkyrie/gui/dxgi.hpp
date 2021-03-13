@@ -6,8 +6,8 @@
 #define VALKYRIE_INTERNAL_DXGI_WRAPPERS_HPP
 
 #include <valkyrie/adt/flat_map.hpp>
-#include <valkyrie/adt/small_array.hpp>
-#include <valkyrie/adt/static_array.hpp>
+#include <valkyrie/adt/small_vector.hpp>
+#include <valkyrie/adt/static_vector.hpp>
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 VK_msvc_warning(push)
@@ -489,7 +489,7 @@ namespace valkyrie::GUI::Internal{
 
     class Output{
 
-      using FormatMap = flat_map<DXGI_FORMAT, small_array<DXGI_MODE_DESC>>;
+      using FormatMap = flat_map<DXGI_FORMAT, small_vector<DXGI_MODE_DESC>>;
 
       Microsoft::WRL::ComPtr<IDXGIOutput6> pOutput;
       HMONITOR win32Handle;

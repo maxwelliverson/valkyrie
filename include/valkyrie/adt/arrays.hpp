@@ -1328,7 +1328,7 @@ namespace valkyrie{
         inline constexpr static I staticExtent = std::get<N>(std::tuple{ E... });
 
         template <size_t N, typename Slice>
-        VK_inline constexpr static void fillDynamicExtents(const BasicExtents<I, E...>& ext, static_array<I, dynamicRank>& dynExt, const Slice& slice) noexcept {
+        VK_inline constexpr static void fillDynamicExtents(const BasicExtents<I, E...>& ext, static_vector<I, dynamicRank>& dynExt, const Slice& slice) noexcept {
           if constexpr(same_as<decltype(Slice::staticExtent(std::get<N>(std::tuple{E...}))), DynamicExtentType>){
             if constexpr(BasicExtents<I, E...>::isStaticExtent(N)){
               dynExt.push_back(slice.extent(staticExtent<N>));
@@ -1342,7 +1342,7 @@ namespace valkyrie{
 
         template <size_t ...N>
         inline constexpr static type transform(std::index_sequence<N...>, const BasicExtents<I, E...>& ext, S&&... slices) noexcept {
-          static_array<I, dynamicRank> dynExt;
+          static_vector<I, dynamicRank> dynExt;
           ((fillDynamicExtents<N>(ext, dynExt, slices)), ...);
           return type(dynExt);
         }

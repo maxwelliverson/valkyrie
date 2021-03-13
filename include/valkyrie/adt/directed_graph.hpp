@@ -8,7 +8,6 @@
 #include "flat_set.hpp"
 //#include <valkyrie/adt/temp_array.hpp>
 #include <memory>
-//#include <llvm/adt/directed_graph.h>
 
 namespace valkyrie{
 
@@ -16,7 +15,7 @@ namespace valkyrie{
   // code borrowed from LLVM directed_graph implementation. For details see <llvm/adt/directed_graph.h> and <llvm/adt/GraphTraits.h>
 
   template<class GraphType>
-  struct GraphTraits {
+  struct graph_traits {
     // Elements to provide:
 
     using graph_type = GraphType;
@@ -70,16 +69,16 @@ namespace valkyrie{
 
 
   template <typename NodeType, typename EdgeType>
-  class DGEdge{
+  class dg_edge {
   public:
     using node_type = NodeType;
     using edge_type = EdgeType;
 
-    DGEdge() = delete;
+    dg_edge() = delete;
     /// Create an edge pointing to the given node \p N.
-    explicit DGEdge(node_type &N) : targetNode(N) {}
-    explicit DGEdge(const DGEdge& E) : targetNode(E.targetNode) {}
-    DGEdge& operator=(const DGEdge& E) {
+    explicit dg_edge(node_type &N) : targetNode(N) {}
+    explicit dg_edge(const dg_edge& E) : targetNode(E.targetNode) {}
+    dg_edge& operator=(const dg_edge& E) {
       targetNode = E.targetNode;
       return *this;
     }
@@ -91,7 +90,7 @@ namespace valkyrie{
     /// Retrieve the target node this edge connects to.
     const node_type& getTargetNode() const noexcept{ return targetNode; }
     node_type& getTargetNode() noexcept {
-      return const_cast<node_type &>(static_cast<const DGEdge<node_type, edge_type> &>(*this).getTargetNode());
+      return const_cast<node_type &>(static_cast<const dg_edge<node_type, edge_type> &>(*this).getTargetNode());
     }
 
     /// Set the target node this edge connects to.
@@ -111,7 +110,7 @@ namespace valkyrie{
     node_type& targetNode;
   };
   template <typename NodeType, typename EdgeType>
-  class DGNode{
+  class dg_node {
   public:
     using node_type = NodeType;
     using edge_type = EdgeType;
@@ -120,17 +119,17 @@ namespace valkyrie{
     using const_iterator = typename edge_list_type::const_iterator;
 
     /// Create a node with a single outgoing edge \p E.
-    explicit DGNode(edge_type& E) : edges() { edges.insert(&E); }
-    DGNode() = default;
+    explicit dg_node(edge_type& E) : edges() { edges.insert(&E); }
+    dg_node() = default;
 
-    explicit DGNode(const DGNode& N) : edges(N.edges) {}
-    DGNode(DGNode&& N) noexcept : edges(std::move(N.edges)) {}
+    explicit dg_node(const dg_node& N) : edges(N.edges) {}
+    dg_node(dg_node&& N) noexcept : edges(std::move(N.edges)) {}
 
-    DGNode& operator=(const DGNode& N) {
+    dg_node& operator=(const dg_node& N) {
       edges = N.edges;
       return *this;
     }
-    DGNode& operator=(const DGNode&& N) noexcept {
+    dg_node& operator=(const dg_node&& N) noexcept {
       edges = std::move(N.edges);
       return *this;
     }
@@ -177,7 +176,7 @@ namespace valkyrie{
     const edge_list_type &getEdges() const { return edges; }
     edge_list_type &getEdges() {
       return const_cast<edge_list_type &>(
-          static_cast<const DGNode<node_type, edge_type> &>(*this).edges);
+          static_cast<const dg_node<node_type, edge_type> &>(*this).edges);
     }
 
     /// Clear the outgoing edges.
@@ -212,8 +211,8 @@ namespace valkyrie{
     using node_type = NodeType;
     using edge_type = EdgeType;
   protected:
-    using node_list_type = small_array<NodeType*, 10>;
-    using edge_list_type = small_array<EdgeType*, 10>;
+    using node_list_type = small_vector<NodeType*, 10>;
+    using edge_list_type = small_vector<EdgeType*, 10>;
   public:
     using iterator = typename node_list_type::iterator;
     using const_iterator = typename node_list_type::const_iterator;
@@ -319,12 +318,12 @@ namespace valkyrie{
   class GraphResourceDesc{};
   class ExecutableGraphNodeInput{};
   class ExecutableGraphNodeOutput{};
-  class ExecutableGraphEdge : public DGEdge<ExecutableGraphNode, ExecutableGraphEdge>{
+  class ExecutableGraphEdge : public dg_edge<ExecutableGraphNode, ExecutableGraphEdge>{
   public:
 
   private:
   };
-  class ExecutableGraphNode : public DGNode<ExecutableGraphNode, ExecutableGraphEdge> {
+  class ExecutableGraphNode : public dg_node<ExecutableGraphNode, ExecutableGraphEdge> {
   public:
 
 

@@ -213,7 +213,7 @@ namespace valkyrie::graphics::engine{
     StringView name_;
     Version specVersion_;
     Version implVersion_;
-    small_array<Extension*, 2> enabledExtensions_;
+    small_vector<Extension*, 2> enabledExtensions_;
   public:
     inline StringView name() const noexcept {
       return name_;

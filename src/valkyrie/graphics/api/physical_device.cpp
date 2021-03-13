@@ -42,7 +42,7 @@ namespace valkyrie::graphics::api{
       }
       void lazyLoadQueueFamiliesDefault(PhysicalDeviceImpl &impl) noexcept {
         u32 queueFamilySize;
-        static_array<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
+        static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
         impl.pInterface->getQueueFamilyProperties(impl.handle, &queueFamilySize, nullptr);
         queueFamiliesTmp.resize(queueFamilySize);
         for (u32 i = 0; i < queueFamilySize; ++i) {
@@ -55,8 +55,8 @@ namespace valkyrie::graphics::api{
       }
       void lazyLoadQueueFamiliesWithCheckpoints(PhysicalDeviceImpl &impl) noexcept {
         u32 queueFamilySize;
-        static_array<VkQueueFamilyCheckpointPropertiesNV, 8> checkpointPropertiesTmp;
-        static_array<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
+        static_vector<VkQueueFamilyCheckpointPropertiesNV, 8> checkpointPropertiesTmp;
+        static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
         impl.pInterface->getQueueFamilyProperties(impl.handle, &queueFamilySize, nullptr);
         queueFamiliesTmp.resize(queueFamilySize);
         checkpointPropertiesTmp.resize(queueFamilySize);
@@ -231,7 +231,7 @@ namespace {
     u32                    timestampValidBits;
     Extent3D<MinU32> imageTransferGranularity;
     PipelineStageFlags     checkpointExecutionStageMask;
-    small_array<PerformanceCounter> performanceCounters{};
+    small_vector<PerformanceCounter> performanceCounters{};
 
     explicit QueueFamily(const VkQueueFamilyProperties& props) noexcept
         : queueFlags(props.queueFlags),
@@ -646,7 +646,7 @@ class PhysicalDevice::Impl{
   mutable flat_map<VkFormat, VkFormatProperties2> formatProperties;
   mutable flat_map<u32, QueueFamily> queueFamilies;
   mutable flat_map<VkSampleCountFlagBits, VkMultisamplePropertiesEXT> multisampleProperties;
-  mutable static_array<VkTimeDomainEXT, 4> timeDomains;
+  mutable static_vector<VkTimeDomainEXT, 4> timeDomains;
   mutable DynamicArray<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
 
   mutable bool extensionsLoaded = false;
@@ -657,7 +657,7 @@ class PhysicalDevice::Impl{
 
   void lazyLoadQueueFamiliesDefault() noexcept {
     u32 queueFamilySize;
-    static_array<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
+    static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
     pInterface->getQueueFamilyProperties(handle, &queueFamilySize, nullptr);
     queueFamiliesTmp.resize(queueFamilySize);
     for (u32 i = 0; i < queueFamilySize; ++i) {
@@ -670,8 +670,8 @@ class PhysicalDevice::Impl{
   }
   void lazyLoadQueueFamiliesWithCheckpoints() noexcept {
     u32 queueFamilySize;
-    static_array<VkQueueFamilyCheckpointPropertiesNV, 8> checkpointPropertiesTmp;
-    static_array<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
+    static_vector<VkQueueFamilyCheckpointPropertiesNV, 8> checkpointPropertiesTmp;
+    static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
     pInterface->getQueueFamilyProperties(handle, &queueFamilySize, nullptr);
     queueFamiliesTmp.resize(queueFamilySize);
     checkpointPropertiesTmp.resize(queueFamilySize);

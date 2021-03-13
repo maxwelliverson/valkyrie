@@ -44,12 +44,12 @@ class Instance::Impl{
 
   std::u8string appName;
   std::u8string engineName;
-  small_array<string_view, 16> availableExtensions;
-  small_array<string_view, 8> availableLayers;
+  small_vector<string_view, 16> availableExtensions;
+  small_vector<string_view, 8> availableLayers;
   flat_set<string_view> enabledExtensions;
   flat_set<string_view> enabledLayers;
-  small_array<PhysicalDevice, 4> physicalDevices;
-  small_array<Surface, 4> surfaces;
+  small_vector<PhysicalDevice, 4> physicalDevices;
+  small_vector<Surface, 4> surfaces;
   Version version;
 
   const VkAllocationCallbacks* pAllocationCallbacks = nullptr;
@@ -101,8 +101,8 @@ public:
 
     VkResult result;
 
-    small_array<const char*, 16> extensions{};
-    small_array<const char*, 8> layers{};
+    small_vector<const char*, 16> extensions{};
+    small_vector<const char*, 8> layers{};
 
     for (const auto& ext : enabledExtensions)
       extensions.push_back(ext.c_str());

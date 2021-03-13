@@ -13,10 +13,111 @@
 #include <limits>
 
 namespace valkyrie{
-  template <typename O, typename T, typename U>
-  concept weak_order = requires(O&& order, const T& t, const U& u){
-    { std::forward<O>(order)(t, u) } -> std::convertible_to<std::weak_ordering>;
+
+
+  template <typename T, weak_order<const T&> Order = std::compare_three_way, raw_allocator Alloc = default_allocator>
+  class basic_rb_tree;
+
+  template <typename T, raw_allocator Alloc = default_allocator>
+  using rb_tree = basic_rb_tree<T, std::compare_three_way, Alloc>;
+
+  namespace detail{
+    class rb_tree_base{
+    protected:
+      struct rb_node_base{
+        enum class colour   : u8 { black, red };
+        enum class position : u8 { root, left, right };
+
+        rb_node_base* leftChild_;
+        rb_node_base* rightChild_;
+        rb_node_base* parent_;
+        colour        colour_;
+        position      position_;
+
+
+        void set_right_child(rb_node_base* node) noexcept {
+          node->position_ = position::right;
+          node->parent_ = this;
+          rightChild_ = node;
+        }
+        void set_left_child(rb_node_base* node) noexcept {
+          node->position_ = position::left;
+          node->parent_ = this;
+          leftChild_ = node;
+        }
+      };
+
+      mutable rb_node_base  nullNode;
+      rb_node_base* pRootNode;
+      u32           nodeCount;
+
+
+      rb_node_base* null() const noexcept {
+        return &nullNode;
+      }
+      void          set_root(rb_node_base* node) noexcept {
+        pRootNode = node;
+        node->parent_ = null();
+        node->position_ = rb_node_base::position::root;
+      }
+      rb_node_base* left_rotate(rb_node_base* node) noexcept{
+
+        auto* y = node->rightChild_;
+
+        switch (node->position_) {
+          case rb_node_base::position::root:
+            set_root(y);
+            break;
+          case rb_node_base::position::left:
+            node->parent_->set_left_child(y);
+            break;
+          case rb_node_base::position::right:
+            node->parent_->set_right_child(y);
+            break;
+          default:
+            __assume(false);
+            VK_assert_msg(false, "Node::position contained an invalid value");
+        }
+        node->set_right_child(y->leftChild_);
+        y->set_left_child(node);
+        return y;
+      }
+      rb_node_base* right_rotate(rb_node_base* node) noexcept{
+        auto* y = node->leftChild_;
+
+        switch (node->position_) {
+          case rb_node_base::position::root:
+            set_root(y);
+            break;
+          case rb_node_base::position::left:
+            node->parent_->set_left_child(y);
+            break;
+          case rb_node_base::position::right:
+            node->parent_->set_right_child(y);
+            break;
+          default:
+            __assume(false);
+            VK_assert_msg(false, "Node::position contained an invalid value");
+        }
+        node->set_left_child(y->rightChild_);
+        y->set_right_child(node);
+        return y;
+      }
+    };
+
+
+
+  }
+
+  template <typename T, weak_order<const T&> Order, raw_allocator Alloc>
+  class basic_rb_tree : protected detail::rb_tree_base{
+    class rb_node : public rb_node_base{
+      T value_;
+    };
+
+    using alloc_state = typename allocator_traits<Alloc>::allocator_type;
   };
+
 
 
 template <typename T, weak_order<const T&, const T&> Order = std::compare_three_way>

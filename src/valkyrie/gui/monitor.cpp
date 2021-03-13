@@ -374,8 +374,8 @@ namespace valkyrie::GUI{
   class monitor::Impl : public Internal::MonitorImpl{};
 
   namespace {
-    inline small_array<Internal::MonitorImpl> systemMonitors{};
-    inline small_array<Internal::MonitorImpl*> systemMonitorPointers{};
+    inline small_vector<Internal::MonitorImpl> systemMonitors{};
+    inline small_vector<Internal::MonitorImpl*> systemMonitorPointers{};
     inline void   findMonitors(){
 
       static constexpr size_t BufferSize = 256;
@@ -401,7 +401,7 @@ namespace valkyrie::GUI{
         DISPLAY_DEVICE monitorDevice{
           .cb = sizeof(DISPLAY_DEVICE)
         };
-        small_array<u32, 4> monitorIndices{};
+        small_vector<u32, 4> monitorIndices{};
 
 
         while (EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, &monitorDevice, 0)) {

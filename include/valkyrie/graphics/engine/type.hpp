@@ -6,7 +6,7 @@
 #define VALKYRIE_GRAPHICS_ENGINE_TYPES_HPP
 
 #include <valkyrie/adt/flat_map.hpp>
-#include <valkyrie/adt/small_array.hpp>
+#include <valkyrie/adt/small_vector.hpp>
 #include <valkyrie/utility/string.hpp>
 
 namespace valkyrie::graphics::engine{
@@ -60,7 +60,7 @@ namespace valkyrie::graphics::engine{
   };
 
   struct Class : Type{
-    small_array<ClassMember> memberVariables;
+    small_vector<ClassMember> memberVariables;
   };
 
   struct Module{
@@ -69,7 +69,7 @@ namespace valkyrie::graphics::engine{
     String              path;
     String              aliasName;
     u32                       parentId;
-    small_array<u32>     childrenIds;
+    small_vector<u32>     childrenIds;
     flat_map<u32, Class> types;
     byte*                     moduleData;
   };

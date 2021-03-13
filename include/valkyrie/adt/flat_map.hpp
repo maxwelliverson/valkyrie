@@ -87,7 +87,7 @@ namespace valkyrie{
   template <typename K, typename V>
   FlatMapEntry(K&&, V&&) -> FlatMapEntry<std::remove_cvref_t<K>, std::remove_cvref_t<V>>;
 
-  template <ordered Key, typename Value, typename Container = small_array<FlatMapEntry<Key, Value>>>
+  template <ordered Key, typename Value, typename Container = small_vector<FlatMapEntry<Key, Value>>>
   class flat_map {
 
     using key_param_t = param_t<Key>;

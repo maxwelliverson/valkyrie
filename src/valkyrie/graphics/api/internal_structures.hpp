@@ -7,7 +7,7 @@
 
 
 #include <valkyrie/adt/flat_map.hpp>
-#include <valkyrie/adt/static_array.hpp>
+#include <valkyrie/adt/static_vector.hpp>
 #include <valkyrie/utility/interval.hpp>
 #include <valkyrie/utility/version.hpp>
 
@@ -518,7 +518,7 @@ namespace valkyrie::graphics::api::Internal{
     u32                          timestampValidBits;
     Extent3D<MinU32> imageTransferGranularity;
     PipelineStageFlags           checkpointExecutionStageMask;
-    //small_array<PerformanceCounter> performanceCounters{};
+    //small_vector<PerformanceCounter> performanceCounters{};
 
     explicit QueueFamily(const VkQueueFamilyProperties& props) noexcept
         : queueFlags(props.queueFlags),
@@ -581,9 +581,9 @@ namespace valkyrie::graphics::api::Internal{
     mutable flat_set<DeviceExtension> extensions;
 
     mutable flat_map<VkFormat, VkFormatProperties2> formatProperties;
-    mutable static_array<QueueFamily, 8> queueFamilies;
+    mutable static_vector<QueueFamily, 8> queueFamilies;
     mutable flat_map<FlagBits::SampleCount, Extent2D<MaxU32>> sampleLocationMap;
-    mutable static_array<VkTimeDomainEXT, 4> timeDomains;
+    mutable static_vector<VkTimeDomainEXT, 4> timeDomains;
     mutable DynamicArray<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
 
     mutable bool extensionsLoaded = false;
@@ -615,7 +615,7 @@ namespace valkyrie::graphics::api::Internal{
     mutable flat_set<Layer>             layers;
     mutable flat_set<InstanceExtension> extensions;
 
-    small_array<PhysicalDeviceImpl, 4> physicalDevices;
+    small_vector<PhysicalDeviceImpl, 4> physicalDevices;
     version version;
   };
 

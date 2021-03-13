@@ -86,6 +86,9 @@ add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
 
+add_object(valkyrie.adt.symbol)
+
+
 add_object(valkyrie.memory.detail.align)
 add_object(valkyrie.memory.detail.debug_helpers)
 add_object(valkyrie.memory.detail.free_list)

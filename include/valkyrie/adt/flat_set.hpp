@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_CORE_ADT_FLAT_SET_HPP
 #define VALKYRIE_CORE_ADT_FLAT_SET_HPP
 
-#include "small_array.hpp"
+#include "small_vector.hpp"
 #include <valkyrie/status/maybe.hpp>
 #include <valkyrie/traits.hpp>
 
@@ -24,7 +24,7 @@ namespace valkyrie{
 
   inline constexpr static struct GuaranteeUniqueTag{} guaranteeUnique;
 
-  template </*concepts::ordered*/typename T, typename Container = small_array<T>>
+  template </*concepts::ordered*/typename T, typename Container = small_vector<T>>
   class flat_set {
     using in_param_t = param_t<T>;
     using container_type = Container;

@@ -96,6 +96,11 @@ namespace valkyrie{
     };
     template <typename T>
     concept ordered = ordered_with<T, T>;
+
+    template <typename O, typename T, typename U = T>
+    concept weak_order = requires(O&& order, const T& t, const U& u){
+      { std::forward<O>(order)(t, u) } -> std::convertible_to<std::weak_ordering>;
+    };
   }
   
   namespace traits{

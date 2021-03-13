@@ -6,7 +6,7 @@
 #define VALKYRIE_GRAPHICS_ENGINE_SHADER_INTERFACE_HPP
 
 #include <valkyrie/adt/array_ref.hpp>
-#include <valkyrie/adt/small_array.hpp>
+#include <valkyrie/adt/small_vector.hpp>
 
 
 

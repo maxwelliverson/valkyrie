@@ -7,6 +7,9 @@
 
 #include "string_view.hpp"
 
+#include <valkyrie/memory/default_allocator.hpp>
+#include <valkyrie/memory/std_allocator.hpp>
+
 #include <string>
 
 namespace valkyrie{
@@ -52,11 +55,11 @@ namespace valkyrie{
 
   };*/
 
-  using string = std::u8string;
-}
+  template <raw_allocator Alloc = default_allocator>
+  using basic_string = std::basic_string<utf8, std::char_traits<utf8>, std_allocator<utf8, Alloc>>;
 
-/*template <>
-struct valkyrie::traits::String<>{};*/
+  using string = basic_string<>;
+}
 
 
 #endif //VALKYRIE_ADT_STRING_HPP
