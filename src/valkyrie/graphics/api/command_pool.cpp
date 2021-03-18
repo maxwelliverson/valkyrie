@@ -22,7 +22,7 @@ class api::command_pool::Impl{
     while (pImpl->msgCount.load()) {
       if (not (pImpl->urgentMailbox.tryReadMessage(msgProc) or pImpl->defaultMailbox.tryReadMessage(msgProc))) {
         const auto lazyResult = pImpl->lazyMailbox.tryReadMessage(msgProc);
-        VK_assert(!lazyResult.strictlyEquivalent(AgentCode::MailboxIsEmpty));
+        VK_assert(!lazyResult.strictly_equivalent(AgentCode::MailboxIsEmpty));
       }
       --pImpl->msgCount;
     }

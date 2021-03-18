@@ -9,14 +9,14 @@
 
 namespace valkyrie{
   enum class severity : i32{
-    Debug         = 0x1,
-    Performance   = 0x2,
-    Success       = 0x4,
-    Info          = 0x8,
-    Warning       = 0x10,
-    Error         = 0x20,
-    InternalError = 0x40,
-    Fatal         = 0x80
+    debug          = 0x1,
+    performance    = 0x2,
+    success        = 0x4,
+    info           = 0x8,
+    warning        = 0x10,
+    error          = 0x20,
+    internal_error = 0x40,
+    fatal          = 0x80
   };
 }
 

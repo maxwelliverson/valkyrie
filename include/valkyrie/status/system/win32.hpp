@@ -55,14 +55,14 @@ namespace valkyrie{
       constexpr win32_status_domain() noexcept : status_domain(class_id){}
 
       string_ref name() const noexcept override { return VK_raw_string(Win32); }
-      string_ref doMessage(const status_code<void>& status) const noexcept override{
+      string_ref do_message(const status_code<void>& status) const noexcept override{
         VK_assert(status.domain() == *this);
         return ref_counted_win32_string(static_cast<const status_code<win32_status_domain>&>(status).value());
       }
-      code doCode(const status_code<void> &) const noexcept override;
-      severity doSeverity(const status_code<void>& status) const noexcept override;
-      bool doFailure(const status_code<void>& status) const noexcept override;
-      bool doEquivalent(const status_code<void>& A, const status_code<void>& B) const noexcept override;
+      code do_generic_code(const status_code<void> &) const noexcept override;
+      severity do_severity(const status_code<void>& status) const noexcept override;
+      bool do_failure(const status_code<void>& status) const noexcept override;
+      bool do_equivalent(const status_code<void>& A, const status_code<void>& B) const noexcept override;
 
       constexpr static const win32_status_domain& get() noexcept;
     };

@@ -5,6 +5,8 @@
 #ifndef VALKYRIE_META_HPP
 #define VALKYRIE_META_HPP
 
+#include <valkyrie/preprocessor.hpp>
+
 #include <type_traits>
 
 namespace valkyrie{
@@ -12,6 +14,10 @@ namespace valkyrie{
   namespace meta{
     
     struct template_no_default{ using invalid_specialization = void; };
+
+
+    template <typename ...>
+    struct list{};
 
 
 
@@ -172,6 +178,10 @@ namespace valkyrie{
     using true_type  = boolean_constant<true>;
 
 
+    template <typename T>
+    struct is_typelist : false_type{};
+    template <typename ...T>
+    struct is_typelist<list<T...>> : true_type{};
 
 
     template <typename A, typename B>
@@ -193,6 +203,257 @@ namespace valkyrie{
 
   template <typename T>
   using add_const_past_pointer_t = typename meta::add_const_past_pointer<T>::type;
+
+
+  inline namespace concepts{
+    template <typename T>
+    concept typelist = meta::is_typelist<T>::value;
+    template <typename T>
+    concept nonempty_typelist = typelist<T> && !meta::is_same_as<T, meta::list<>>::value;
+  }
+
+
+  namespace meta{
+
+    using empty_list = list<>;
+
+    namespace impl{
+
+      template <typename>
+      struct front;
+      template <typename T, typename ...U>
+      struct front<list<T, U...>> {
+        using type = T;
+      };
+      template <typename>
+      struct back;
+      template <typename T>
+      struct back<list<T>>{
+        using type = T;
+      };
+      template <typename T, typename U, typename ...V>
+      struct back<list<T, U, V...>> : back<list<U, V...>>{};
+
+      template <typename L, typename T>
+      struct push_front;
+      template <typename ...U, typename T>
+      struct push_front<list<U...>, T>{
+        using type = list<T, U...>;
+      };
+      template <typename L, typename T>
+      struct push_back;
+      template <typename ...U, typename T>
+      struct push_back<list<U...>, T>{
+        using type = list<U..., T>;
+      };
+      template <typename L>
+      struct pop_front;
+      template <typename T, typename ...U>
+      struct pop_front<list<T, U...>>{
+        using type = list<U...>;
+      };
+      template <typename>
+      struct pop_back;
+      template <typename T>
+      struct pop_back<list<T>>{
+        using type = empty_list;
+      };
+      template <typename T, typename U, typename ...V>
+      struct pop_back<list<T, U, V...>>{
+        using type = typename push_front<typename pop_back<list<U, V...>>::type, T>::type;
+      };
+
+
+      template <typename L, typename T>
+      struct contains;
+      template <typename T, typename ...U>
+      struct contains<list<T, U...>, T> : true_type{};
+      template <typename T, typename U, typename ...V>
+      struct contains<list<U, V...>, T> : contains<list<V...>, T>{};
+      template <typename T>
+      struct contains<empty_list, T> : false_type{};
+
+
+      template <typename A, typename B>
+      struct append;
+      template <typename ...T, typename ...U>
+      struct append<list<T...>, list<U...>>{
+        using type = list<T..., U...>;
+      };
+    }
+
+    template <nonempty_typelist L>
+    using front_t = typename impl::front<L>::type;
+    template <nonempty_typelist L>
+    using back_t  = typename impl::back<L>::type;
+
+    template <nonempty_typelist L>
+    using pop_front_t = typename impl::pop_front<L>::type;
+    template <nonempty_typelist L>
+    using pop_back_t  = typename impl::pop_back<L>::type;
+
+    template <typelist L, typename T>
+    using push_front_t = typename impl::push_front<L, T>::type;
+    template <typelist L, typename T>
+    using push_back_t = typename impl::push_back<L, T>::type;
+
+    template <typelist A, typelist B>
+    using append_list_t = typename impl::append<A, B>::type;
+
+    template <typename T, typename U>
+    concept typelist_containing = nonempty_typelist<T> && impl::contains<T, U>::value;
+
+    namespace impl{
+      template <typelist In, typelist Out>
+      struct unique;
+      template <typelist Out>
+      struct unique<empty_list, Out>{
+        using type = Out;
+      };
+
+      template <nonempty_typelist In, typelist_containing<front_t<In>> Out>
+      struct unique<In, Out> : unique<pop_front_t<In>, Out>{};
+      template <nonempty_typelist In, typelist Out>
+      struct unique<In, Out> : unique<pop_front_t<In>, push_back_t<Out, front_t<In>>>{};
+    }
+
+    template <typelist L>
+    using unique_list_t = typename impl::unique<L, empty_list>::type;
+
+    template <typename L>
+    concept typeset = typelist<L> && is_same_as<L, unique_list_t<L>>::value;
+
+    static_assert(is_same_as<unique_list_t<list<int, int, double, float, int>>, list<int, double, float>>::value);
+
+
+    template <typeset A, typeset B>
+    using set_union_t = unique_list_t<append_list_t<A, B>>;
+
+
+
+    template <typename ...T> requires(typeset<list<T...>>)
+    using set = list<T...>;
+
+    using empty_set = set<>;
+
+    namespace impl{
+
+      template <typeset A>
+      struct set_order;
+      template <typename ...T>
+      struct set_order<list<T...>> : value_wrapper<sizeof...(T)>{};
+
+      static_assert(set_order<empty_set>::value == 0);
+
+      /*// is A a strict subset of B? (ie. is every element of A an element of B,
+      template <typeset A, typeset B>
+      struct is_strict_subset_of;
+      // if order(A) >= order(B), A cannot be a strict subset of B and it's a waste of time to cross reference elements.
+      template <typeset A, typeset B> requires(set_order<A>::value >= set_order<B>::value)
+      struct is_strict_subset_of<A, B> : false_type{};
+      template <typeset B>
+      struct is_strict_subset_of<empty_set, B> : boolean_constant<!is_same_as<empty_set, B>::value>{};
+      template <>
+
+
+      // is A a strict superset of B?
+      template <typeset A, typeset B>
+      struct is_strict_superset_of : is_strict_subset_of<B, A>{};
+
+
+      // checks whether A is a superset of B
+      template <typeset A, typeset B>
+      struct is_superset_of;
+      template <typeset B>
+      struct is_superset_of<empty_set, B> : is_same_as<B, empty_set>{};
+      template <typeset A, typeset B>
+      struct is_subset_of{};*/
+
+      template <typename A, typename B, typeset Out = empty_set>
+      struct intersection_set;
+
+      template <typeset Out>
+      struct intersection_set<empty_set, empty_set, Out>{
+        using type = Out;
+      };
+      template <typename A, typeset Out>
+      struct intersection_set<A, empty_set, Out>{
+        using type = Out;
+      };
+      template <typename B, typeset Out>
+      struct intersection_set<empty_set, B, Out>{
+        using type = Out;
+      };
+
+
+      template <typename A, typelist_containing<front_t<A>> B, typeset Out>
+      struct intersection_set<A, B, Out> : intersection_set<pop_front_t<A>, B, push_back_t<Out, front_t<A>>>{};
+      template <typename A, typename B, typeset Out>
+      struct intersection_set : intersection_set<pop_front_t<A>, B, Out>{};
+
+
+      template <typename A, typename B, typeset Out = empty_set>
+      struct difference_set;
+
+      template <typeset Out>
+      struct difference_set<empty_set, empty_set, Out>{
+        using type = Out;
+      };
+      template <typename A, typeset Out>
+      struct difference_set<A, empty_set, Out>{
+        using type = Out;
+      };
+      template <typename B, typeset Out>
+      struct difference_set<empty_set, B, Out>{
+        using type = Out;
+      };
+
+      template <typename A, typelist_containing<front_t<A>> B, typeset Out>
+      struct difference_set<A, B, Out> : difference_set<pop_front_t<A>, B, Out>{};
+      template <typename A, typename B, typeset Out>
+      struct difference_set : difference_set<pop_front_t<A>, B, push_back_t<Out, front_t<A>>>{};
+    }
+
+    template <typeset A>
+    inline constexpr static size_t set_order = impl::set_order<A>::value;
+
+
+    template <typeset A, typeset B>
+    using set_intersection_t = typename impl::intersection_set<A, B, empty_set>::type;
+    template <typeset A, typeset B>
+    using set_difference_t = typename impl::difference_set<A, B, empty_set>::type;
+    template <typeset A, typeset B>
+    using set_symmetric_difference_t = set_difference_t<set_union_t<A, B>, set_intersection_t<A, B>>;
+
+
+
+    template <typename A, typename B>
+    concept set_equivalent_to =
+        typeset<A> &&
+        typeset<B> &&
+            (set_order<A> == set_order<B>) &&
+        is_same_as<set_symmetric_difference_t<A, B>, empty_set>::value;
+
+    template <typename A, typename B>
+    concept strict_subset_of =
+        typeset<A> &&
+        typeset<B> &&
+        (set_order<A> < set_order<B>) &&
+        is_same_as<set_difference_t<A, B>, empty_set>::value;
+    template <typename A, typename B>
+    concept strict_superset_of = strict_subset_of<B, A>;
+
+    template <typename A, typename B>
+    concept subset_of = strict_subset_of<A, B> || set_equivalent_to<A, B>;
+    template <typename A, typename B>
+    concept superset_of = strict_superset_of<A, B> || set_equivalent_to<A, B>;
+
+
+    static_assert(subset_of<set<int, float>, set<int, float>>);
+    static_assert(subset_of<set<int, float>, set<float, int, double>>);
+    static_assert(set_equivalent_to<set<int, float, double>, set<double, int, float>>);
+    static_assert(strict_subset_of<set<int>, set<float, double, int>>);
+  }
 }
 
 #define VK_wrap(...) decltype(::valkyrie::meta::detail::wrap_<__VA_ARGS__>(::valkyrie::meta::overload<2>{}))

@@ -400,16 +400,16 @@ void valkyrie::sys::win32_status_domain::ref_counted_win32_string::refCountThunk
 valkyrie::sys::win32_status_domain::ref_counted_win32_string::ref_counted_win32_string(payload *pPayload) noexcept
     : base_type(pPayload->stringBuffer, pPayload->stringLength, pPayload, nullptr, nullptr, refCountThunk) { }
 
-valkyrie::severity valkyrie::sys::win32_status_domain::doSeverity(const status_code<void> &status) const noexcept{
+valkyrie::severity valkyrie::sys::win32_status_domain::do_severity(const status_code<void> &status) const noexcept{
   return win32::NativeHResult(HRESULT_FROM_WIN32(static_cast<const status_type&>(status).value())).severity();
 }
-valkyrie::code valkyrie::sys::win32_status_domain::doCode(const status_code<void>& status) const noexcept {
+valkyrie::code valkyrie::sys::win32_status_domain::do_generic_code(const status_code<void>& status) const noexcept {
   return translateWin32CodeToGeneric(static_cast<const status_type&>(status).value());
 }
-bool valkyrie::sys::win32_status_domain::doFailure(const status_code<void> &status) const noexcept{
+bool valkyrie::sys::win32_status_domain::do_failure(const status_code<void> &status) const noexcept{
   return HRESULT_FROM_WIN32(static_cast<const status_type&>(status).value()) < 0;
 }
-bool valkyrie::sys::win32_status_domain::doEquivalent(const status_code<void>& A, const status_code<void>& B) const noexcept {
+bool valkyrie::sys::win32_status_domain::do_equivalent(const status_code<void>& A, const status_code<void>& B) const noexcept {
   return translateWin32CodeToGeneric(static_cast<const status_type&>(A).value()) == B.generic();
 }
 

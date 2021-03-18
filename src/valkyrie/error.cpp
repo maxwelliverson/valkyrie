@@ -112,7 +112,7 @@ VK_noreturn void valkyrie::panic(const status_code<void> &statusCode, const utf8
 }
 
 
-void status_domain::doThrowException(const status_code<void> &code) const {
+void status_domain::do_throw_exception(const status_code<void> &code) const {
   std::stringstream msg;
   auto stacktrace = boost::stacktrace::basic_stacktrace(3, 32);
   msg << code << "\n\n" << stacktrace << std::endl;
@@ -123,24 +123,24 @@ void status_domain::doThrowException(const status_code<void> &code) const {
 string_ref generic_domain::name() const noexcept {
   return VK_string("Generic");
 }
-string_ref generic_domain::doMessage(const status_code<void>& status) const noexcept {
-  return VK_string("generic_domain::doMessage not yet implemented...");
+string_ref generic_domain::do_message(const status_code<void>& status) const noexcept {
+  return VK_string("generic_domain::do_message not yet implemented...");
   switch (static_cast<const generic_status&>(status).value()) {
 
   }
 }
-code generic_domain::doCode(const status_code<void>& status) const noexcept {
+code generic_domain::do_generic_code(const status_code<void>& status) const noexcept {
   return static_cast<const generic_status&>(status).value();
 }
-bool generic_domain::doEquivalent(const status_code<void> & status, const status_code<void> & other) const noexcept {
+bool generic_domain::do_equivalent(const status_code<void> & status, const status_code<void> & other) const noexcept {
   VK_assert(status.domain() == *this);
   return static_cast<const generic_status&>(status).value() == other.generic();
 }
-bool generic_domain::doFailure(const status_code<void>& status) const noexcept {
+bool generic_domain::do_failure(const status_code<void>& status) const noexcept {
   return static_cast<const generic_status&>(status).value() < code::Success;
 }
 
-VK_noreturn void generic_domain::doThrowException(const status_code<void> &code) const {
-  auto&& msg = this->doMessage(code);
+VK_noreturn void generic_domain::do_throw_exception(const status_code<void> &code) const {
+  auto&& msg = this->do_message(code);
   VK_if(VK_exceptions_enabled(throw std::runtime_error(std::string(msg.c_str(), msg.size())))VK_else(panic(code)));
 }

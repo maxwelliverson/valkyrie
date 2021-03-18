@@ -28,17 +28,17 @@ namespace valkyrie::graphics{
       return string_ref("Vulkan");
     }
 
-    bool doFailure(const status_code<void>& status) const noexcept override {
+    bool do_failure(const status_code<void>& status) const noexcept override {
       VK_assert(status.domain() == *this);
       return static_cast<const status_code<VkResultStatusDomain>&>(status).value() < 0;
     }
-    bool doEquivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept override {
+    bool do_equivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept override {
       VK_assert(statusA.domain() == *this);
         return (statusB.domain() == *this)
              && static_cast<const status_code<VkResultStatusDomain>&>(statusA).value() ==
                 static_cast<const status_code<VkResultStatusDomain>&>(statusB).value();
     }
-    code doCode(const status_code<void>& status) const noexcept override {
+    code do_generic_code(const status_code<void>& status) const noexcept override {
 
       using code = code;
 
@@ -84,7 +84,7 @@ namespace valkyrie::graphics{
         default: return code::Unknown;
       }
     }
-    string_ref doMessage(const status_code<void>& status) const noexcept override {
+    string_ref do_message(const status_code<void>& status) const noexcept override {
       VK_assert(status.domain() == *this);
       switch (static_cast<const status_code<VkResultStatusDomain>&>(status).value()) {
           case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS: return "Requested invalid opaque capture address";
@@ -128,7 +128,7 @@ namespace valkyrie::graphics{
       }
     }
 
-    severity doSeverity(const status_code<void>& status) const noexcept override {
+    severity do_severity(const status_code<void>& status) const noexcept override {
       VK_assert(status.domain() == *this);
 
       using Severity = Severity;

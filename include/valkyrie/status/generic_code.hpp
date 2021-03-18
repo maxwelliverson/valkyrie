@@ -108,7 +108,7 @@ namespace valkyrie{
     Paused                        = 16
   };
 
-  inline severity getDefaultSeverity(code code) noexcept{
+  inline severity get_default_severity(code code) noexcept{
 
 
 
@@ -124,16 +124,16 @@ namespace valkyrie{
       case code::UnrecoverableState:
       case code::BadAddress:
       case code::FailedAssertion:
-        return severity::Fatal;
+        return severity::fatal;
 
 
       case code::FurtherActionsRequired:
       case code::Unnecessary:
-        return severity::Warning;
+        return severity::warning;
 
 
       case code::Success:
-        return severity::Success;
+        return severity::success;
 
       case code::InProgress:
       case code::Busy:
@@ -148,7 +148,7 @@ namespace valkyrie{
       case code::EndOfFile:
       case code::Changed:
       case code::NoChange:
-        return severity::Info;
+        return severity::info;
 
 
 
@@ -200,7 +200,7 @@ namespace valkyrie{
       case code::Deadlock:
       case code::Unknown:
       default:
-        return severity::Error;
+        return severity::error;
     }
   }
 
@@ -217,11 +217,11 @@ namespace valkyrie{
     ~generic_domain() = default;
 
     VK_nodiscard string_ref name() const noexcept override;
-    VK_nodiscard string_ref doMessage(const status_code<void>& Stat) const noexcept override;
-    VK_nodiscard code doCode(const status_code<void>& ) const noexcept override;
-    VK_nodiscard bool doFailure(const status_code<void> &) const noexcept override;
-    VK_nodiscard bool doEquivalent(const status_code<void>& , const status_code<void>&) const noexcept override;
-    VK_noreturn  void doThrowException(const status_code<void>& code) const override;
+    VK_nodiscard string_ref do_message(const status_code<void>& Stat) const noexcept override;
+    VK_nodiscard code do_generic_code(const status_code<void>& ) const noexcept override;
+    VK_nodiscard bool do_failure(const status_code<void> &) const noexcept override;
+    VK_nodiscard bool do_equivalent(const status_code<void>& , const status_code<void>&) const noexcept override;
+    VK_noreturn  void do_throw_exception(const status_code<void>& code) const override;
 
     VK_nodiscard static constexpr const generic_domain& get() noexcept;
   };

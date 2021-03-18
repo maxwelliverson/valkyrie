@@ -129,6 +129,27 @@ namespace valkyrie{
 
 
 
+  struct message{};
+
+  template <typename Derived>
+  class agent_reader{};
+  template <typename Derived>
+  class agent_sender{};
+
+  class mailbox{
+    void* pMailbox;
+    u32   mailboxSize;
+  };
+
+  template <typename Derived>
+  class agent{
+
+
+  };
+
+
+
+
 
   enum class MessageCmd : u32;
   enum class MessageState : u32{
@@ -165,10 +186,10 @@ namespace valkyrie{
     string_ref name() const noexcept override {
       return "Valkyrie Agent code";
     }
-    bool doFailure(const status_code<void>& status) const noexcept override { }
-    bool doEquivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept override { }
-    code doCode(const status_code<void>& status) const noexcept override { }
-    string_ref doMessage(const status_code<void>& status) const noexcept override { }
+    bool do_failure(const status_code<void>& status) const noexcept override { }
+    bool do_equivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept override { }
+    code do_generic_code(const status_code<void>& status) const noexcept override { }
+    string_ref do_message(const status_code<void>& status) const noexcept override { }
 
     inline static const AgentStatusCodeDomain& get() noexcept {
       constexpr static AgentStatusCodeDomain domainInstance{};
@@ -200,16 +221,16 @@ namespace valkyrie{
   public:
     using value_type = AgentExceptionPayload*;
 
-    bool doFailure(const status_code<void>& status) const noexcept { }
-    bool doEquivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept { }
-    code doCode(const status_code<void>& status) const noexcept { }
-    string_ref doMessage(const status_code<void>& status) const noexcept { }
+    bool do_failure(const status_code<void>& status) const noexcept { }
+    bool do_equivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept { }
+    code do_generic_code(const status_code<void>& status) const noexcept { }
+    string_ref do_message(const status_code<void>& status) const noexcept { }
 
-    virtual severity doSeverity(const status_code<void>& status) const noexcept { return getDefaultSeverity(this->doCode(status)); }
-    virtual void doErasedCopy(status_code<void>& To, const status_code<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
-    virtual void doErasedDestroy(status_code<void>& code, size_t Bytes) const noexcept { }
+    virtual severity do_severity(const status_code<void>& status) const noexcept { return get_default_severity(this->do_generic_code(status)); }
+    virtual void do_erased_copy(status_code<void>& To, const status_code<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
+    virtual void do_erased_destroy(status_code<void>& code, size_t Bytes) const noexcept { }
 
-    VK_noreturn virtual void doThrowException(const status_code<void>& code) const VK_throws;
+    VK_noreturn virtual void do_throw_exception(const status_code<void>& code) const VK_throws;
 
 
   };

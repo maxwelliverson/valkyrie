@@ -55,13 +55,13 @@ namespace valkyrie::sys::win32{
     severity severity() const noexcept {
       switch(severity_) {
         case 0:
-          return severity::Success;
+          return severity::success;
         case 1:
-          return severity::Info;
+          return severity::info;
         case 2:
-          return isNStatus ? severity::Warning : severity::Error;
+          return isNStatus ? severity::warning : severity::error;
         case 3:
-          return severity::Error;
+          return severity::error;
         VK_no_default;
       }
     }

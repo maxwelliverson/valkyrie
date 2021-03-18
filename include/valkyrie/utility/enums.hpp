@@ -135,10 +135,10 @@ namespace valkyrie{
 
       template <size_t N>
       constexpr StatusEnumEntry(E value, const utf8(&message)[N]) noexcept
-          : key(value), value{ .severity = severity::Error, .message = message, .generic = {} }{}
+          : key(value), value{ .severity = severity::error, .message = message, .generic = {} }{}
       template <size_t N>
       constexpr StatusEnumEntry(E value, const utf8(&message)[N], std::initializer_list<code> initList) noexcept
-          : key(value), value{ .severity = (initList.size() ? getDefaultSeverity(*initList.begin()) : severity::Error), .message = message, .generic = std::span<const code>{initList.begin(), initList.end()} }{}
+          : key(value), value{ .severity = (initList.size() ? get_default_severity(*initList.begin()) : severity::error), .message = message, .generic = std::span<const code>{initList.begin(), initList.end()} }{}
 
       constexpr friend bool operator==(StatusEnumEntry A, StatusEnumEntry B) noexcept {
         return A.key == B.key;
@@ -332,7 +332,7 @@ namespace valkyrie{
     using underlying_type = std::underlying_type_t<E>;
     using enum_type = E;
 
-    inline constexpr static detail::StatusEnumInfo missingInfo{severity::Error, VK_raw_string(Unknown Error), {} };
+    inline constexpr static detail::StatusEnumInfo missingInfo{severity::error, VK_raw_string(Unknown Error), {} };
 
   public:
     constexpr explicit StatusEnumMap(std::initializer_list<detail::StatusEnumEntry<E>> list) noexcept

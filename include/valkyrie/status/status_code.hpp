@@ -36,7 +36,7 @@ namespace valkyrie{
   VK_noreturn void panic(const status_code<void>& statusCode) noexcept;
   VK_noreturn void panic(const status_code<void>& statusCode, const utf8* pMessage) noexcept;
 
-  inline severity getDefaultSeverity(code code) noexcept;
+  inline severity get_default_severity(code code) noexcept;
 
 
 
@@ -63,16 +63,16 @@ namespace valkyrie{
     constexpr status_domain(const uuid& class_id) noexcept : guid_(toInteger(class_id)){}
 
 
-    virtual bool doFailure(const status_code<void>& status) const noexcept = 0;
-    virtual bool doEquivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept = 0;
-    virtual code doCode(const status_code<void>& status) const noexcept = 0;
-    virtual string_ref doMessage(const status_code<void>& status) const noexcept = 0;
+    virtual bool do_failure(const status_code<void>& status) const noexcept = 0;
+    virtual bool do_equivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept = 0;
+    virtual code do_generic_code(const status_code<void>& status) const noexcept = 0;
+    virtual string_ref do_message(const status_code<void>& status) const noexcept = 0;
 
-    virtual severity doSeverity(const status_code<void>& status) const noexcept { return getDefaultSeverity(this->doCode(status)); }
-    virtual void doErasedCopy(status_code<void>& To, const status_code<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
-    virtual void doErasedDestroy(status_code<void>& code, size_t Bytes) const noexcept { }
+    virtual severity do_severity(const status_code<void>& status) const noexcept { return get_default_severity(this->do_generic_code(status)); }
+    virtual void do_erased_copy(status_code<void>& To, const status_code<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
+    virtual void do_erased_destroy(status_code<void>& code, size_t Bytes) const noexcept { }
 
-    VK_noreturn virtual void doThrowException(const status_code<void>& code) const VK_throws;
+    VK_noreturn virtual void do_throw_exception(const status_code<void>& code) const VK_throws;
 
   public:
 
@@ -132,30 +132,30 @@ namespace valkyrie{
     VK_nodiscard VK_inline const status_domain& domain() const noexcept { return *Domain; }
     VK_nodiscard VK_inline bool empty() const noexcept { return !Domain; }
 
-    VK_nodiscard string_ref message() const noexcept { return Domain ? Domain->doMessage(*this) : string_ref("(empty)"); }
-    VK_nodiscard severity   severity() const noexcept { return empty() ? valkyrie::severity{} : Domain->doSeverity(*this); }
-    VK_nodiscard bool       success() const noexcept { return !empty() && !Domain->doFailure(*this); }
-    VK_nodiscard bool       failure() const noexcept { return !empty() && Domain->doFailure(*this); }
-    VK_nodiscard code       generic() const noexcept { return empty() ? code{-1} : Domain->doCode(*this); }
+    VK_nodiscard string_ref message() const noexcept { return Domain ? Domain->do_message(*this) : string_ref("(empty)"); }
+    VK_nodiscard severity   severity() const noexcept { return empty() ? valkyrie::severity{} : Domain->do_severity(*this); }
+    VK_nodiscard bool       success() const noexcept { return !empty() && !Domain->do_failure(*this); }
+    VK_nodiscard bool       failure() const noexcept { return !empty() && Domain->do_failure(*this); }
+    VK_nodiscard code       generic() const noexcept { return empty() ? code{-1} : Domain->do_generic_code(*this); }
 
 
     template <typename T>
-    VK_nodiscard bool strictlyEquivalent(const status_code<T>& Other) const noexcept{
+    VK_nodiscard bool strictly_equivalent(const status_code<T>& Other) const noexcept{
       if(empty() && Other.empty()) return true;
-      if(!empty() && !Other.empty()) return Domain->doEquivalent(*this, Other);
+      if(!empty() && !Other.empty()) return Domain->do_equivalent(*this, Other);
       return false;
     }
     template <typename T, typename ...Args>
-    VK_nodiscard bool strictlyEquivalent(T&& Val, Args&& ...args) const noexcept requires(requires{
+    VK_nodiscard bool strictly_equivalent(T&& Val, Args&& ...args) const noexcept requires(requires{
       { makeStatusCode((T&&)Val, (Args&&)args...) } -> std::derived_from<status_code>;
     }){
-      return this->strictlyEquivalent(makeStatusCode(std::forward<T>(Val), std::forward<Args>(args)...));
+      return this->strictly_equivalent(makeStatusCode(std::forward<T>(Val), std::forward<Args>(args)...));
     }
     template <typename T>
     VK_nodiscard bool equivalent(const status_code<T>& Other) const noexcept{
-      return strictlyEquivalent(Other) ||
-             Other.strictlyEquivalent(*this) ||
-             (Domain->doCode(*this) == Other.Domain->doCode(Other));
+      return strictly_equivalent(Other) ||
+             Other.strictly_equivalent(*this) ||
+             (Domain->do_generic_code(*this) == Other.Domain->do_generic_code(Other));
     }
     template <typename T, typename ...Args>
     VK_nodiscard bool equivalent(T&& Val, Args&& ...args) const noexcept requires(requires{
@@ -164,8 +164,8 @@ namespace valkyrie{
       return this->equivalent(makeStatusCode(std::forward<T>(Val), std::forward<Args>(args)...));
     }
 
-    VK_noreturn void throwException() const VK_throws {
-      Domain->doThrowException(*this);
+    VK_noreturn void throw_exception() const VK_throws {
+      Domain->do_throw_exception(*this);
       VK_if(VK_compiler_gcc(abort();))  // suppress buggy GCC warning
     }
 
@@ -346,7 +346,7 @@ namespace valkyrie{
 
 
 
-    VK_nodiscard string_ref message() const noexcept { return this->Domain ? string_ref(this->Domain->doMessage(*this)) : string_ref("(empty)"); }
+    VK_nodiscard string_ref message() const noexcept { return this->Domain ? string_ref(this->Domain->do_message(*this)) : string_ref("(empty)"); }
   };
 
   template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
@@ -370,14 +370,14 @@ namespace valkyrie{
     status_code & operator=(status_code &&) noexcept = default;
     ~status_code(){
       if(this->Domain)
-        this->Domain->doErasedDestroy(*this, sizeof(status_code));
+        this->Domain->do_erased_destroy(*this, sizeof(status_code));
     }
 
     status_code clone() const {
       if(!this->Domain)
         return {};
       status_code Copy;
-      this->Domain->doErasedCopy(Copy, *this, sizeof(status_code));
+      this->Domain->do_erased_copy(Copy, *this, sizeof(status_code));
       return std::move(Copy);
     }
 

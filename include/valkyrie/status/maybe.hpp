@@ -154,7 +154,7 @@ namespace valkyrie{
 
     void checkAccess() const VK_throws{
       if (!this->is_valid_)
-        this->status_.throwException();
+        this->status_.throw_exception();
     }
 
   public:

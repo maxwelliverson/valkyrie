@@ -454,7 +454,7 @@ namespace valkyrie::GUI::Internal{
           case DXGI_ERROR_GRAPHICS_VIDPN_SOURCE_IN_USE:
             return S::Info;
           default:
-            return getDefaultSeverity(this->doCode(status));
+            return get_default_severity(this->doCode(status));
         }
       }
       bool doEquivalent(const status_code<void>& a, const status_code<void>& b) const noexcept override{

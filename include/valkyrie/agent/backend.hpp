@@ -8,15 +8,15 @@
 #include <valkyrie/traits.hpp>
 
 namespace valkyrie{
-  class Backend{};
+  class backend{};
 
-  class AutonomousTask : public Backend{};
+  class autonomous_task : public backend{};
 
-  template <std::derived_from<AutonomousTask> T>
-  class Task{};
+  template <std::derived_from<autonomous_task> T>
+  class task{};
 
   template <typename T>
-  class Autonomous{
+  class autonomous{
 
 
 

@@ -12,7 +12,6 @@
 #include "iterator.hpp"
 
 namespace valkyrie {
-  class symbol_manager {};
 
   namespace detail {
     /// symbol_registry_entry_base - Shared base class of symbol_registry_entry instances.
