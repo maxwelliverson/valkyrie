@@ -6,7 +6,10 @@
 #define VALKYRIE_AGENT_SENDER_HPP
 
 namespace valkyrie{
-  class Sender{};
+  class sender{
+  public:
+
+  };
 }
 
 #endif //VALKYRIE_AGENT_SENDER_HPP

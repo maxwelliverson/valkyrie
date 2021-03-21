@@ -113,6 +113,7 @@ add_object(valkyrie.memory.virtual_memory)
 
 add_object(valkyrie.agent.mailbox)
 add_object(valkyrie.agent.backend)
+add_object(valkyrie.agent.channel)
 add_object(valkyrie.agent.registry)
 add_object(valkyrie.agent.private_agent)
 add_object(valkyrie.agent.local_agent)
@@ -160,7 +161,7 @@ add_object_library(valkyrie.memory OBJECTS detail debugging error heap_allocator
 
 add_object_library(spirv OBJECTS SpirV Shader)
 
-add_object_library(valkyrie.agent           OBJECTS agent backend local_agent mailbox message private_agent receiver registry sender shared_agent)
+add_object_library(valkyrie.agent           OBJECTS agent backend channel local_agent mailbox message private_agent receiver registry sender shared_agent)
 add_object_library(valkyrie.async           OBJECTS semaphore agent)
 add_object_library(valkyrie.graphics.api    OBJECTS instance physical_device device queue command_buffer loader surface display command_pool)
 add_object_library(valkyrie.graphics.engine OBJECTS engine option)
