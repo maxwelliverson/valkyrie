@@ -10,6 +10,8 @@
 namespace valkyrie{
   class backend{};
 
+  class thread_pool : public backend{};
+
   class autonomous_task : public backend{};
 
   template <std::derived_from<autonomous_task> T>

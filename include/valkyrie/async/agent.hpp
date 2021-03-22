@@ -127,6 +127,31 @@ namespace valkyrie::Traits{
 namespace valkyrie{
 
 
+  struct message{};
+
+  template <typename T>
+  concept message_type = std::derived_from<T, message>;
+
+
+
+  template <typename ReaderType>
+  class message_reader{
+  public:
+    using reader_type = ReaderType;
+  };
+  template <typename WriterType>
+  class message_writer{
+  public:
+    using writer_type = WriterType;
+  };
+  template <typename ReaderType, typename WriterType>
+  class agent{
+  public:
+    using reader_type = typename ReaderType::reader_type;
+    using writer_type = typename WriterType::writer_type;
+  };
+
+
 
 
   struct message{};
