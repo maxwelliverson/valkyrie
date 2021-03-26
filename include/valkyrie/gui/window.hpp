@@ -8,15 +8,15 @@
 #include <valkyrie/gui/monitor.hpp>
 #include <valkyrie/status/status_code.hpp>
 
-namespace valkyrie::GUI{
+namespace valkyrie::gui{
   class window {
     class Impl;
     Impl* pImpl;
   public:
-    window(graphics::Extent2D<> windowSize);
-    window(graphics::Box2D<i32> windowRectangle);
-    window(graphics::Extent2D<> windowSize, monitor monitor);
-    window(graphics::Box2D<i32> windowRectangle, monitor monitor);
+    explicit window(Extent2D<> windowSize);
+    explicit window(Rect2D windowRectangle);
+    window(Extent2D<> windowSize, monitor monitor);
+    window(Rect2D windowRectangle, monitor monitor);
 
     window(const window &);
     window(window &&) noexcept;
@@ -25,10 +25,10 @@ namespace valkyrie::GUI{
     ~window();
 
 
-    monitor monitor() const noexcept;
-    graphics::Box2D<i32>      getArea() const noexcept;
-    graphics::Position2D<i32> getPosition() const noexcept;
-    graphics::Extent2D<>      getExtents() const noexcept;
+    monitor         monitor() const noexcept;
+    Rect2D          getArea() const noexcept;
+    Position2D<i32> getPosition() const noexcept;
+    Extent2D<>      getExtents() const noexcept;
 
 
     status setFullscreen(bool enableFullscreen = true) noexcept;

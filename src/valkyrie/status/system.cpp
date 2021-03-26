@@ -100,7 +100,7 @@ namespace {
 
 #if VK_compiler_msvc
 
-#include <valkyrie/status/System/windows.hpp>
+#include <valkyrie/status/system/windows.hpp>
 
 #include <atomic>
 

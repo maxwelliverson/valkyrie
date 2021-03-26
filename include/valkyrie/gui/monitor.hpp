@@ -9,14 +9,7 @@
 #include <valkyrie/utility/shapes.hpp>
 #include <valkyrie/status/status_code.hpp>
 
-namespace valkyrie::GUI{
-
-  enum class Unit{
-    Pixel,
-    Inch,
-    Centimetre,
-    Millimetre
-  };
+namespace valkyrie::gui{
 
   class monitor {
 
@@ -35,7 +28,8 @@ namespace valkyrie::GUI{
     bool                      isPrimary() const noexcept;
     u32                       width() const noexcept;
     u32                       height() const noexcept;
-    graphics::Position2D<i32> position() const noexcept;
+    Extent2D<>                size() const noexcept;
+    Position2D<i32>           position() const noexcept;
     u32                       frequency() const noexcept;
     std::string_view          name() const noexcept;
     std::string_view          path() const noexcept;
@@ -46,7 +40,7 @@ namespace valkyrie::GUI{
     //graphics::PixelFormat     pixelFormat() const noexcept;
 
 
-    static monitor getPrimary() noexcept;
+    static monitor            getPrimary() noexcept;
     static std::span<monitor> enumerate() noexcept;
   };
 }

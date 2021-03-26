@@ -56,14 +56,14 @@ namespace {
 #define severity_case(Value) case severity::Value: return OS << #Value;
     switch (severity) {
       VK_foreach(severity_case,
-                 Debug,
-                 Performance,
-                 Success,
-                 Info,
-                 Warning,
-                 Error,
-                 InternalError,
-                 Fatal)
+                 debug,
+                 performance,
+                 success,
+                 info,
+                 warning,
+                 error,
+                 internal_error,
+                 fatal)
       default:
         return OS << "Unknown";
     }

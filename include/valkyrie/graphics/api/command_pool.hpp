@@ -240,6 +240,7 @@ namespace valkyrie::graphics::api{
     status reset() noexcept;
 
 
+    void execute(const command_buffer& buffer) noexcept;
     void execute(std::span<command_buffer> buffers) noexcept;
     void begin_render_pass() noexcept;
     void next_subpass() noexcept;

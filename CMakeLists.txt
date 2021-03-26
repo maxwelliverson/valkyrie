@@ -127,8 +127,8 @@ add_object(valkyrie.async.semaphore)
 add_object(valkyrie.async.agent)
 
 add_object(valkyrie.utility)
-add_object(valkyrie.error)
-add_object(valkyrie.system_error)
+add_object(valkyrie.status.error)
+add_object(valkyrie.status.system)
 
 add_object(valkyrie.win32_functions)
 
@@ -155,7 +155,7 @@ add_object(valkyrie.gui.dxgi)
 add_object(valkyrie.graphics.engine.engine)
 add_object(valkyrie.graphics.engine.option)
 
-
+add_object_library(valkyrie.status OBJECTS error system)
 add_object_library(valkyrie.memory.detail OBJECTS align debug_helpers free_list free_list_array small_free_list)
 add_object_library(valkyrie.memory OBJECTS detail debugging error heap_allocator iteration_allocator malloc_allocator memory_arena memory_pool memory_pool_collection memory_stack new_allocator static_allocator temporary_allocator virtual_memory)
 
@@ -166,6 +166,8 @@ add_object_library(valkyrie.async           OBJECTS semaphore agent)
 add_object_library(valkyrie.graphics.api    OBJECTS instance physical_device device queue command_buffer loader surface display command_pool)
 add_object_library(valkyrie.graphics.engine OBJECTS engine option)
 add_object_library(valkyrie.gui             OBJECTS window monitor)
+
+
 
 target_link_libraries(valkyrie.gui PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
 
@@ -211,6 +213,29 @@ add_executable(vulkan_example src/example.cpp)
 add_executable(clangd_debug debug_clangd.cpp)
 add_executable(tictactoe test/tictactoe.c)
 add_executable(better_ttt test/better_tictactoe.c)
+
+
+
+add_library(imgui STATIC IMPORTED)
+add_library(imgui_vulkan STATIC IMPORTED)
+add_library(imgui_glfw STATIC IMPORTED)
+set(CUSTOM_LIBRARY_FOLDER ~/lib)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(IMGUI_LIBRARY_NAME debug/dimgui)
+    set(IMGUI_VULKAN_LIBRARY_NAME debug/dimgui_vulkan)
+    set(IMGUI_GLFW_LIBRARY_NAME debug/dimgui_glfw)
+else()
+    set(IMGUI_LIBRARY_NAME imgui)
+    set(IMGUI_VULKAN_LIBRARY_NAME imgui_vulkan)
+    set(IMGUI_GLFW_LIBRARY_NAME imgui_glfw)
+endif()
+
+set_target_properties(imgui PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_FOLDER}/${IMGUI_LIBRARY_NAME}.lib")
+set_target_properties(imgui_vulkan PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_FOLDER}/${IMGUI_VULKAN_LIBRARY_NAME}.lib")
+set_target_properties(imgui_glfw PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_FOLDER}/${IMGUI_GLFW_LIBRARY_NAME}.lib")
+
+add_executable(graph_gui test/graph_gui.cpp)
+target_link_libraries(graph_gui PUBLIC valkyrie.status valkyrie.memory imgui imgui_vulkan imgui_glfw)
 
 
 add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h)
