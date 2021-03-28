@@ -49,151 +49,115 @@ namespace valkyrie
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    using list, std::list<T, std_allocator<T, RawAllocator>>);
+    using list = std::list<T, std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        list_scoped_alloc,
-        std::list<T, std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using list_scoped_alloc = std::list<T, std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(forward_list,
-        std::forward_list<T, std_allocator<T, RawAllocator>>);
+    using forward_list = std::forward_list<T, std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        forward_list_scoped_alloc,
-        std::forward_list<T, std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using forward_list_scoped_alloc = std::forward_list<T, std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(set, std::set<T, std::less<T>, std_allocator<T, RawAllocator>>);
+    using set =  std::set<T, std::less<T>, std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        set_scoped_alloc,
-        std::set<T, std::less<T>,
-        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using set_scoped_alloc = std::set<T, std::less<T>,
+        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(multiset,
-        std::multiset<T, std::less<T>, std_allocator<T, RawAllocator>>);
+    using multiset = std::multiset<T, std::less<T>, std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        multiset_scoped_alloc,
-        std::multiset<T, std::less<T>,
-        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using multiset_scoped_alloc = std::multiset<T, std::less<T>,
+        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        map, std::map<Key, Value, std::less<Key>,
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>);
+    using map = std::map<Key, Value, std::less<Key>,
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        map_scoped_alloc,
-        std::map<Key, Value, std::less<Key>,
+    using map_scoped_alloc = std::map<Key, Value, std::less<Key>,
         std::scoped_allocator_adaptor<
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>>);
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        multimap, std::multimap<Key, Value, std::less<Key>,
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>);
+    using multimap = std::multimap<Key, Value, std::less<Key>,
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        multimap_scoped_alloc,
-        std::multimap<Key, Value, std::less<Key>,
+    using multimap_scoped_alloc = std::multimap<Key, Value, std::less<Key>,
         std::scoped_allocator_adaptor<
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>>);
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_set,
-        std::unordered_set<T, std::hash<T>, std::equal_to<T>, std_allocator<T, RawAllocator>>);
+    using unordered_set = std::unordered_set<T, std::hash<T>, std::equal_to<T>, std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_set_scoped_alloc,
-        std::unordered_set<T, std::hash<T>, std::equal_to<T>,
-        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using unordered_set_scoped_alloc = std::unordered_set<T, std::hash<T>, std::equal_to<T>,
+        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(unordered_multiset,
-        std::unordered_multiset<T, std::hash<T>, std::equal_to<T>,
-        std_allocator<T, RawAllocator>>);
+    using unordered_multiset = std::unordered_multiset<T, std::hash<T>, std::equal_to<T>,
+        std_allocator<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_multiset_scoped_alloc,
-        std::unordered_multiset<T, std::hash<T>, std::equal_to<T>,
-        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>);
+    using unordered_multiset_scoped_alloc = std::unordered_multiset<T, std::hash<T>, std::equal_to<T>,
+        std::scoped_allocator_adaptor<std_allocator<T, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_map,
-        std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>,
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>);
+    using unordered_map = std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>,
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_map_scoped_alloc,
-        std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>,
+    using unordered_map_scoped_alloc = std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>,
         std::scoped_allocator_adaptor<
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>>);
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_multimap,
-        std::unordered_multimap<Key, Value, std::hash<Key>, std::equal_to<Key>,
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>);
+    using unordered_multimap = std::unordered_multimap<Key, Value, std::hash<Key>, std::equal_to<Key>,
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename Key, typename Value, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        unordered_multimap_scoped_alloc,
-        std::unordered_multimap<Key, Value, std::hash<Key>, std::equal_to<Key>,
+    using unordered_multimap_scoped_alloc = std::unordered_multimap<Key, Value, std::hash<Key>, std::equal_to<Key>,
         std::scoped_allocator_adaptor<
-        std_allocator<std::pair<const Key, Value>, RawAllocator>>>);
+        std_allocator<std::pair<const Key, Value>, RawAllocator>>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(stack, std::stack<T, deque<T, RawAllocator>>);
+    using stack = std::stack<T, deque<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(stack_scoped_alloc,
-        std::stack<T, deque_scoped_alloc<T, RawAllocator>>);
+    using stack_scoped_alloc = std::stack<T, deque_scoped_alloc<T, RawAllocator>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(queue, std::queue<T, deque<T, RawAllocator>>);
+    using queue = std::queue<T, deque<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(queue_scoped_alloc,
-        std::queue<T, deque_scoped_alloc<T, RawAllocator>>);
+    using queue_scoped_alloc = std::queue<T, deque_scoped_alloc<T, RawAllocator>>;
 
     /// \copydoc vector
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(priority_queue, std::priority_queue<T, deque<T, RawAllocator>>);
+    using priority_queue = std::priority_queue<T, deque<T, RawAllocator>>;
     /// \copydoc vector_scoped_alloc
     template <typename T, class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(priority_queue_scoped_alloc,
-        std::priority_queue<T, deque_scoped_alloc<T, RawAllocator>>);
+    using priority_queue_scoped_alloc = std::priority_queue<T, deque_scoped_alloc<T, RawAllocator>>;
 
     /// \copydoc vector
     template <class RawAllocator>
-    FOONATHAN_ALIAS_TEMPLATE(
-        string,
-        std::basic_string<char, std::char_traits<char>, std_allocator<char, RawAllocator>>);
+    using string = std::basic_string<char, std::char_traits<char>, std_allocator<char, RawAllocator>>;
     /// @}
 
     /// @{

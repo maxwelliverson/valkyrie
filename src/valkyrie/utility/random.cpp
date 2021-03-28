@@ -6,6 +6,7 @@
 #include <valkyrie/agent/mailbox.hpp>
 #include <valkyrie/utility/function_ref.hpp>
 #include <valkyrie/status/generic_code.hpp>
+#include <valkyrie/adt/list.hpp>
 
 #include <thread>
 #include <csetjmp>
@@ -333,6 +334,80 @@ namespace {
 
   };*/
 
+  enum class cmd{
+    destroy,
+
+  };
+
+  class task_list;
+
+  class task_node{
+
+    friend class task_list;
+
+    task_list*         list;
+    atomic<task_node*> next;
+
+    virtual void destroy() noexcept { delete this; }
+    virtual void process() noexcept = 0;
+
+  protected:
+
+
+
+    inline void proceed() noexcept;
+    inline void finish() noexcept;
+    inline void cycle() noexcept;
+    inline void bump() noexcept;
+
+
+
+  public:
+    virtual ~task_node() = default;
+
+    virtual void anchor();
+  };
+
+  class task_list{
+
+    friend class task_node;
+
+  public:
+
+    void enqueue(task_node* task) noexcept {
+      task_node* tail_task = tail.load(std::memory_order_acquire);
+      while (!tail.compare_exchange_weak(tail_task, task, std::memory_order_acq_rel));
+      if (tail_task) {
+        task_node* node = nullptr;
+        while ( !tail_task->next.compare_exchange_strong(node, task, std::memory_order_acq_rel) );
+      } else {
+        head.compare_exchange_strong(tail_task, task, std::memory_order_acq_rel);
+        //assert( result );
+      }
+      task->list = this;
+      ++length;
+    }
+
+    void run() noexcept {
+      task_node* node = head.load(std::memory_order_acquire);
+      if ( node )
+        node->process();
+    }
+
+    u64 size() const noexcept {
+      return length.load(std::memory_order_acquire);
+    }
+    bool empty() const noexcept {
+      return length == 0;
+    }
+
+
+  private:
+    atomic<task_node*> head        = nullptr;
+    atomic<task_node*> tail        = nullptr;
+    atomic<u64>        length = 0;
+  };
+
 
   class CudaRingBuffer{
     u64                          bufferLength = 0;
@@ -343,6 +418,13 @@ namespace {
     std::atomic_uint64_t         lastReadOffset  = 0;
     std::atomic_uint64_t         nextWriteOffset = 0;
     std::atomic_uint64_t         lastWriteOffset = 0;
+
+
+
+    struct offsets {
+      std::atomic_uint64_t next_offset = 0;
+      std::atomic_uint64_t last_offset = 0;
+    } read, write;
 
 
     void createHandle(const CUmemAllocationProp& props) noexcept {
@@ -419,6 +501,64 @@ namespace {
 
     CudaRingBuffer() = default;
 
+    inline CUdeviceptr ptr(u64 offset) const noexcept {
+      return memAddr + offset;
+    }
+
+
+    struct task_list;
+    struct task_list_node;
+    using pfn_task_process = task_list(*)(task_list_node*) noexcept;
+
+    struct callback_data;
+    using pfn_callback = callback_data*(*)(callback_data*) noexcept;
+
+    struct op_data{
+      u64 offset;
+      u64 length;
+    };
+
+    struct callback_data{
+      pfn_callback           callback;
+      op_data                data;
+      atomic<callback_data*> p_next;
+    };
+
+    static op_data begin(u64 length, u64 bufferLength, offsets& o) noexcept {
+      op_data info{
+          .offset = o.next_offset.load(std::memory_order_acquire),
+          .length = length
+      };
+      u64 next_offset;
+
+      do {
+        const auto availLength = [&]{
+          const i64 diff = static_cast<i64>(o.last_offset.load(std::memory_order_acquire)) -
+                           static_cast<i64>(info.offset);
+          if ( diff < 0 )
+            return bufferLength + diff;
+          return static_cast<u64>(diff);
+        }();
+        info.length = std::max(info.length, availLength);
+        next_offset = info.offset + info.length;
+        next_offset -= static_cast<bool>(next_offset >= bufferLength) * bufferLength;
+      } while (!o.next_offset.compare_exchange_strong(info.offset, next_offset, std::memory_order_acq_rel));
+
+      return info;
+    }
+    static op_data end(op_data info, offsets& o) noexcept {
+
+    }
+
+    op_data begin_read(u64 readLength) noexcept {
+      return CudaRingBuffer::begin(readLength, bufferLength, read);
+    }
+    void    end_read(op_data info) noexcept {
+      end();
+    }
+    op_data begin_write(u64 writeLength) noexcept {}
+    void    end_write(op_data info) noexcept {}
+
   public:
 
     explicit CudaRingBuffer(CUdevice dev, u64 length) noexcept{
@@ -482,9 +622,11 @@ namespace {
       if ( !readLength )
         return {};
 
-      cuMemcpyDtoHAsync(byteSpan.data(), memAddr + readOffset, readLength, stream);
+      using params_t = std::tuple<CudaRingBuffer*, u64, u64>;
+
+      cuMemcpyDtoHAsync(byteSpan.data(), ptr(readOffset), readLength, stream);
       cuLaunchHostFunc(stream, [](void* pParams){
-            auto* params = static_cast<std::tuple<CudaRingBuffer*, u64, u64>*>(pParams);
+            auto* params = static_cast<params_t*>(pParams);
             auto [ pThis, readLength, readOffset ] = *params;
             u64 writeOffset = readOffset;
             const u64 nextOffset = readOffset + readLength;
@@ -494,12 +636,34 @@ namespace {
             }
             pThis->lastWriteOffset.notify_all();
             delete params;
-          }, new std::tuple{ this, readLength, readOffset });
+          }, new params_t{ this, readLength, readOffset });
 
       byteSpan = byteSpan.subspan(readLength);
       return { byteSpan.data(), readLength };
     }
-    void write(std::span<const std::byte>& byteSpan, CUstream stream) noexcept {
+    void write(std::span<const std::byte> byteSpan, CUstream stream) noexcept {
+
+      const auto spanLength = byteSpan.size();
+      u64 writeLength = spanLength;
+      u64 writeOffset = nextWriteOffset.load(std::memory_order_acquire);
+      u64 nextOffset;
+
+      do {
+        const auto availLength = [&]{
+          const i64 diff = static_cast<i64>(lastWriteOffset.load(std::memory_order_acquire)) -
+                           static_cast<i64>(writeOffset);
+          if ( diff < 0 )
+            return bufferLength + diff;
+          return static_cast<u64>(diff);
+        }();
+      } while ();
+
+      cuMemcpyHtoDAsync()
+    }
+    void write(void(* pWriteMsgFn)(void*), CUstream stream) noexcept {
+
+    }
+    void write(void(* pWriteMsgFn)(void* addr, void*), void* pUserData, CUstream stream) noexcept {
 
     }
   };

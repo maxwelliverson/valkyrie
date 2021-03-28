@@ -87,6 +87,7 @@ add_object(spirv.Shader)
 
 
 add_object(valkyrie.adt.symbol)
+add_object(valkyrie.adt.concurrent_list)
 
 
 add_object(valkyrie.memory.detail.align)

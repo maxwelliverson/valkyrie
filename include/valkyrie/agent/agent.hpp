@@ -14,6 +14,9 @@
 namespace valkyrie{
 
 
+
+
+
   template <typename A>
   class agent_ptr;
   
