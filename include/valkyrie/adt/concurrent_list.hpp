@@ -16,20 +16,40 @@ namespace valkyrie{
 
   namespace impl{
 
-    class cslist_node_base;
-    class clist_node_base;
+    struct alignas(16) cslist_node {
+      cslist_node * next;
+      byte          data[];
+    };
+    struct clist_node {};
+
+    struct alignas(16) cslist_header{
+      u64 alignment;
+      u64 data;
+    };
 
     class concurrent_forward_list{
-      atomic<cslist_node_base*> head;
-      atomic<cslist_node_base*> tail;
-      atomic<u64>               length;
+
+      cslist_header header_;
+      atomic<u64>   list_length_;
+
+    protected:
+
+      void clear() noexcept;
+      void push_front(cslist_node * node) noexcept;
+      void pop_front(cslist_node * node) noexcept;
+      void push_back(cslist_node * node) noexcept;
+      void pop_back(cslist_node * node) noexcept;
+      static void insert_node(cslist_node * after_node, cslist_node * node) noexcept;
+      static void remove_node(cslist_node * after_node) noexcept;
+
+      inline u64 size() const noexcept {
+        return list_length_.load(std::memory_order_acquire);
+      }
     };
-    class concurrent_forward_ilist{};
     class concurrent_list {
-      
+    public:
+
     };
-    class concurrent_ilist {};
-    
   }
 
 
@@ -40,7 +60,10 @@ namespace valkyrie{
   
   template <typename T, raw_allocator Alloc = default_allocator>
   class cslist : impl::concurrent_forward_list{
-    
+
+
+
+
   };
 
 
