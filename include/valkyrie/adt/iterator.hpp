@@ -126,8 +126,8 @@ namespace valkyrie{
     }
     
     
-    PointerT operator->() { return &static_cast<derived_type *>(this)->operator*(); }
-    PointerT operator->() const { return &static_cast<const derived_type *>(this)->operator*(); }
+    PointerT operator->() { return std::addressof(static_cast<derived_type *>(this)->operator*()); }
+    PointerT operator->() const { return std::addressof(static_cast<const derived_type *>(this)->operator*()); }
     reference_proxy operator[](difference_type n) requires(IsRandomAccess) { return reference_proxy(static_cast<derived_type *>(this)->operator+(n)); }
     reference_proxy operator[](difference_type n) const requires(IsRandomAccess) { return reference_proxy(static_cast<const derived_type *>(this)->operator+(n)); }
   };

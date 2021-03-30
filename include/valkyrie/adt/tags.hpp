@@ -7,6 +7,8 @@
 
 #include <valkyrie/traits.hpp>
 
+#include <utility>
+
 namespace valkyrie{
   namespace impl{
     struct tag_base{
@@ -140,6 +142,12 @@ namespace valkyrie{
     static_assert(std::derived_from<tag_base, impl::tag_base>);
 
 
+    inline bool contains_ptr(const void* p) const noexcept {
+      const void* this_addr = this;
+      const void* next_addr = reinterpret_cast<const byte*>(this) + sizeof(tagged_bases);
+      return this_addr <= p && p < next_addr;
+    }
+
     inline constexpr static u64 TypeSize = std::is_empty_v<T> ? 0 : sizeof(T);
 
   public:
@@ -168,34 +176,67 @@ namespace valkyrie{
       //return static_cast<tagged<T, Tag>*>(this);
     }
 
-    tag_base*        get_tag(T* p) const noexcept {
-
-    }
-
 
     template <same_as_one_of<Tags...> Tag>
-    base_type*       get()       noexcept {
+    base_type*       select()       noexcept {
       return static_cast<tagged<T, Tag>*>(this);
     }
     template <same_as_one_of<Tags...> Tag>
-    const base_type* get() const noexcept {
+    const base_type* select() const noexcept {
       return static_cast<const tagged<T, Tag>*>(this);
     }
 
 
     template <same_as_one_of<Tags...> Tag>
-    base_type*       get(Tag* t)            const noexcept {
+    base_type*       select(Tag* t)            const noexcept {
       return static_cast<tagged<T, Tag>*>(this)->cast_to_base(t);
     }
-    base_type*       get(impl::tag_base* t) const noexcept {
+    base_type*       select(impl::tag_base* t) const noexcept {
+      return contains_ptr(t) ? reinterpret_cast<base_type*>(reinterpret_cast<byte*>(t) - TypeSize) : nullptr;
+    }
 
-      const auto pt = reinterpret_cast<byte*>(t);
-      const auto this_addr = reinterpret_cast<const byte*>(this);
-      const auto next_addr = this_addr + sizeof(tagged_bases);
-
-      return (this_addr < pt && pt <= next_addr) ? reinterpret_cast<base_type*>(pt - TypeSize) : nullptr;
+    template <same_as_one_of<Tags...> Tag>
+    static       tagged_bases* from_base(      base_type* p) noexcept {
+      return static_cast<tagged_bases*>(static_cast<tagged<base_type, Tag>*>(p));
+    }
+    template <same_as_one_of<Tags...> Tag>
+    static const tagged_bases* from_base(const base_type* p) noexcept {
+      return static_cast<const tagged_bases*>(static_cast<const tagged<base_type, Tag>*>(p));
     }
   };
+
+  namespace impl{
+    template <typename T, typename Bases>
+    struct has_tagged_base : meta::false_type {};
+
+    template <typename Tag, typename T, typename ...Tags>
+    struct has_tagged_base<Tag, tagged_bases<T, Tags...>> : std::disjunction<std::is_same<Tag, Tags>...>{};
+
+    template <typename T, typename ...Tags>
+    auto extract_tagged_bases_type(const tagged_bases<T, Tags...>*) -> tagged_bases<T, Tags...>;
+    template <typename T>
+    auto extract_tagged_bases_type(...) -> void;
+    auto extract_tagged_bases_type(...) -> void;
+
+    template <typename T, typename Base>
+    struct extracted_tagged_bases{
+      using type = decltype(extract_tagged_bases_type<Base>(std::declval<const T*>()));
+    };
+    template <typename T>
+    struct extracted_tagged_bases<T, void>{
+      using type = decltype(extract_tagged_bases_type(std::declval<const T*>()));
+    };
+
+    template <typename T, typename Base>
+    using extracted_tagged_bases_t = typename extracted_tagged_bases<T, Base>::type;
+  }
+
+
+  template <typename T, typename Tag, typename Base = void>
+  concept has_tagged_base = tag<Tag> && impl::has_tagged_base<Tag, impl::extracted_tagged_bases_t<T, Base>>::value;
+
+  template <typename Tag, typename T, typename Base = void>
+  concept valid_tag_for = has_tagged_base<T, Tag, Base>;
 }
 
 #endif//VALKYRIE_ADT_TAGS_HPP

@@ -202,6 +202,18 @@ namespace valkyrie{
 
 
   template <typename T>
+  using add_const_t = std::add_const_t<T>;
+  template <typename T>
+  using add_volatile_t = std::add_volatile_t<T>;
+  template <typename T>
+  using remove_const_t = std::remove_const_t<T>;
+  template <typename T>
+  using remove_cv_t = std::remove_cv_t<T>;
+
+  template <typename T>
+  using remove_cvref_t = std::remove_cvref_t<T>;
+
+  template <typename T>
   using add_const_past_pointer_t = typename meta::add_const_past_pointer<T>::type;
 
 
