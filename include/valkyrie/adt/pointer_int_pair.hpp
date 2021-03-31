@@ -32,6 +32,10 @@ namespace valkyrie{
     struct pointer_high_bits<T*> : meta::value_wrapper<16u>{}; // only 64bit platforms are supported...
   }
 
+
+
+
+
   template <typename PointerType,
             typename IntType = i32,
             u32 bits = impl::pointer_low_bits<PointerType>::value>
@@ -99,10 +103,7 @@ namespace valkyrie{
     template <typename Ptr>
     requires(
         std::assignable_from<pointer_type&, Ptr&&> &&
-              (
-                 std::is_trivially_assignable_v<pointer_type&, Ptr&&> ||
-                 sizeof(Ptr) <= sizeof(void*)
-              ))
+       (std::is_trivially_assignable_v<pointer_type&, Ptr&&> || sizeof(Ptr) <= sizeof(void*)))
     inline void             set_ptr_(Ptr&& p) noexcept {
       if constexpr (!std::is_trivially_assignable_v<pointer_type&, Ptr&&>) {
         u64 tmp_int = value & integer_mask;

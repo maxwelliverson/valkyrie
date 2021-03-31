@@ -425,8 +425,82 @@ namespace valkyrie{
   template <impl::forward_ilist_node_type T, tag Tag>
   class forward_ilist{
 
+    inline void assert_invariants() const noexcept {
+
+#if VK_debug_build
+      const bool len                = header.length;
+      const bool next_equals_header = header.next == &header;
+      const bool prev_equals_header = header.prev == &header;
+      const bool next_equals_prev   = header.next == header.prev;
+#endif
+
+      VK_assert_msg(header.next != nullptr, "header.next is null");
+      VK_assert_msg(header.prev != nullptr, "header.prev is null");
+
+      VK_assert_msg(len     || next_equals_header,  "header.length is 0, but header.next does not point to itself");
+      VK_assert_msg(len     || prev_equals_header,  "header.length is 0, but header.prev does not point to itself");
+      VK_assert_msg(!len    || !next_equals_header, "header.length is not 0, but header.next points to itself");
+      VK_assert_msg(!len    || !prev_equals_header, "header.length is not 0, but header.prev points to itself");
+      VK_assert_msg(len < 2 || next_equals_prev,    "header.length is 1, but header.next is not equal to header.prev");
+      VK_assert_msg(len > 1 || !next_equals_prev,   "header.length is not 1, but header.next is equal to header.prev");
+    }
 
     using node_base_type = typename T::forward_inode_type;
+
+    inline static impl::forward_ilist_node_base*       to_base(T* node) noexcept {
+      return node_base_type::template upcast<Tag>(node);
+    }
+    inline static const impl::forward_ilist_node_base* to_base(const T* node) noexcept {
+      return node_base_type::template upcast<Tag>(node);
+    }
+    inline static T* to_value(impl::forward_ilist_node_base* node) noexcept {
+      return static_cast<T*>(node_base_type::template downcast<Tag>(node));
+    }
+    inline static const T* to_value(const impl::forward_ilist_node_base* node) noexcept {
+      return static_cast<const T*>(node_base_type::template downcast<Tag>(node));
+    }
+
+    inline void insert_after(impl::forward_ilist_node_base* node, T* new_node) noexcept {
+      VK_assert( node );
+      VK_assert( new_node );
+
+      impl::forward_ilist_node_base* const base_node = node_base_type::template upcast<Tag>(new_node);
+      VK_assert(!base_node->is_list_element());
+
+      base_node->next = node->next;
+      node->next = base_node;
+
+      VK_assert(base_node->is_list_element());
+    }
+    inline T*   remove_after(impl::forward_ilist_node_base* node) noexcept {
+      VK_assert_msg(!empty(), "remove_after was called on an empty list");
+      VK_assert(node != nullptr);
+      auto* const next = node->next;
+
+      VK_assert(next->is_list_element());
+
+      T* ret = static_cast<T*>(node_base_type::downcast(static_cast<tagged<impl::forward_ilist_node_base, Tag>*>(next)));
+      node->next = next->next;
+      next->next = nullptr;
+
+      VK_assert(!next->is_list_element());
+
+      return ret;
+    }
+
+    /*inline void insert_before(impl::forward_ilist_node_base* node, T* new_node) noexcept {
+      VK_assert( node );
+      VK_assert( new_node );
+
+      impl::forward_ilist_node_base* const base_node =
+          node_base_type::template upcast<Tag>(new_node);
+      VK_assert(!base_node->is_list_element());
+
+      base_node->next = node;
+    }
+    inline T*   remove_before(impl::forward_ilist_node_base* node) noexcept {
+
+    }*/
 
   public:
 
@@ -437,17 +511,114 @@ namespace valkyrie{
     using pointer         = typename iterator::pointer;
     using const_pointer   = typename const_iterator::pointer;
     using value_type      = typename iterator::value_type;
+    using size_type       = u64;
 
 
     forward_ilist() = default;
 
 
 
-    reference front() noexcept {
+    /* [ modifiers ] */
 
+    void push_front(T* element) noexcept {
+      insert_after(&header, element);
+      ++header.length;
+      assert_invariants();
+    }
+    void push_back(T* element)  noexcept {
+      insert_after(header.prev, element);
+      header.prev = node_base_type::template upcast<Tag>();
+      ++header.length;
+      assert_invariants();
+    }
+    T*   pop_front()            noexcept {
+
+      if (empty())
+        return nullptr;
+
+      T* retval = remove_after( &header );
+
+      --header.length;
+      assert_invariants();
+
+      return retval;
+    }
+
+    void insert(const_iterator after_element, T* element) noexcept {
+
+      impl::forward_ilist_node_base* after_node = forward_ilist::to_base(&*after_element);
+
+      insert_after(after_node, element);
+
+      if ( after_node == header.prev )
+        header.prev = forward_ilist::to_base(element);
+
+      ++header.length;
+      assert_invariants();
+    }
+    T*   remove(const_iterator after_element)             noexcept {
+
+      impl::forward_ilist_node_base* after_node = forward_ilist::to_base(&*after_element);
+
+      VK_assert( after_node->is_list_element() );
+      VK_assert_msg(after_node->next != &header, "Cannot remove header node");
+      VK_assert( !empty() );
+
+      T* node = forward_ilist::to_value(after_node->next);
+
+      if ( header.prev == after_node->next )
+        header.prev = after_node;
+
+      remove_after( after_node );
+
+
+
+      --header.length;
+      assert_invariants();
+
+      return node;
     }
 
 
+
+
+    /* [ observers ] */
+
+    VK_nodiscard size_type size() const noexcept {
+      //VK_assert();
+
+      return header.length;
+    }
+    VK_nodiscard bool      empty() const noexcept {
+      return header.length == 0;
+    }
+
+
+
+
+    /* [ accessors ] */
+
+    reference       front()       noexcept {
+      VK_assert(not empty());
+      return *begin();
+    }
+    const_reference front() const noexcept {
+      VK_assert(not empty());
+      return *begin();
+    }
+    reference       back()        noexcept {
+      VK_assert(not empty());
+      return *--end();
+    }
+    const_reference back()  const noexcept {
+      VK_assert(not empty());
+      return *--end();
+    }
+
+
+
+
+    /* [ iterators ] */
 
     iterator        begin()       noexcept {
       return ++end();
@@ -458,7 +629,6 @@ namespace valkyrie{
     const_iterator cbegin() const noexcept {
       return ++cend();
     }
-
 
     iterator        end()       noexcept {
       return iterator(header);
@@ -474,9 +644,7 @@ namespace valkyrie{
   private:
     impl::forward_ilist_header header;
   };
-
-
-  template <impl::ilist_node_type T,         tag Tag>
+  template <impl::ilist_node_type T, tag Tag>
   class ilist{
 
     inline void assert_invariants() const noexcept {
@@ -502,32 +670,83 @@ namespace valkyrie{
     using node_base_type = typename T::inode_type;
 
 
-    inline void insert_after(impl::forward_ilist_node_base* node, T* new_node) noexcept {
-      VK_assert(node != nullptr);
-      auto* const base_node = node_base_type::template upcast<Tag>(new_node);
+    inline void insert_after(impl::ilist_node_base* node, T* new_node) noexcept {
+      VK_assert( node );
+      VK_assert( new_node );
+
+      impl::ilist_node_base* const base_node = node_base_type::template upcast<Tag>(new_node);
       VK_assert(!base_node->is_list_element());
 
-      base_node->next = node->next;
-      node->next = base_node;
+      base_node->next       = node->next;
+      base_node->prev       = node;
+      node->next            = base_node;
+      base_node->next->prev = base_node;
+
 
       VK_assert(base_node->is_list_element());
     }
-    inline T*   remove_after(impl::forward_ilist_node_base* node) noexcept {
+    inline T*   remove_after(impl::ilist_node_base* node) noexcept {
       VK_assert_msg(!empty(), "remove_after was called on an empty list");
       VK_assert(node != nullptr);
       auto* const next = node->next;
 
+      VK_assert( next != &header );
+
       VK_assert(next->is_list_element());
 
       T* ret = static_cast<T*>(node_base_type::downcast(static_cast<tagged<impl::forward_ilist_node_base, Tag>*>(next)));
-      node->next = next->next;
-      next->next = nullptr;
+
+      node->next       = next->next;
+      next->next->prev = node;
+      next->next       = nullptr;
+      next->prev       = nullptr;
+
 
       VK_assert(!next->is_list_element());
 
       return ret;
     }
+    inline void insert_before(impl::ilist_node_base* node, T* new_node) noexcept {
+      VK_assert( node );
+      VK_assert( new_node );
 
+      impl::ilist_node_base* const base_node = node_base_type::template upcast<Tag>(new_node);
+      VK_assert(!base_node->is_list_element());
+
+      base_node->prev = node->prev;
+      base_node->next = node;
+      node->prev = base_node;
+      base_node->prev->next = base_node;
+
+      VK_assert(base_node->is_list_element());
+    }
+    inline T*   remove_before(impl::ilist_node_base* node) noexcept {
+      VK_assert_msg(!empty(), "remove_after was called on an empty list");
+      VK_assert(node != nullptr);
+      auto* const prev = node->prev;
+
+      VK_assert( prev != &header );
+      VK_assert(prev->is_list_element());
+
+      T* ret = static_cast<T*>(node_base_type::downcast(static_cast<tagged<impl::forward_ilist_node_base, Tag>*>(prev)));
+
+      node->prev       = prev->prev;
+      prev->prev->next = node;
+      prev->next       = nullptr;
+      prev->prev       = nullptr;
+
+
+      VK_assert(!prev->is_list_element());
+
+      return ret;
+    }
+
+    inline static impl::ilist_node_base* to_base(T* node) noexcept {
+      return node_base_type::template upcast<Tag>(node);
+    }
+    inline static T* to_value(impl::ilist_node_base* node) noexcept {
+      return static_cast<T*>(node_base_type::template downcast<Tag>(node));
+    }
 
   public:
 
@@ -544,8 +763,9 @@ namespace valkyrie{
 
 
 
-
     ilist() = default;
+
+
 
 
     /* [ modifiers ] */
@@ -556,41 +776,53 @@ namespace valkyrie{
       assert_invariants();
     }
     void push_back(T* element) noexcept {
-
+      insert_before(&header, element);
       ++header.length;
       assert_invariants();
     }
+
     T*   pop_front() noexcept {
 
       if (empty())
         return nullptr;
 
-      T* retval;
+      T* retval = remove_after( &header );
 
       --header.length;
       assert_invariants();
+
+      return retval;
     }
-    T*   pop_back() noexcept {
+    T*   pop_back()  noexcept {
 
       if (empty())
         return nullptr;
 
+      T* retval = remove_before( &header );
+
       --header.length;
       assert_invariants();
+
+      return retval;
     }
 
     void insert(const_iterator after_element, T* element)   noexcept {
+      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
 
+      insert_after(after_node, element);
 
       ++header.length;
       assert_invariants();
     }
     T*   remove(const_iterator after_element)               noexcept {
+      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
 
-
+      T* retval = remove_after(after_node);
 
       --header.length;
       assert_invariants();
+
+      return retval;
     }
 
 
@@ -598,12 +830,12 @@ namespace valkyrie{
 
     /* [ observers ] */
 
-    size_type       size() const noexcept {
+    VK_nodiscard size_type size() const noexcept {
       //VK_assert();
 
       return header.length;
     }
-    bool            empty() const noexcept {
+    VK_nodiscard bool      empty() const noexcept {
       return header.length == 0;
     }
 
@@ -665,7 +897,6 @@ namespace valkyrie{
       return const_reverse_iterator(cend());
     }
 
-
     reverse_iterator        rend()       noexcept {
       return reverse_iterator(begin());
     }
@@ -676,13 +907,12 @@ namespace valkyrie{
       return const_reverse_iterator(cbegin());
     }
 
+
+
   private:
 
     impl::ilist_header header;
   };
-
-
-
 }
 
 #endif//VALKYRIE_ADT_INTRUSIVE_LIST_HPP
