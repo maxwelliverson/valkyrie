@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_POINTER_INT_PAIR_HPP
 #define VALKYRIE_POINTER_INT_PAIR_HPP
 
-#include <valkyrie/traits.hpp>
+#include <valkyrie/adt/ptr.hpp>
 
 #include <limits>
 #include <bit>

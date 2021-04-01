@@ -186,21 +186,6 @@ namespace valkyrie{
 
 
 
-
-  template <typename From, typename To>
-  concept pointer_castable_to    = requires(From* from, To*& to){
-    to = static_cast<To*>(from);
-  };
-  template <typename From, typename To>
-  concept pointer_convertible_to = pointer_castable_to<From, To> && requires(From* from, To*& to){
-    to = from;
-  };
-
-
-
-
-
-
   namespace impl{
 
     /*struct forward_ilist_base{
@@ -420,6 +405,8 @@ namespace valkyrie{
       }
     };
   }
+
+
 
 
   template <impl::forward_ilist_node_type T, tag Tag>
@@ -644,6 +631,8 @@ namespace valkyrie{
   private:
     impl::forward_ilist_header header;
   };
+
+
   template <impl::ilist_node_type T, tag Tag>
   class ilist{
 

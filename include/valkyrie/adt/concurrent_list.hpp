@@ -29,8 +29,8 @@ namespace valkyrie{
 
     class concurrent_forward_list{
 
-      cslist_header header_;
-      atomic<u64>   list_length_;
+      forward_ilist_header header;
+      atomic<u64> list_length_;
 
     protected:
 

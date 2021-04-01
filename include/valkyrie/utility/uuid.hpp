@@ -205,6 +205,9 @@ namespace valkyrie{
     }
 
     friend constexpr u64 toInteger(const uuid& uuid) noexcept {
+      return to_integer(uuid);
+    }
+    friend constexpr u64 to_integer(const uuid& uuid) noexcept {
       VK_consteval_block{
         u64 result = 0;
         for (u32 i = 0; i < UuidSize / 2; ++i)
@@ -243,7 +246,7 @@ namespace valkyrie{
 template <>
 struct std::hash<valkyrie::uuid>{
   inline valkyrie::u64 operator()(const valkyrie::uuid& uuid) const noexcept {
-    return toInteger(uuid);
+    return to_integer(uuid);
   }
 };
 

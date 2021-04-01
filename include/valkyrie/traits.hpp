@@ -877,6 +877,15 @@ namespace valkyrie{
     template <typename T>
     concept numeric_type = integral_type<T> || floating_point_type<T> || VK_instantiable_with(traits::Numeric, T);
 
+    template <typename From, typename To>
+    concept pointer_castable_to    = requires(From* from, To*& to){
+      to = static_cast<To*>(from);
+    };
+    template <typename From, typename To>
+    concept pointer_convertible_to = pointer_castable_to<From, To> && requires(From* from, To*& to){
+      to = from;
+    };
+
     template <typename T>
     concept Domain = true;/*requires{
       //typename traits::detail::DomainInfo<T>::domain_type;
