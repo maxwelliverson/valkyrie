@@ -82,12 +82,18 @@ function(add_object_library name_)
     add_library(${name_} ${OBJECT_LIB_OBJECTS})
 endfunction()
 
+
+
+
+
+
 add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
 
 add_object(valkyrie.adt.symbol)
 add_object(valkyrie.adt.concurrent_list)
+add_object(valkyrie.adt.hazard_ptr)
 
 
 add_object(valkyrie.memory.detail.align)
@@ -136,6 +142,7 @@ add_object(valkyrie.win32_functions)
 add_object(valkyrie.utility.json)
 add_object(valkyrie.utility.random)
 add_object(valkyrie.utility.library)
+add_object(valkyrie.utility.components)
 
 add_object(valkyrie.graphics.api.instance)
 add_object(valkyrie.graphics.api.physical_device)

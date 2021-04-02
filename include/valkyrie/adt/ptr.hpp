@@ -6,6 +6,8 @@
 #define VALKYRIE_ADT_PTR_HPP
 
 #include <valkyrie/traits.hpp>
+#include <valkyrie/utility/ordering.hpp>
+#include <valkyrie/utility/casting.hpp>
 
 namespace valkyrie{
 
@@ -18,231 +20,555 @@ namespace valkyrie{
   template <typename Ptr> requires requires{ typename Ptr::pointer; }
   using inner_pointer_t  = typename Ptr::pointer;
 
-  template <typename Derived, typename Ptr>
-  class ptr_facade{
-
-    using derived_type = Derived;
-
-    inline derived_type&       derived()       noexcept {
-      return *static_cast<derived_type*>(this);
-    }
-    inline const derived_type& derived() const noexcept {
-      return *static_cast<const derived_type*>(this);
-    }
-
-  protected:
 
 
 
-  public:
 
-    using pointer         = Ptr;
-    using element_type    = ptr_element_t<Ptr>;
-    using value_type      = remove_cv_t<element_type>;
-    using difference_type = ptr_difference_t<Ptr>;
+  namespace impl{
 
-    //using reference       = decltype(*std::declval<pointer>());
+    template <typename Derived,
+              typename Ptr,
+              typename RefType,
+              typename DiffType>
+    struct ptr_typedefs;
+
+    template <typename Derived,
+              typename DiffType>
+    class ptr_arithmetic;
+
+    template <typename Derived,
+        typename Ordering>
+    class ptr_ordering;
+
+    template <typename Derived,
+              typename Ptr,
+              typename RefType,
+              typename DiffType>
+    class ptr_deref;
+
+    template <typename Derived,
+              std::default_initializable Ptr>
+    class ptr_storage;
 
 
 
-    pointer release() noexcept requires(!std::is_final_v<derived_type>) {
-      struct protected_access : public derived_type {};
-
-      pointer p = derived().get();
-      derived().on_release();
-      return p;
-    }
 
 
-    void swap(ptr_facade& other) noexcept {
-      derived_type tmp = std::move(other.derived());
-      new (&other) derived_type(std::move(derived()));
-      new (this)   derived_type(std::move(tmp));
-    }
 
 
-    decltype(auto) operator*()  const noexcept {
-      auto&& result = derived().operator->();
-      VK_assert_msg(result, "null pointer access detected");
-      return *std::forward<decltype(result)>(result);
-    }
-    pointer        operator->() const noexcept {
-      auto result = derived().get();
-      VK_assert_msg(result, "null pointer access detected");
-      return std::move(result);
-    }
 
-    explicit operator bool() const noexcept {
-      return static_cast<bool>(derived().get());
-    }
+    template <typename DiffType>
+    struct param_difference_type{
+      using type = param_t<DiffType>;
+    };
+    template <same_as<void> DiffType>
+    struct param_difference_type<DiffType>{
+      using type = ptrdiff_t;
+    };
 
-    friend bool operator== (const ptr_facade& a, const ptr_facade& b) noexcept {
-      return a.derived().get() == b.derived().get();
-    }
-    friend auto operator<=>(const ptr_facade& a, const ptr_facade& b) noexcept
-        requires(std::totally_ordered<pointer>) {
 
-      const auto a_ = a.derived().get(), b_ = b.derived().get();
 
-      if constexpr (std::three_way_comparable<pointer>)
-        return a_ <=> b_;
-      else {
-        if ( a_ < b_ )
-          return std::strong_ordering::less;
-        else if ( b_ < a_ )
-          return std::strong_ordering::greater;
-        return std::strong_ordering::equal;
+
+
+    template <typename Derived,
+              typename Ptr,
+              typename Ref,
+              typename DiffType>
+    class ptr_deref {
+
+      using derived_type = Derived;
+      inline const derived_type& derived() const noexcept {
+        return *static_cast<const derived_type*>(this);
       }
-    }
-
-    friend auto operator-(const ptr_facade& a, const ptr_facade& b) noexcept -> decltype(a.operator->() - b.operator->()) {
-      return a.operator->() - b.operator->();
-    }
-
-    friend void swap(ptr_facade& a, ptr_facade& b) noexcept {
-      a.swap(b);
-    }
 
 
-    // Private Hooks: would ideally be protected, but need to be public such that
-    // the member functions of this class can access them without needing to be
-    // explicitly declared a friend of the deriving class
-  protected:
-    void _do_release()        noexcept { }
-    void _do_acquire(pointer) noexcept { }
-  };
+      using diff_param_t = typename impl::param_difference_type<DiffType>::type;
 
-  template <typename Derived, std::default_initializable Ptr>
-  class ptr_storage{
+    public:
 
-    using derived_type = Derived;
-
-    inline derived_type&       derived()       noexcept {
-      return *static_cast<derived_type*>(this);
-    }
-    inline const derived_type& derived() const noexcept {
-      return *static_cast<const derived_type*>(this);
-    }
-
-    using ptr_param_t = param_t<Ptr>;
-
-    using PFN_on_acquire = Ptr(*)(Derived*, ptr_param_t) noexcept;
-    using PFN_on_release = void(*)(Derived*) noexcept;
-
-    /*template <auto pfn_on_release>
-    consteval bool is_trivial_release() {
-      return false;
-    }
-    template <same_as<PFN_on_release> auto pfn_on_release>
-    consteval bool is_trivial_release() {
-      return pfn_on_release == &ptr_storage::on_release;
-    }
-
-    template <auto>
-    consteval bool is_trivial_acquire() {
-      return false;
-    }
-    template <same_as<PFN_on_acquire> auto pfn_on_acquire>
-    consteval bool is_trivial_acquire() {
-      return pfn_on_acquire == &ptr_storage::on_acquire;
-    }*/
-
-    template <PFN_on_release = &Derived::on_release>
-    static auto get_on_release(meta::overload<1>) -> meta::true_type;
-    static auto get_on_release(meta::fallback)    -> meta::false_type;
-
-    template <PFN_on_acquire = &Derived::on_acquire>
-    static auto get_on_acquire(meta::overload<1>) -> meta::true_type;
-    static auto get_on_acquire(meta::fallback)    -> meta::false_type;
+      /*using element_type    = ptr_element_t<Ptr>;
+      using value_type      = remove_cv_t<element_type>;
+      using reference       = Ref;*/
 
 
-    //inline constexpr static bool IsTrivialRelease          = is_trivial_release<&Derived::on_release>();
-    //inline constexpr static bool IsTrivialAcquire          = is_trivial_acquire<&Derived::on_acquire>();
-    inline constexpr static bool IsTrivialRelease          = !decltype(get_on_release(meta::overload<1>{}))::value;
-    inline constexpr static bool IsTrivialAcquire          = !decltype(get_on_acquire(meta::overload<1>{}))::value;
-    inline constexpr static bool IsTrivial                 = IsTrivialAcquire && IsTrivialRelease;
-    inline constexpr static bool IsNullable                = std::constructible_from<Ptr, std::nullptr_t>;
+      Ref operator*()  const noexcept {
+        auto result = derived().get();
+        VK_assert_msg(result, "null pointer access detected");
+        return *result;
+      }
+      Ptr operator->() const noexcept requires std::is_compound_v<remove_cv_t<ptr_element_t<Ptr>>> {
+        auto result = derived().get();
+        VK_assert_msg(result, "null pointer access detected");
+        return result;
+      }
 
-    inline constexpr static bool IsTrivialAcqNonTrivialRel = IsTrivialAcquire && !IsTrivialRelease;
-    inline constexpr static bool IsNonTrivialAcqTrivialRel = !IsTrivialAcquire && IsTrivialRelease;
-    inline constexpr static bool IsNonTrivial              = !IsTrivialAcquire && !IsTrivialRelease;
+      Ref operator[](diff_param_t offset) const requires same_as<DiffType, void> {
+        return *(derived() + offset);
+      }
+    };
+
+    template <typename Derived,
+              std::default_initializable Ptr>
+    class ptr_storage{
+
+      using derived_type = Derived;
+
+      inline derived_type&       derived()       noexcept {
+        return *static_cast<derived_type*>(this);
+      }
+      inline const derived_type& derived() const noexcept {
+        return *static_cast<const derived_type*>(this);
+      }
+
+      using ptr_param_t = param_t<Ptr>;
+
+      using PFN_on_acquire = Ptr(*)(Derived*, ptr_param_t) noexcept;
+      using PFN_on_release = void(*)(Derived*) noexcept;
+
+      /*template <auto pfn_on_release>
+      consteval bool is_trivial_release() {
+        return false;
+      }
+      template <same_as<PFN_on_release> auto pfn_on_release>
+      consteval bool is_trivial_release() {
+        return pfn_on_release == &ptr_storage::on_release;
+      }
+
+      template <auto>
+      consteval bool is_trivial_acquire() {
+        return false;
+      }
+      template <same_as<PFN_on_acquire> auto pfn_on_acquire>
+      consteval bool is_trivial_acquire() {
+        return pfn_on_acquire == &ptr_storage::on_acquire;
+      }*/
+
+      template <PFN_on_release = &Derived::on_release>
+      static auto get_on_release(meta::overload<1>) -> meta::true_type;
+      static auto get_on_release(meta::fallback)    -> meta::false_type;
+
+      template <PFN_on_acquire = &Derived::on_acquire>
+      static auto get_on_acquire(meta::overload<1>) -> meta::true_type;
+      static auto get_on_acquire(meta::fallback)    -> meta::false_type;
 
 
-  public:
+      //inline constexpr static bool IsTrivialRelease          = is_trivial_release<&Derived::on_release>();
+      //inline constexpr static bool IsTrivialAcquire          = is_trivial_acquire<&Derived::on_acquire>();
+      inline constexpr static bool IsTrivialRelease          = !decltype(get_on_release(meta::overload<1>{}))::value;
+      inline constexpr static bool IsTrivialAcquire          = !decltype(get_on_acquire(meta::overload<1>{}))::value;
+      inline constexpr static bool IsTrivial                 = IsTrivialAcquire && IsTrivialRelease;
+      inline constexpr static bool IsNullable                = std::constructible_from<Ptr, std::nullptr_t>;
+
+      inline constexpr static bool IsTrivialAcqNonTrivialRel = IsTrivialAcquire && !IsTrivialRelease;
+      inline constexpr static bool IsNonTrivialAcqTrivialRel = !IsTrivialAcquire && IsTrivialRelease;
+      inline constexpr static bool IsNonTrivial              = !IsTrivialAcquire && !IsTrivialRelease;
 
 
-    ptr_storage() = default;
-    ptr_storage(std::nullptr_t) noexcept requires(IsNullable) : ptr_(nullptr){}
-
-    // Default implementations if on_acquire/on_release operations are not overridden
-    ptr_storage(const ptr_storage& other)     requires(IsTrivialAcquire) = default;
-    ptr_storage(ptr_storage&& other) noexcept requires(IsTrivial)        = default;
-
-    ptr_storage(ptr_param_t ptr) noexcept requires(IsTrivialAcquire) : ptr_(ptr){}
-
-    ~ptr_storage() requires(IsTrivialRelease) = default;
-
-    ptr_storage& operator=(const ptr_storage& other)     requires(IsTrivialAcquire) = default;
-    ptr_storage& operator=(ptr_storage&& other) noexcept requires(IsTrivial) = default;
+    public:
 
 
-    // Non-default implementations if only on_acquire ops are overridden
+      ptr_storage() = default;
+      ptr_storage(std::nullptr_t) noexcept requires(IsNullable) : ptr_(nullptr){}
 
-    ptr_storage(const ptr_storage& other) : ptr_(do_acquire(other.ptr_)){}
-    ptr_storage(ptr_storage&& other) noexcept requires(IsNonTrivialAcqTrivialRel) : ptr_(do_acquire()) {}
+      // Default implementations if on_acquire/on_release operations are not overridden
+      ptr_storage(const ptr_storage& other)     requires(IsTrivialAcquire) = default;
+      ptr_storage(ptr_storage&& other) noexcept requires(IsTrivial)        = default;
 
-    ~ptr_storage() {
-      this->do_release();
-    }
+      ptr_storage(ptr_param_t ptr) noexcept requires(IsTrivialAcquire) : ptr_(ptr){}
+
+      ~ptr_storage() requires(IsTrivialRelease) = default;
+
+      ptr_storage& operator=(const ptr_storage& other)     requires(IsTrivialAcquire) = default;
+      ptr_storage& operator=(ptr_storage&& other) noexcept requires(IsTrivial) = default;
+
+
+      // Non-default implementations if only on_acquire ops are overridden
+
+      ptr_storage(const ptr_storage& other) : ptr_(do_acquire(other.ptr_)){}
+      ptr_storage(ptr_storage&& other) noexcept requires(IsNonTrivialAcqTrivialRel) : ptr_(do_acquire()) {}
+
+      ~ptr_storage() {
+        this->do_release();
+      }
 
 
 
-    inline Ptr  get() const noexcept {
-      return ptr_;
-    }
-    inline Ptr  release() noexcept {
-      if constexpr (IsTrivialRelease)
+      inline Ptr  get() const noexcept {
         return ptr_;
-      else {
-        Ptr p = ptr_;
-        do_release();
-        return p;
       }
+      inline Ptr  release() noexcept {
+        if constexpr (IsTrivialRelease)
+          return ptr_;
+        else {
+          Ptr p = ptr_;
+          do_release();
+          return p;
+        }
+      }
+      inline void reset(ptr_param_t p = {}) noexcept {
+
+        if constexpr (!IsTrivialRelease)
+          do_release();
+
+        if constexpr (IsTrivialAcquire)
+          ptr_ = p;
+        else
+          ptr_ = do_acquire(p);
+      }
+
+      inline void swap(ptr_storage& other) noexcept {
+        derived_type der(std::move(derived()));
+        auto* const  other_p = std::addressof(other.derived());
+
+        new (this) derived_type(std::move(*other_p));
+        new (other_p) derived_type(std::move(der));
+      }
+
+
+      explicit operator bool() const noexcept {
+        return static_cast<bool>(derived().get());
+      }
+
+
+      friend void swap(ptr_storage& a, ptr_storage& b) noexcept {
+        a.swap(b);
+      }
+
+      friend bool operator== (const ptr_storage& a, const ptr_storage& b) noexcept {
+        return a.derived().get() == b.derived().get();
+      }
+    private:
+
+      inline void do_release()              noexcept requires(!IsTrivialRelease) {
+        constexpr static PFN_on_release on_release_ = &Derived::on_release;
+        on_release_(static_cast<derived_type*>(this));
+      }
+      inline Ptr  do_acquire(ptr_param_t p) noexcept requires(!IsTrivialAcquire) {
+        constexpr static PFN_on_acquire on_acquire_ = &Derived::on_acquire;
+        return on_acquire_(static_cast<derived_type*>(this), p);
+      }
+
+
+      Ptr ptr_;
+    };
+
+    template <typename Derived,
+              typename Ordering>
+    class ptr_ordering{
+
+      using derived_type = Derived;
+
+      inline       derived_type& derived()       noexcept {
+        return *static_cast<derived_type*>(this);
+      }
+      inline const derived_type& derived() const noexcept {
+        return *static_cast<const derived_type*>(this);
+      }
+
+    public:
+
+      using ordering_type = Ordering;
+
+
+      friend ordering_type operator<=>(const ptr_ordering& a, const ptr_ordering& b) noexcept {
+
+        const auto a_ = a.derived().get(), b_ = b.derived().get();
+
+        if constexpr ( std::three_way_comparable<std::remove_cv_t<decltype(a_)>> )
+          return a_ <=> b_;
+        else {
+          if ( a_ < b_ )
+            return std::strong_ordering::less;
+          else if ( b_ < a_ )
+            return std::strong_ordering::greater;
+          return std::strong_ordering::equal;
+        }
+      }
+
+    };
+
+
+
+
+
+    template <typename Derived,
+              typename DiffType>
+    class ptr_arithmetic{
+
+      using derived_type = Derived;
+
+      inline derived_type&       derived()       noexcept {
+        return *static_cast<derived_type*>(this);
+      }
+      inline const derived_type& derived() const noexcept {
+        return *static_cast<const derived_type*>(this);
+      }
+
+      using diff_param_t = param_t<DiffType>;
+
+    public:
+
+      using difference_type = DiffType;
+
+
+      derived_type& operator++()    noexcept {
+        derived_type& This = derived();
+        This.reset(++This.get());
+        return This;
+      }
+      derived_type  operator++(int) noexcept {
+        derived_type& This = derived();
+        derived_type copy = This;
+        ++This;
+        return copy;
+      }
+      derived_type& operator--()    noexcept {
+        derived_type& This = derived();
+        This.reset(--This.get());
+        return This;
+      }
+      derived_type  operator--(int) noexcept {
+        derived_type& This = derived();
+        derived_type copy = This;
+        --This;
+        return copy;
+      }
+
+      derived_type& operator+=(diff_param_t offset) noexcept {
+        derived_type& This = derived();
+        This.reset(This.get() + offset);
+        return This;
+      }
+      derived_type& operator-=(diff_param_t offset) noexcept {
+
+        derived_type& This = derived();
+
+        if constexpr ( std::signed_integral<difference_type> )
+          return (This += (-offset));
+        else {
+          This.reset(This.get() - offset);
+          return This;
+        }
+      }
+
+      friend derived_type operator+(const ptr_arithmetic& a, diff_param_t diff) noexcept {
+        derived_type result = a.derived();
+        result += diff;
+        return result;
+      }
+      friend derived_type operator-(const ptr_arithmetic& a, diff_param_t diff) noexcept {
+        derived_type result = a.derived();
+        result -= diff;
+        return result;
+      }
+      friend derived_type operator-(diff_param_t diff, const ptr_arithmetic& a) noexcept = delete;
+
+      friend difference_type operator-(const ptr_arithmetic& a, const ptr_arithmetic& b) noexcept {
+        return a.derived().get() - b.derived().get();
+      }
+    };
+
+
+
+    // Base dispatch
+
+    template <typename Derived, typename Ptr, typename Ref, typename Diff>
+    class ptr_deref_base : public ptr_deref<Derived, Ptr, Ref, Diff>{};
+    template <typename Derived, typename Ptr, same_as<void> Ref, typename Diff>
+    class ptr_deref_base<Derived, Ptr, Ref, Diff>{};
+
+
+    template <typename Derived, typename Ordering>
+    struct ptr_ordering_base : ptr_ordering<Derived, Ordering>{};
+    template <typename Derived>
+    struct ptr_ordering_base<Derived, not_ordered>{};
+
+
+    template <typename Derived, typename DiffType>
+    struct ptr_arithmetic_base : ptr_arithmetic<Derived, DiffType> {};
+    template <typename Derived, same_as<void> DiffType>
+    struct ptr_arithmetic_base<Derived, DiffType> {};
+
+
+    // Typedefs/Meta Utilities
+
+
+    template <typename Ref>
+    struct ptr_reference_value_type;
+    template <same_as<void> Ref>
+    struct ptr_reference_value_type<Ref>{
+      using type = Ref;
+    };
+
+    template <typename Ref> requires requires(const Ref& ref){ ref.get(); }
+    struct ptr_reference_value_type<Ref>{
+      using type = typename ptr_reference_value_type<decltype(std::declval<const Ref&>().get())>::type;
+    };
+    template <typename T>
+    struct ptr_reference_value_type<T&>{
+      using type = T;
+    };
+
+
+    template <typename Derived,
+        typename Ptr,
+        typename RefType,
+        typename DiffType>
+    struct ptr_typedefs{
+      using pointer       = Derived;
+      using inner_pointer = Ptr;
+      using element_type  = typename ptr_reference_value_type<RefType>::type;
+      using value_type    = remove_cv_t<element_type>;
+    };
+
+
+    // Default types...
+
+
+    template <typename Ptr, typename RefType, typename = meta::overload<1>>
+    struct ptr_default_difference_type{};
+    template <typename Ptr, typename RefType, size_t N> requires ( N > 0)
+    struct ptr_default_difference_type<Ptr, RefType, meta::overload<N>> : ptr_default_difference_type<Ptr, RefType, meta::overload<N - 1>>{};
+
+    template <typename Ptr, typename Ref>
+    struct ptr_default_difference_type<Ptr, Ref, meta::overload<0>>{
+      using type = void;
+    };
+    template <typename Ptr, typename RefType> requires requires(const Ptr& p){
+      p - p;
     }
-    inline void reset(ptr_param_t p = {}) noexcept {
+    struct ptr_default_difference_type<Ptr, RefType, meta::overload<1>>{
+      using type = decltype(std::declval<const Ptr&>() - std::declval<const Ptr&>());
+    };
 
-      if constexpr (!IsTrivialRelease)
-        do_release();
 
-      if constexpr (IsTrivialAcquire)
-        ptr_ = p;
-      else
-        ptr_ = do_acquire(p);
+    template <typename Ptr>
+    struct ptr_default_ordering_type{
+      using type = not_ordered;
+    };
+    template <typename Ptr>
+    requires requires(const Ptr& a){
+      typename std::compare_three_way_result_t<const Ptr&, const Ptr&>;
+      a < a;
+      a == a;
     }
+    struct ptr_default_ordering_type<Ptr>{
+      using type = std::compare_three_way_result_t<const Ptr&, const Ptr&>;
+    };
+    template <typename Ptr> requires requires(const Ptr& a){ a < a; a == a; }
+    struct ptr_default_ordering_type<Ptr>{
+      using type = strong_ordering;
+    };
 
 
-  private:
+    template <typename Ptr, typename = meta::overload<2>>
+    struct ptr_default_reference_type;
+    template <typename Ptr, size_t N> requires (N > 0)
+    struct ptr_default_reference_type<Ptr, meta::overload<N>>
+        : ptr_default_reference_type<Ptr, meta::overload<N - 1>>{};
 
-    inline void do_release()              noexcept requires(!IsTrivialRelease) {
-      constexpr static PFN_on_release on_release_ = &Derived::on_release;
-      on_release_(static_cast<derived_type*>(this));
+
+    template <typename Ptr> requires requires{ typename ptr_element_t<Ptr>; }
+    struct ptr_default_reference_type<Ptr, meta::overload<0>>{
+      using type = ptr_element_t<Ptr>&;
+    };
+    template <typename Ptr> requires requires{
+      typename ptr_element_t<Ptr>;
+      requires same_as<ptr_element_t<Ptr>, void>;
     }
-    inline Ptr  do_acquire(ptr_param_t p) noexcept requires(!IsTrivialAcquire) {
-      constexpr static PFN_on_acquire on_acquire_ = &Derived::on_acquire;
-      return on_acquire_(static_cast<derived_type*>(this), p);
+    struct ptr_default_reference_type<Ptr, meta::overload<1>>{
+      using type = ptr_element_t<Ptr>;
+    };
+    template <typename Ptr> requires requires(const Ptr& a){
+      *a;
+      typename ptr_reference_value_type<decltype(*a)>::type;
     }
+    struct ptr_default_reference_type<Ptr, meta::overload<2>>{
+      using type = decltype(*std::declval<const Ptr&>());
+    };
 
 
-    Ptr ptr_;
-  };
+    template <typename Ptr>
+    using default_ptr_reference_t  = typename ptr_default_reference_type<Ptr>::type;
+    template <typename Ptr>
+    using default_ptr_ordering_t   = typename ptr_default_ordering_type<Ptr>::type;
+    template <typename Ptr, typename RefType>
+    using default_ptr_difference_t = typename ptr_default_difference_type<Ptr, RefType>::type;
+  }
 
 
-  template <typename Derived, typename Ptr>
-  class ptr_base : public ptr_storage<Derived, Ptr>, public ptr_facade<Derived, Ptr>{
-    using storage = ptr_storage<Derived, Ptr>;
+  /**
+   * A CRTP based complete (yet customizable) implementation of most facilities needed for a
+   * smart pointer type.
+   *
+   * @tparam Derived  The actual type inheriting from ptr_facade.
+   *                  Derived must otherwise define the following
+   *                  methods:
+   *                    - Ptr  Derived::get() const
+   *                    - Ptr  Derived::release()
+   *                    - void Derived::reset()
+   *                    - void Derived::reset(Ptr)
+   * @tparam Ptr      The underlying pointer type, must either be a
+   *                  raw pointer or another smart pointer.
+   * @tparam RefType  The result type of dereference ops. Must be one of
+   *                    - an lvalue reference
+   *                    - a reference wrapper type: must have a method RefType::get() that returns a reference type
+   *                    - void: in this case, dereference ops are not provided
+   * @tparam Ordering The result type of a three way comparison ops. Must be one of
+   *                    - strong_ordering
+   *                    - weak_ordering
+   *                    - partial_ordering
+   *                    - not_ordered       (in this case, none of the ordered relational operators are provided)
+   * @tparam DiffType The offset type of arithmetic ops. Does not need to
+   *                  be signed (or even integral) so long as it has well
+   *                  defined arithmetic operations with objects of type
+   *                  Ptr. This restriction is not necessary if the following
+   *                  operators are overridden by Derived:
+   *                    - operator++()
+   *                    - operator--()
+   *                    - operator+=(DiffType)
+   *                    - operator-(Derived, Derived)
+   *                  DiffType may also be void, in which case arithmetic
+   *                  ops are not provided.
+   *                  The subscript operator, operator[](DiffType), is
+   *                  also provided if and only if RefType is not void.
+   * */
+  template <typename Derived,
+            typename Ptr,
+            typename RefType  = impl::default_ptr_reference_t<Ptr>,
+            typename Ordering = impl::default_ptr_ordering_t<Ptr>,
+            typename DiffType = impl::default_ptr_difference_t<Ptr, RefType>>
+  class ptr_facade : public impl::ptr_typedefs<Derived, Ptr, RefType, DiffType>,
+                     public impl::ptr_deref_base<Derived, Ptr, RefType, DiffType>,
+                     public impl::ptr_arithmetic_base<Derived, DiffType>,
+                     public impl::ptr_ordering_base<Derived, Ordering>{};
+
+
+
+  /**
+   * A version of ptr_facade that also provides storage, access, and optional
+   * lifetime tracking.
+   *
+   * @tparam Derived The actual type inheriting from ptr_base.
+   *                 Unlike ptr_facade, Derived doesn't need to
+   *                 define any extra methods for full functionality,
+   *                 but two optional hooks are provided for
+   *                 lifetime tracking. It is valid to only provide
+   *                 one hook but not the other.
+   *                   - Ptr acquire(param_t<Ptr>) OR static Ptr acquire(Derived*, param_t<Ptr>)
+   *                   -
+   *
+   * */
+  template <typename Derived,
+            typename Ptr,
+            typename RefType  = typename impl::ptr_default_reference_type<Ptr>::type,
+            typename Ordering = typename impl::ptr_default_ordering_type<Ptr>::type,
+            typename DiffType = typename impl::ptr_default_difference_type<Ptr, RefType>::type>
+  class ptr_base : public impl::ptr_storage<Derived, Ptr>,
+                   public ptr_facade<Derived, Ptr, RefType, Ordering, DiffType>{
+    using storage_base = impl::ptr_storage<Derived, Ptr>;
   public:
-
-    using storage::storage;
+    using storage_base::storage_base;
   };
 
 
@@ -270,8 +596,11 @@ namespace valkyrie{
   };
 
 
+  void hello(borrowed_ptr<>)
+
+
 #define VK_nonnull VK_if(VK_compiler_clang(_Nonnull))
-#define VK_assume_nonnull(ptr) VK_if(VK_compiler_msvc(__assume(ptr != nullptr))VK_else())
+#define VK_assume_nonnull(ptr) VK_if(VK_compiler_msvc(__assume((ptr) != nullptr))VK_else())
 
 
   namespace impl{

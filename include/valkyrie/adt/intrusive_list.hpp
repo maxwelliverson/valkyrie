@@ -185,7 +185,6 @@ namespace valkyrie{
   };
 
 
-
   namespace impl{
 
     /*struct forward_ilist_base{

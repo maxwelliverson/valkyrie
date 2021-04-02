@@ -71,7 +71,7 @@ namespace valkyrie{
 
 
   template <typename Comp>
-  class component_ptr : public ptr_facade<component_ptr<Comp>, const Comp*>{
+  class component_ptr : public ptr_deref<component_ptr<Comp>, const Comp*>{
 
     static const Comp* instance() noexcept {
       constexpr static Comp comp{};
@@ -96,15 +96,19 @@ namespace valkyrie{
 
   VK_define_tag(component_tag);
 
-  template <typename Comp>
+  /*template <typename Comp>
   class component_list{
 
-    struct tag : component_tag, ptr_{};
+    struct tag : component_tag, ptr_base<tag, component_ptr<Comp>>{
+      void help(){
+        tag::
+      }
+    };
 
   public:
   private:
     forward_ilist<>
-  };
+  };*/
 
 }
 
