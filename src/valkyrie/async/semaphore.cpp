@@ -26,32 +26,32 @@ namespace {
   }*/
 }
 
-void detail::Semaphore::acquire() noexcept {
+void detail::semaphore::acquire() noexcept {
   i64 compare = 0;
   if(!WaitOnAddress(&counter, &compare, sizeof(compare), std::numeric_limits<u32>::max())) VK_unlikely {
     abortWin32Error();
   }
   _InterlockedDecrement64(&counter);
 }
-void detail::Semaphore::release(i64 incValue) noexcept {
+void detail::semaphore::release(i64 incValue) noexcept {
 
 }
-bool detail::Semaphore::tryAcquire() noexcept {}
-bool detail::Semaphore::doTryAcquireFor(const std::chrono::seconds& s) noexcept {}
-bool detail::Semaphore::doTryAcquireFor(const std::chrono::nanoseconds& ns) noexcept {}
-bool detail::Semaphore::doTryAcquireFor(const std::chrono::microseconds& us) noexcept {}
-bool detail::Semaphore::doTryAcquireFor(const std::chrono::milliseconds& ms) noexcept {}
-bool detail::Semaphore::doTryAcquireUntil(const std::chrono::steady_clock::time_point &absTime) noexcept {}
-bool detail::Semaphore::doTryAcquireUntil(const std::chrono::system_clock::time_point &absTime) noexcept {}
+bool detail::semaphore::tryAcquire() noexcept {}
+bool detail::semaphore::doTryAcquireFor(const std::chrono::seconds& s) noexcept {}
+bool detail::semaphore::doTryAcquireFor(const std::chrono::nanoseconds& ns) noexcept {}
+bool detail::semaphore::doTryAcquireFor(const std::chrono::microseconds& us) noexcept {}
+bool detail::semaphore::doTryAcquireFor(const std::chrono::milliseconds& ms) noexcept {}
+bool detail::semaphore::doTryAcquireUntil(const std::chrono::steady_clock::time_point &absTime) noexcept {}
+bool detail::semaphore::doTryAcquireUntil(const std::chrono::system_clock::time_point &absTime) noexcept {}
 
 
-bool CountingSemaphore<1>::tryAcquire() noexcept {}
-void CountingSemaphore<1>::release() noexcept {}
-void CountingSemaphore<1>::acquire() noexcept {}
-bool CountingSemaphore<1>::doTryAcquireUntil(const std::chrono::steady_clock::time_point &absTime) noexcept {}
-bool CountingSemaphore<1>::doTryAcquireUntil(const std::chrono::system_clock::time_point &absTime) noexcept {}
-bool CountingSemaphore<1>::doTryAcquireFor(const std::chrono::seconds &ns) noexcept {}
-bool CountingSemaphore<1>::doTryAcquireFor(const std::chrono::milliseconds &ns) noexcept {}
-bool CountingSemaphore<1>::doTryAcquireFor(const std::chrono::microseconds &ns) noexcept {}
-bool CountingSemaphore<1>::doTryAcquireFor(const std::chrono::nanoseconds &ns) noexcept {}
+bool counting_semaphore<1>::tryAcquire() noexcept {}
+void counting_semaphore<1>::release() noexcept {}
+void counting_semaphore<1>::acquire() noexcept {}
+bool counting_semaphore<1>::doTryAcquireUntil(const std::chrono::steady_clock::time_point &absTime) noexcept {}
+bool counting_semaphore<1>::doTryAcquireUntil(const std::chrono::system_clock::time_point &absTime) noexcept {}
+bool counting_semaphore<1>::doTryAcquireFor(const std::chrono::seconds &ns) noexcept {}
+bool counting_semaphore<1>::doTryAcquireFor(const std::chrono::milliseconds &ns) noexcept {}
+bool counting_semaphore<1>::doTryAcquireFor(const std::chrono::microseconds &ns) noexcept {}
+bool counting_semaphore<1>::doTryAcquireFor(const std::chrono::nanoseconds &ns) noexcept {}
 #endif

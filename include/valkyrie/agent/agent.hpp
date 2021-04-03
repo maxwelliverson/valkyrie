@@ -246,12 +246,12 @@ namespace valkyrie{
    *
    *   static RandomEngine create(u64 batchSize, u64 totalBufferSize) noexcept{
    *     std::thread         adminThread;
-   *     BinarySemaphore    isReady;
+   *     binary_semaphore    isReady;
    *     RandomEngineState* pState;
    *
    *     isReady.acquire();
    *
-   *     adminThread = std::thread{[batchSize, totalBufferSize](BinarySemaphore* isReady, RandomEngineState** ppState){
+   *     adminThread = std::thread{[batchSize, totalBufferSize](binary_semaphore* isReady, RandomEngineState** ppState){
    *
    *       using clock = std::chrono::high_precision_clock;
    *       using self  = std::this_thread;
@@ -345,32 +345,32 @@ namespace valkyrie{
 
   class InstructorAgent{
 
-    BinarySemaphore availSenders_;
-    BinarySemaphore availReceivers_;
+    binary_semaphore availSenders_;
+    binary_semaphore availReceivers_;
 
   public:
     // One -> One
   };
   class BroadcasterAgent{
 
-    BinarySemaphore availSenders_;
-    Semaphore       availReceivers_;
+    binary_semaphore availSenders_;
+    semaphore       availReceivers_;
 
   public:
     // One -> Many
   };
   class CollectorAgent{
 
-    Semaphore availSenders_;
-    BinarySemaphore availReceivers_;
+    semaphore availSenders_;
+    binary_semaphore availReceivers_;
 
   public:
     // Many -> One
   };
   class DispatcherAgent{
 
-    Semaphore availSenders_;
-    Semaphore availReceivers_;
+    semaphore availSenders_;
+    semaphore availReceivers_;
 
   public:
     // Many -> Many
@@ -382,8 +382,8 @@ namespace valkyrie{
     u64                  typeId_;
     u32                  propertyBits_;
     std::atomic_int32_t  refCount_;
-    Semaphore            availSenders_;
-    Semaphore            availReceivers_;
+    semaphore            availSenders_;
+    semaphore            availReceivers_;
 
     ~UnsafeAgent();
 

@@ -318,7 +318,7 @@ namespace cu {
       return bool(handle_);
     }
 
-    friend bool operator==(Derived A, Derived B) noexcept {
+    friend bool                 operator==(Derived A, Derived B) noexcept {
       return A.handle_ == B.handle_;
     }
     friend std::strong_ordering operator<=>(Derived A, Derived B) noexcept {
@@ -509,15 +509,19 @@ namespace cu {
   class ResourcePlaceholder{
   public:
     valkyrie::string_view name() const noexcept;
-    uint64_t                   id() const noexcept;
+    uint64_t              id()   const noexcept;
   };
   class Resource{
   public:
 
     virtual ~Resource() = default;
 
-    virtual void             doFillMemsetParams(CUDA_MEMSET_NODE_PARAMS& memsetInfo, const Box3D<size_t>& areaDesc) const noexcept = 0;
-    virtual void             doFillMemcpyParams(ResourceOpKind opKind, CUDA_MEMCPY3D& memcpyInfo, const Position3D<size_t>& offset, const Extent3D<size_t>& areaDesc) const noexcept = 0;
+    virtual void             doFillMemsetParams(CUDA_MEMSET_NODE_PARAMS& memsetInfo,
+                                                const Box3D<size_t>& areaDesc) const noexcept = 0;
+    virtual void             doFillMemcpyParams(ResourceOpKind opKind,
+                                                CUDA_MEMCPY3D& memcpyInfo,
+                                                const Position3D<size_t>& offset,
+                                                const Extent3D<size_t>& areaDesc) const noexcept = 0;
     
     virtual uint64_t         getID() const noexcept = 0;
     virtual size_t           getPitch() const noexcept = 0;

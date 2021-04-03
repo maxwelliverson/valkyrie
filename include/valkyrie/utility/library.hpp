@@ -6,13 +6,10 @@
 #define VALKYRIE_UTILITY_LIBRARY_HPP
 
 #include <valkyrie/adt/string.hpp>
-#include <valkyrie/adt/string_view.hpp>
+#include <valkyrie/adt/string.hpp>
 #include <valkyrie/status/result.hpp>
 
 namespace valkyrie{
-
-
-
 
   class library{
     void*  handle;

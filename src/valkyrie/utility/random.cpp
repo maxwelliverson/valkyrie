@@ -5,7 +5,7 @@
 #include <valkyrie/agent/agent.hpp>
 #include <valkyrie/agent/mailbox.hpp>
 #include <valkyrie/utility/function_ref.hpp>
-#include <valkyrie/status/generic_code.hpp>
+#include <valkyrie/async/task.hpp>
 #include <valkyrie/adt/list.hpp>
 
 #include <thread>
@@ -60,7 +60,7 @@ namespace {
 
     template <typename T, typename ...Args>
     inline static __stdcall unsigned threadProcess(void* pParams) noexcept {
-      using ParamType = std::tuple<AutonomousTask**, BinarySemaphore*, std::tuple<Args&&...>>;
+      using ParamType = std::tuple<AutonomousTask**, binary_semaphore*, std::tuple<Args&&...>>;
       auto& params = *static_cast<ParamType*>(pParams);
       T task{ std::make_from_tuple<T>(std::get<2>(params)) };
       (*std::get<0>(params)) = &task;
@@ -99,14 +99,14 @@ namespace {
 
 
     template <typename Rep, typename Period>
-    void sleepFor(std::chrono::duration<Rep, Period> duration) noexcept {
+    void sleep_for(std::chrono::duration<Rep, Period> duration) noexcept {
       const std::chrono::time_point timePoint = duration + clock::now();
       do {
         this->yield();
       } while( clock::now() < timePoint );
     }
     template <typename Clk, typename Duration>
-    void sleepUntil(std::chrono::time_point<Clk, Duration> timePoint) noexcept {
+    void sleep_until(std::chrono::time_point<Clk, Duration> timePoint) noexcept {
       while( clock::now() < timePoint )
         this->yield();
     }
@@ -202,7 +202,7 @@ namespace {
     void* handle;
     u32   id;
 
-    BinarySemaphore isReady{0};
+    binary_semaphore isReady{0};
 
     auto paramTuple = std::tuple{
       &pTask,
@@ -748,12 +748,12 @@ namespace {
 
      static RandomEngine create(u64 batchSize, u64 totalBufferSize) noexcept{
          std::thread         adminThread;
-         BinarySemaphore    isReady;
+         binary_semaphore    isReady;
          RandomEngineState* pState;
 
              isReady.acquire();
 
-             adminThread = std::thread{[batchSize, totalBufferSize](BinarySemaphore* isReady, RandomEngineState** ppState){
+             adminThread = std::thread{[batchSize, totalBufferSize](binary_semaphore* isReady, RandomEngineState** ppState){
 
                  using clock = std::chrono::high_precision_clock;
              using self  = std::this_thread;

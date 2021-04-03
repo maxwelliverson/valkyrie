@@ -132,6 +132,7 @@ add_object(valkyrie.agent.message)
 
 add_object(valkyrie.async.semaphore)
 add_object(valkyrie.async.agent)
+add_object(valkyrie.async.task)
 
 add_object(valkyrie.utility)
 add_object(valkyrie.status.error)

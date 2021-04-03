@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/Vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class Semaphore : public VulkanObject{};
+  class semaphore : public VulkanObject{};
 }
 
 #endif//VALKYRIE_GRAPHICS_API_SEMAPHORE_HPP

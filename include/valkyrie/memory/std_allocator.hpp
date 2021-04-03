@@ -325,7 +325,7 @@ namespace valkyrie{
           template <typename T1, typename T2, class Impl>
           friend bool operator==(const std_allocator<T1, Impl>& lhs, const std_allocator<T2, Impl>& rhs) noexcept;
 
-          template <typename U, class OtherRawAllocator>
+          template <typename U, class OtherRawAllocator, typename OtherPtr>
           friend class std_allocator;
       };
 

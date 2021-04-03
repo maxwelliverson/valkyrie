@@ -128,7 +128,7 @@ namespace valkyrie{
         ReadLocked
       };
 
-      BinarySemaphore isOwned{0};
+      binary_semaphore isOwned{0};
 
     public:
       SingleProducerSingleConsumerMutex() noexcept = default;
@@ -270,7 +270,7 @@ namespace valkyrie{
   };
   template <>
   class Mutex<Capacity::One, Capacity::One>{
-    BinarySemaphore isOwned{0};
+    binary_semaphore isOwned{0};
 
   public:
     Mutex() noexcept = default;

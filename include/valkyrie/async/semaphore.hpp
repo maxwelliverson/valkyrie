@@ -42,10 +42,10 @@ namespace valkyrie{
       inline constexpr static i64 value = Val;
     };
 
-    class Semaphore{
+    class semaphore{
       i64 counter;
     protected:
-      constexpr explicit Semaphore(i64 counter) noexcept : counter(counter){}
+      constexpr explicit semaphore(i64 counter) noexcept : counter(counter){}
 
       bool doTryAcquireFor(const std::chrono::nanoseconds& ns) noexcept;
       bool doTryAcquireFor(const std::chrono::microseconds& ns) noexcept;
@@ -64,8 +64,8 @@ namespace valkyrie{
       }
 
     public:
-      Semaphore(const Semaphore&) = delete;
-      Semaphore& operator=(const Semaphore&) = delete;
+      semaphore(const semaphore&) = delete;
+      semaphore& operator=(const semaphore&) = delete;
 
       void release(i64 incValue = 1) noexcept;
       void acquire() noexcept;
@@ -83,14 +83,14 @@ namespace valkyrie{
 
 
   template <i64 LeastMaxValue = 16>
-  class CountingSemaphore : public detail::Semaphore{
+  class counting_semaphore : public detail::semaphore{
   public:
-    using detail::Semaphore::Semaphore;
+    using detail::semaphore::semaphore;
 
     constexpr static i64 max() noexcept { return detail::Align2<LeastMaxValue>::value; }
   };
   template <>
-  class CountingSemaphore<1>{
+  class counting_semaphore<1>{
     bool isAvailable;
 
     bool doTryAcquireFor(const std::chrono::nanoseconds& ns) noexcept;
@@ -111,8 +111,8 @@ namespace valkyrie{
 
 
   public:
-    constexpr explicit CountingSemaphore(bool initialState) noexcept : isAvailable(initialState){}
-    CountingSemaphore(const CountingSemaphore&) = delete;
+    constexpr explicit counting_semaphore(bool initialState) noexcept : isAvailable(initialState){}
+    counting_semaphore(const counting_semaphore&) = delete;
 
     void release() noexcept;
     void acquire() noexcept;
@@ -127,13 +127,13 @@ namespace valkyrie{
     }
   };
 
-  using BinarySemaphore = CountingSemaphore<1>;
-  using Semaphore       = CountingSemaphore<>;
+  using binary_semaphore = counting_semaphore<1>;
+  using semaphore       = counting_semaphore<>;
 #else
   template <size_t N = std::numeric_limits<i64>::max()>
-  using CountingSemaphore = std::counting_semaphore<N>;
-  using Semaphore = CountingSemaphore<>;
-  using BinarySemaphore = std::binary_semaphore;
+  using counting_semaphore = std::counting_semaphore<N>;
+  using semaphore = counting_semaphore<>;
+  using binary_semaphore = std::binary_semaphore;
 #endif
 }
 
