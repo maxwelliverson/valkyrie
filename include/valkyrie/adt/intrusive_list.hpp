@@ -299,33 +299,33 @@ namespace valkyrie{
       inline static typename base::tagged_ptr_t to_base(T* node) noexcept {
         return node_type::template upcast<Tag>(node);
       }
-      inline static T*                          to_derived(forward_ilist_node_base* node) noexcept {
+      inline static T*                          to_derived(base_node_type* node) noexcept {
         return static_cast<T*>(node_type::downcast(static_cast<typename base::tagged_ptr_t>(node)));
       }
 
-
       mutable base_node_type* prev_element_;
+
+
+      explicit forward_ilist_iterator(base_node_type* p) noexcept : base(p){}
 
     public:
 
       forward_ilist_iterator() = default;
 
-      forward_ilist_iterator(T* address) noexcept : base(forward_ilist_iterator::to_base(address)), prev_element_(nullptr){}
-      forward_ilist_iterator(copy_cv_t<forward_ilist_header, T>& header) noexcept : base(&header),  prev_element_(header.prev){}
+      forward_ilist_iterator(T* address) noexcept
+          : base(forward_ilist_iterator::to_base(address)), prev_element_(nullptr){}
+      forward_ilist_iterator(copy_cv_t<forward_ilist_header, T>& header) noexcept
+          : base(&header),  prev_element_(header.prev){}
 
       template <pointer_castable_to<T> U>
       explicit(!pointer_convertible_to<U, T>)
-      forward_ilist_iterator(const forward_ilist_iterator<U, Tag>& other) noexcept : base(static_cast<T*>(std::addressof(*other))), prev_element_(other.prev_element_){}
+      forward_ilist_iterator(const forward_ilist_iterator<U, Tag>& other) noexcept
+          : base(static_cast<T*>(std::addressof(*other))), prev_element_(other.prev_element_){}
 
 
 
 
-      /*inline forward_ilist_iterator& operator+=(ptrdiff_t offset) noexcept {
-        assert( offset >= 0);
-        for (; offset; --offset) this->inc();
-        return *this;
-      }*/
-      inline forward_ilist_iterator& operator++() noexcept {
+      inline forward_ilist_iterator& operator++()    noexcept {
         prev_element_ = this->node;
         this->inc();
         return *this;
@@ -334,6 +334,18 @@ namespace valkyrie{
       inline T& operator*() const noexcept {
         assert( this->node );
         return *forward_ilist_iterator::to_derived(this->node);
+      }
+
+      /**
+       * Unsafe method for stepping back a single element.
+       *
+       * This is achieved by caching the previous node address
+       * when an iterator is incremented. A node address is
+       * also cached in list header objects
+       *
+       * */
+      inline forward_ilist_iterator previous() const noexcept {
+        return forward_ilist_iterator(prev_element_);
       }
 
       template <pointer_convertible_to<T> U, valid_tag_for<T> UTag>
@@ -404,8 +416,6 @@ namespace valkyrie{
       }
     };
   }
-
-
 
 
   template <impl::forward_ilist_node_type T, tag Tag>
@@ -754,68 +764,6 @@ namespace valkyrie{
     ilist() = default;
 
 
-
-
-    /* [ modifiers ] */
-
-    void push_front(T* element) noexcept {
-      insert_after(&header, element);
-      ++header.length;
-      assert_invariants();
-    }
-    void push_back(T* element) noexcept {
-      insert_before(&header, element);
-      ++header.length;
-      assert_invariants();
-    }
-
-    T*   pop_front() noexcept {
-
-      if (empty())
-        return nullptr;
-
-      T* retval = remove_after( &header );
-
-      --header.length;
-      assert_invariants();
-
-      return retval;
-    }
-    T*   pop_back()  noexcept {
-
-      if (empty())
-        return nullptr;
-
-      T* retval = remove_before( &header );
-
-      --header.length;
-      assert_invariants();
-
-      return retval;
-    }
-
-    void insert(const_iterator after_element, T* element)   noexcept {
-      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
-
-      insert_after(after_node, element);
-
-      ++header.length;
-      assert_invariants();
-    }
-    T*   remove(const_iterator after_element)               noexcept {
-      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
-
-      T* retval = remove_after(after_node);
-
-      --header.length;
-      assert_invariants();
-
-      return retval;
-    }
-
-
-
-
     /* [ observers ] */
 
     VK_nodiscard size_type size() const noexcept {
@@ -897,10 +845,145 @@ namespace valkyrie{
 
 
 
+    /* [ modifiers ] */
+
+    void push_front(T* element) noexcept {
+      insert_after(&header, element);
+      ++header.length;
+      assert_invariants();
+    }
+    void push_back(T* element) noexcept {
+      insert_before(&header, element);
+      ++header.length;
+      assert_invariants();
+    }
+
+    T*   pop_front() noexcept {
+
+      if (empty())
+        return nullptr;
+
+      T* retval = remove_after( &header );
+
+      --header.length;
+      assert_invariants();
+
+      return retval;
+    }
+    T*   pop_back()  noexcept {
+
+      if (empty())
+        return nullptr;
+
+      T* retval = remove_before( &header );
+
+      --header.length;
+      assert_invariants();
+
+      return retval;
+    }
+
+    void insert(const_iterator after_element, T* element) noexcept {
+      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
+
+      insert_after(after_node, element);
+
+      ++header.length;
+      assert_invariants();
+    }
+    T*   remove(const_iterator after_element)             noexcept {
+      impl::ilist_node_base* after_node = ilist::to_base(&*after_element);
+
+      T* retval = remove_after(after_node);
+
+      --header.length;
+      assert_invariants();
+
+      return retval;
+    }
+
+
+
+
+
+    /* [ operations ] */
+
+    void merge(ilist& other) {
+      this->merge(other, std::compare_three_way{});
+    }
+    template <weak_order<const T&> Order>
+    void merge(ilist& other, Order&& order);
+
+    void merge(ilist&& other) {
+      this->merge(static_cast<ilist&>(other), std::compare_three_way{});
+    }
+    template <weak_order<const T&> Order>
+    void merge(ilist&& other, Order&& order) {
+      this->merge(static_cast<ilist&>(other), std::forward<Order>(order));
+    }
+
+
+
+    void splice(const_iterator pos, ilist& other) {
+      this->splice(pos, other, other.begin(), other.end());
+    }
+    void splice(const_iterator pos, ilist& other, const_iterator at);
+    void splice(const_iterator pos, ilist& other, const_iterator from, const_iterator to);
+
+    void splice(const_iterator pos, ilist&& other) {
+      this->splice(pos, static_cast<ilist&>(other));
+    }
+    void splice(const_iterator pos, ilist&& other, const_iterator at) {
+      this->splice(pos, static_cast<ilist&>(other), at);
+    }
+    void splice(const_iterator pos, ilist&& other, const_iterator from, const_iterator to) {
+      this->splice(pos, static_cast<ilist&>(other), from, to);
+    }
+
+
+
+    void reverse() noexcept;
+
+
+
+    ilist unique() noexcept {
+      return this->unique(std::equal_to<const T&>{});
+    }
+    template <std::predicate<const T&, const T&> Fn>
+    ilist unique(Fn&& predicate) noexcept;
+
+
+
+    void sort() noexcept {
+      this->sort(std::compare_three_way{});
+    }
+    template <weak_order<const T&> Order>
+    void sort(Order&& order) noexcept;
+
   private:
 
     impl::ilist_header header;
   };
+
+
+  /*template <typename T, tag Tag>
+  class forward_polylist{
+
+  };
+
+
+  template <typename T, tag Tag>
+  class polylist{
+
+
+
+
+
+
+  public:
+    impl::ilist_header header;
+  };*/
+
 }
 
 #endif//VALKYRIE_ADT_INTRUSIVE_LIST_HPP

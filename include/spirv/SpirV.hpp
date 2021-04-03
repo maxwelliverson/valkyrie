@@ -333,13 +333,13 @@ namespace valkyrie::Spv {
 
       ShaderModule() = default;
       ShaderModule(size_t size, const void* p_code) noexcept;
-      ShaderModule(Span<u8> code) noexcept : ShaderModule(code.size(), code.data()){}
-      ShaderModule(Span<u32> code) noexcept : ShaderModule(code.size() * sizeof(u32), code.data()){}
+      ShaderModule(span<u8> code) noexcept : ShaderModule(code.size(), code.data()){}
+      ShaderModule(span<u32> code) noexcept : ShaderModule(code.size() * sizeof(u32), code.data()){}
       ~ShaderModule();
 
       Result getStatus() const noexcept;
 
-      Span<const u32> getCode() const noexcept;
+      span<const u32> getCode() const noexcept;
 
       /*u32        getCodeSize() const;
       const u32* getCode() const;*/

@@ -401,6 +401,20 @@ auto make_thread_safe_allocator(RawAllocator&& allocator)
   return std::forward<RawAllocator>(allocator);
 }
 
+/// Specifies whether or not a \concept{concept_rawallocator,RawAllocator} has shared semantics.
+/// It is shared, if - like \ref allocator_reference - if multiple objects refer to the same internal allocator and if it can be copied.
+/// This sharing is stateful, however, stateless allocators are not considered shared in the meaning of this traits. <br>
+/// If a \c RawAllocator is shared, it will be directly embedded inside \ref reference_storage since it already provides \ref allocator_reference like semantics, so there is no need to add them manually,<br>
+/// Specialize it for your own types, if they provide sharing semantics and can be copied.
+/// They also must provide an `operator==` to check whether two allocators refer to the same shared one.
+/// \note This makes no guarantees about the lifetime of the shared object, the sharing allocators can either own or refer to a shared object.
+/// \ingroup storage
+  template <class RawAllocator>
+  struct is_shared_allocator : std::false_type
+  {
+  };
+
+
 namespace detail
 {
   struct reference_stateful
@@ -488,20 +502,19 @@ namespace detail
   private:
     mutable RawAllocator alloc_;
   };
+
+
+  template <typename Alloc>
+  using reference_type_t = decltype(detail::reference_type(typename allocator_traits<Alloc>::is_stateful{}, is_shared_allocator<Alloc>{}));
 } // namespace detail
 
-/// Specifies whether or not a \concept{concept_rawallocator,RawAllocator} has shared semantics.
-/// It is shared, if - like \ref allocator_reference - if multiple objects refer to the same internal allocator and if it can be copied.
-/// This sharing is stateful, however, stateless allocators are not considered shared in the meaning of this traits. <br>
-/// If a \c RawAllocator is shared, it will be directly embedded inside \ref reference_storage since it already provides \ref allocator_reference like semantics, so there is no need to add them manually,<br>
-/// Specialize it for your own types, if they provide sharing semantics and can be copied.
-/// They also must provide an `operator==` to check whether two allocators refer to the same shared one.
-/// \note This makes no guarantees about the lifetime of the shared object, the sharing allocators can either own or refer to a shared object.
-/// \ingroup storage
-template <class RawAllocator>
-struct is_shared_allocator : std::false_type
-{
-};
+
+namespace impl{
+  template <raw_allocator RawAllocator>
+  using reference_storage = detail::reference_storage_impl<typename allocator_traits<RawAllocator>::allocator_type,
+                                                           detail::reference_type_t<RawAllocator>>;
+}
+
 
 /// A \concept{concept_storagepolicy,StoragePolicy} that stores a reference to an allocator.
 /// For stateful allocators it only stores a pointer to an allocator object and copying/moving only copies the pointer.
@@ -511,18 +524,8 @@ struct is_shared_allocator : std::false_type
 /// In the other cases the lifetime does not matter.
 /// \ingroup storage
 template <class RawAllocator>
-class reference_storage
-    : detail::reference_storage_impl<
-        typename allocator_traits<RawAllocator>::allocator_type,
-        decltype(detail::reference_type(
-            typename allocator_traits<RawAllocator>::is_stateful{},
-            is_shared_allocator<RawAllocator>{}))>
-    {
-        using storage = detail::reference_storage_impl<
-        typename allocator_traits<RawAllocator>::allocator_type,
-        decltype(
-        detail::reference_type(typename allocator_traits<RawAllocator>::is_stateful{},
-        is_shared_allocator<RawAllocator>{}))>;
+class reference_storage : impl::reference_storage<RawAllocator> {
+        using storage = impl::reference_storage<RawAllocator>;
 
         public:
         using allocator_type = typename allocator_traits<RawAllocator>::allocator_type;
@@ -580,8 +583,7 @@ class reference_storage
 /// The specialization can store a reference to any allocator type.
 /// \ingroup storage
 template <>
-class reference_storage<any_allocator>
-{
+class reference_storage<any_allocator> {
   class base_allocator
   {
   public:
@@ -636,27 +638,19 @@ class reference_storage<any_allocator>
     }
 
     // count 1 means node
-    virtual void* allocate_impl(u64 count, u64 size,
-                                u64 alignment)            = 0;
-    virtual void  deallocate_impl(void* ptr, u64 count, u64 size,
-                                  u64 alignment) noexcept = 0;
-
-    virtual void* try_allocate_impl(u64 count, u64 size,
-                                    u64 alignment) noexcept = 0;
-
-    virtual bool try_deallocate_impl(void* ptr, u64 count, u64 size,
-                                     u64 alignment) noexcept = 0;
+    virtual void* allocate_impl(u64 count, u64 size, u64 alignment)            = 0;
+    virtual void  deallocate_impl(void* ptr, u64 count, u64 size, u64 alignment) noexcept = 0;
+    virtual void* try_allocate_impl(u64 count, u64 size, u64 alignment) noexcept = 0;
+    virtual bool try_deallocate_impl(void* ptr, u64 count, u64 size, u64 alignment) noexcept = 0;
 
     u64 max_node_size() const
     {
       return max(query::node_size);
     }
-
     u64 max_array_size() const
     {
       return max(query::array_size);
     }
-
     u64 max_alignment() const
     {
       return max(query::alignment);
@@ -750,21 +744,10 @@ protected:
 
 private:
   template <class RawAllocator>
-  class basic_allocator
-      : public base_allocator,
-        private detail::reference_storage_impl<
-            typename allocator_traits<RawAllocator>::allocator_type,
-            decltype(
-                detail::reference_type(typename allocator_traits<RawAllocator>::is_stateful{},
-                                       is_shared_allocator<RawAllocator>{}))>
-  {
+  class basic_allocator : public base_allocator, private impl::reference_storage<RawAllocator> {
     using traits     = allocator_traits<RawAllocator>;
     using composable = is_composable_allocator<typename traits::allocator_type>;
-    using storage    = detail::reference_storage_impl<
-        typename allocator_traits<RawAllocator>::allocator_type,
-        decltype(detail::reference_type(typename allocator_traits<
-                                            RawAllocator>::is_stateful{},
-                                        is_shared_allocator<RawAllocator>{}))>;
+    using storage    = impl::reference_storage<RawAllocator>;
 
   public:
     // non stateful
@@ -884,6 +867,17 @@ auto make_any_allocator_reference(RawAllocator&& allocator) noexcept
 {
 return {std::forward<RawAllocator>(allocator)};
 }
+
+
+
+
+
+  template <typename T>
+  concept stateful_allocator = raw_allocator<T> && same_as<detail::reference_type_t<T>, detail::reference_stateful>;
+  template <typename T>
+  concept stateless_allocator = raw_allocator<T> && same_as<detail::reference_type_t<T>, detail::reference_stateless>;
+  template <typename T>
+  concept shared_allocator = raw_allocator<T> && same_as<detail::reference_type_t<T>, detail::reference_shared>;
 }
 
 #endif//VALKYRIE_MEMORY_ALLOCATOR_STORAGE_HPP

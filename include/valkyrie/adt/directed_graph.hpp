@@ -6,7 +6,6 @@
 #define VALKYRIE_ADT_DIRECTED_GRAPH_HPP
 
 #include "flat_set.hpp"
-//#include <valkyrie/adt/temp_array.hpp>
 #include <memory>
 
 namespace valkyrie{
@@ -83,26 +82,26 @@ namespace valkyrie{
       return *this;
     }
 
-    /// Static polymorphism: delegate implementation (via isEqualTo) to the
+    /// Static polymorphism: delegate implementation (via is_equal_to) to the
     /// derived class.
-    bool operator==(const edge_type& E) const { return getDerived().isEqualTo(E); }
+    bool operator==(const edge_type& E) const { return derived().is_equal_to(E); }
 
     /// Retrieve the target node this edge connects to.
-    const node_type& getTargetNode() const noexcept{ return targetNode; }
-    node_type& getTargetNode() noexcept {
-      return const_cast<node_type &>(static_cast<const dg_edge<node_type, edge_type> &>(*this).getTargetNode());
+    const node_type& get_target_node() const noexcept{ return targetNode; }
+    node_type& get_target_node() noexcept {
+      return const_cast<node_type &>(static_cast<const dg_edge<node_type, edge_type> &>(*this).get_target_node());
     }
 
     /// Set the target node this edge connects to.
-    void setTargetNode(const node_type &N) { targetNode = N; }
+    void set_target_node(const node_type &N) { targetNode = N; }
 
   protected:
     // As the default implementation use address comparison for equality.
-    bool isEqualTo(const edge_type& E) const { return this == &E; }
+    bool is_equal_to(const edge_type& E) const { return this == &E; }
 
     // Cast the 'this' pointer to the derived type and return a reference.
-    edge_type& getDerived() { return *static_cast<edge_type *>(this); }
-    const edge_type& getDerived() const {
+    edge_type& derived() { return *static_cast<edge_type *>(this); }
+    const edge_type& derived() const {
       return *static_cast<const edge_type *>(this);
     }
 
@@ -134,15 +133,15 @@ namespace valkyrie{
       return *this;
     }
 
-    /// Static polymorphism: delegate implementation (via isEqualTo) to the
+    /// Static polymorphism: delegate implementation (via is_equal_to) to the
     /// derived class.
-    bool operator==(const node_type &N) const { return getDerived().isEqualTo(N); }
+    bool operator==(const node_type &N) const { return derived().is_equal_to(N); }
     bool operator!=(const node_type &N) const { return !operator==(N); }
 
     const_iterator begin() const { return edges.begin(); }
     const_iterator end() const { return edges.end(); }
-    iterator begin() { return edges.begin(); }
-    iterator end() { return edges.end(); }
+    iterator       begin() { return edges.begin(); }
+    iterator       end() { return edges.end(); }
     /*const edge_type &front() const { return *edges.front(); }
     edge_type &front() { return *edges.front(); }
     const edge_type &back() const { return *edges.back(); }
@@ -153,28 +152,28 @@ namespace valkyrie{
     /// Note that this implementation allows more than one edge to connect
     /// a given pair of nodes.
     /*bool findEdgesTo(const node_type &N, SmallVectorImpl<edge_type *> &EL) const {
-      assert(EL.empty() && "Expected the list of edges to be empty.");
+      VK_assert(EL.empty() && "Expected the list of edges to be empty.");
       for (auto *E : edges)
-        if (E->getTargetNode() == N)
+        if (E->get_target_node() == N)
           EL.push_back(E);
       return !EL.empty();
     }*/
 
     /// Add the given edge \p E to this node, if it doesn't exist already. Returns
     /// true if the edge is added and false otherwise.
-    bool addEdge(edge_type &E) { return edges.insert(&E); }
+    bool add_edge(edge_type &E) { return edges.insert(&E); }
 
     /// Remove the given edge \p E from this node, if it exists.
-    void removeEdge(edge_type &E) { edges.remove(&E); }
+    void remove_edge(edge_type &E) { edges.remove(&E); }
 
     /// Test whether there is an edge that goes from this node to \p N.
-    bool hasEdgeTo(const node_type &N) const {
-      return (findEdgeTo(N) != edges.end());
+    bool has_edge_to(const node_type &N) const {
+      return (find_edge_to(N) != edges.end());
     }
 
     /// Retrieve the outgoing edges for the node.
-    const edge_list_type &getEdges() const { return edges; }
-    edge_list_type &getEdges() {
+    const edge_list_type &get_edges() const { return edges; }
+    edge_list_type &get_edges() {
       return const_cast<edge_list_type &>(
           static_cast<const dg_node<node_type, edge_type> &>(*this).edges);
     }
@@ -184,20 +183,20 @@ namespace valkyrie{
 
   protected:
     // As the default implementation use address comparison for equality.
-    bool isEqualTo(const node_type &N) const { return this == &N; }
+    bool is_equal_to(const node_type &N) const { return this == &N; }
 
     // Cast the 'this' pointer to the derived type and return a reference.
-    node_type &getDerived() { return *static_cast<node_type *>(this); }
-    const node_type &getDerived() const {
+    node_type &derived() { return *static_cast<node_type *>(this); }
+    const node_type &derived() const {
       return *static_cast<const node_type *>(this);
     }
 
     /// Find an edge to \p N. If more than one edge exists, this will return
     /// the first one in the list of edges.
-    const_iterator findEdgeTo(const node_type &N) const {
-      return std::ranges::find_if(edges, [&N](const edge_type *E) { return E->getTargetNode() == N; });
+    const_iterator find_edge_to(const node_type &N) const {
+      return std::ranges::find_if(edges, [&N](const edge_type *E) { return E->get_target_node() == N; });
       /*return llvm::find_if(
-          edges, [&N](const edge_type *E) { return E->getTargetNode() == N; });*/
+          edges, [&N](const edge_type *E) { return E->get_target_node() == N; });*/
     }
 
     // The list of outgoing edges.
@@ -219,7 +218,7 @@ namespace valkyrie{
     using graph_type = directed_graph<NodeType, EdgeType>;
 
     directed_graph() = default;
-    explicit directed_graph(node_type& N) : node_list() { addNode(N); }
+    explicit directed_graph(node_type& N) : node_list() { this->add(N); }
     directed_graph(const graph_type& G) : node_list(G.node_list) {}
     directed_graph(graph_type&& RHS) : node_list(std::move(RHS.node_list)) {}
 
@@ -232,28 +231,28 @@ namespace valkyrie{
       return *this;
     }
 
-    const_iterator begin() const { return node_list.begin(); }
-    const_iterator end() const { return node_list.end(); }
-    iterator begin() { return node_list.begin(); }
-    iterator end() { return node_list.end(); }
-    const node_type &front() const { return *node_list.front(); }
-    node_type &front() { return *node_list.front(); }
-    const node_type &back() const { return *node_list.back(); }
-    node_type &back() { return *node_list.back(); }
+    const_iterator   begin() const noexcept { return node_list.begin(); }
+    const_iterator   end() const noexcept { return node_list.end(); }
+    iterator         begin() noexcept { return node_list.begin(); }
+    iterator         end() noexcept { return node_list.end(); }
+    const node_type& front() const noexcept { return *node_list.front(); }
+    node_type &      front() noexcept { return *node_list.front(); }
+    const node_type &back() const noexcept { return *node_list.back(); }
+    node_type &      back() noexcept { return *node_list.back(); }
 
-    size_t size() const { return node_list.size(); }
+    size_t size() const noexcept { return node_list.size(); }
 
     /// Find the given node \p N in the table.
-    const_iterator findNode(const node_type &N) const {
+    const_iterator find(const node_type &N) const {
       return std::ranges::find_if(node_list, [&N](const node_type *Node) { return *Node == N; });
     }
-    iterator findNode(const node_type &N) {
-      return const_cast<iterator>(static_cast<const graph_type &>(*this).findNode(N));
+    iterator find(const node_type &N) {
+      return const_cast<iterator>(static_cast<const graph_type &>(*this).find(N));
     }
 
     /// Add the given node \p N to the graph if it is not already present.
-    bool addNode(node_type &N) {
-      if (findNode(N) != node_list.end())
+    bool add(node_type &N) {
+      if (this->find(N) != node_list.end())
         return false;
       node_list.push_back(&N);
       return true;
@@ -262,7 +261,7 @@ namespace valkyrie{
     /// Collect in \p EL all edges that are coming into node \p N. Return true
     /// if at least one edge was found, and false otherwise.
     /*bool findIncomingEdgesToNode(const node_type &N, SmallVectorImpl<edge_type*> &EL) const {
-      assert(EL.empty() && "Expected the list of edges to be empty.");
+      VK_assert(EL.empty() && "Expected the list of edges to be empty.");
       EdgeListTy TempList;
       for (auto *Node : node_list) {
         if (*Node == N)
@@ -278,8 +277,8 @@ namespace valkyrie{
     /// outgoing edges, they are also removed. Return true if the node was found
     /// and then removed, and false if the node was not found in the graph to
     /// begin with.
-    bool removeNode(node_type &N) {
-      iterator IT = findNode(N);
+    bool remove(node_type &N) {
+      iterator IT = this->find(N);
       if (IT == node_list.end())
         return false;
       // Remove incoming edges.
@@ -287,9 +286,9 @@ namespace valkyrie{
       for (auto *Node : node_list) {
         if (*Node == N)
           continue;
-        Node->findEdgesTo(N, EL);
+        Node->find_edges_to(N, EL);
         for (auto *E : EL)
-          Node->removeEdge(*E);
+          Node->remove_edge(*E);
         EL.clear();
       }
       N.clear();
@@ -301,10 +300,10 @@ namespace valkyrie{
     /// Src to node \p Dst using the provided edge \p E. Return true if \p Src is
     /// not already connected to \p Dst via \p E, and false otherwise.
     bool connect(node_type& Src, node_type& Dst, edge_type& E) {
-      assert(findNode(Src) != node_list.end() && "Src node should be present.");
-      assert(findNode(Dst) != node_list.end() && "Dst node should be present.");
-      assert((E.getTargetNode() == Dst) && "Target of the given edge does not match Dst.");
-      return Src.addEdge(E);
+      VK_assert(this->find(Src) != node_list.end() && "Src node should be present.");
+      VK_assert(this->find(Dst) != node_list.end() && "Dst node should be present.");
+      VK_assert((E.get_target_node() == Dst)       && "Target of the given edge does not match Dst.");
+      return Src.add_edge(E);
     }
 
   protected:
@@ -312,9 +311,7 @@ namespace valkyrie{
     node_list_type node_list;
   };
 
-
-
-  class ExecutableGraphNode;
+  /*class ExecutableGraphNode;
   class GraphResourceDesc{};
   class ExecutableGraphNodeInput{};
   class ExecutableGraphNodeOutput{};
@@ -328,7 +325,7 @@ namespace valkyrie{
 
 
   private:
-    DynamicArray<GraphResourceDesc*> resourceDescriptions;
+    vector<GraphResourceDesc*> resourceDescriptions;
   };
 
   class ExecutableGraph : public directed_graph<ExecutableGraphNode>{
@@ -336,17 +333,7 @@ namespace valkyrie{
 
 
   private:
-  };
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  };*/
 
   /*namespace Graph{
     class ExVisitor;

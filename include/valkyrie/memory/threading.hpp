@@ -85,8 +85,8 @@ namespace valkyrie
     public:
       mutex_storage() noexcept = default;
 
-      void lock() const noexcept {}
-      void unlock() const noexcept {}
+      inline void lock() const noexcept {}
+      inline void unlock() const noexcept {}
 
     protected:
       ~mutex_storage() noexcept = default;

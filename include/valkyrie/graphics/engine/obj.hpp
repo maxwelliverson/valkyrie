@@ -62,21 +62,20 @@ THE SOFTWARE.
 #ifndef TINY_OBJ_LOADER_H_
 #define TINY_OBJ_LOADER_H_
 
+
+#include <valkyrie/adt/small_vector.hpp>
+#include <valkyrie/adt/string.hpp>
+#include <valkyrie/adt/array_ref.hpp>
+
+
+
 #include <map>
 #include <string>
 #include <vector>
 
-namespace tinyobj {
-
-// TODO(syoyo): Better C++11 detection for older compiler
-#if __cplusplus > 199711L
-#define TINYOBJ_OVERRIDE override
-#else
-#define TINYOBJ_OVERRIDE
-#endif
 
 #ifdef __clang__
-  #pragma clang diagnostic push
+#pragma clang diagnostic push
 #if __has_warning("-Wzero-as-null-pointer-constant")
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
@@ -84,6 +83,10 @@ namespace tinyobj {
 #pragma clang diagnostic ignored "-Wpadded"
 
 #endif
+
+namespace valkyrie::graphics::engine{
+
+
 
 // https://en.wikipedia.org/wiki/Wavefront_.obj_file says ...
 //
@@ -140,15 +143,366 @@ namespace tinyobj {
 //   'sRGB` or 'linear'
 //
 
-#ifdef TINYOBJLOADER_USE_DOUBLE
+/*#ifdef TINYOBJLOADER_USE_DOUBLE
   //#pragma message "using double"
 typedef double real_t;
 #else
 //#pragma message "using float"
   typedef float real_t;
-#endif
+#endif*/
 
-  typedef enum {
+  typedef float real_t;
+
+  enum class texture_type{
+    none,
+    sphere,
+    cube_top,
+    cube_bottom,
+    cube_front,
+    cube_back,
+    cube_left,
+    cube_right
+  };
+  /*0 Color on and Ambient off
+  1 Color on and Ambient on
+  2 Highlight on
+  3 Reflection on and Ray trace on
+  4 Transparency: Glass on
+  Reflection: Ray trace on
+  5 Reflection: Fresnel on and Ray trace on
+  6 Transparency: Refraction on
+  Reflection: Fresnel off and Ray trace on
+  7 Transparency: Refraction on
+  Reflection: Fresnel on and Ray trace on
+  8 Reflection on and Ray trace off
+  9 Transparency: Glass on
+  Reflection: Ray trace off
+  10 Casts shadows onto invisible surfaces*/
+
+#pragma region Illumination Models
+
+  struct illumination_model{
+    bool diffuse;
+    bool specular;
+    bool reflection;
+    bool fresnel;
+    bool refraction;
+    bool ray_tracing;
+    bool shadowmatte;
+  };
+
+  constexpr static illumination_model illum_models[11]{
+      {
+       // [0]
+          .diffuse     = false,
+          .specular    = false,
+          .reflection  = false,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = false
+      },
+      {
+       // [1]
+          .diffuse     = true,
+          .specular    = false,
+          .reflection  = false,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = false
+      },
+      {
+       // [2]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = false,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = false
+      },
+      {
+       // [3]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = true,
+          .shadowmatte = false
+      },
+      {
+       // [4]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = true,
+          .shadowmatte = false
+      },
+      {
+       // [5]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = true,
+          .refraction  = false,
+          .ray_tracing = true,
+          .shadowmatte = false
+      },
+      {
+       // [6]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = false,
+          .refraction  = true,
+          .ray_tracing = true,
+          .shadowmatte = false
+      },
+      {
+       // [7]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = true,
+          .refraction  = true,
+          .ray_tracing = true,
+          .shadowmatte = false
+      },
+      {
+       // [8]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = false
+      },
+      {
+       // [9]
+          .diffuse     = true,
+          .specular    = true,
+          .reflection  = true,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = false
+      },
+      {
+       // [10]
+          .diffuse     = false,
+          .specular    = false,
+          .reflection  = false,
+          .fresnel     = false,
+          .refraction  = false,
+          .ray_tracing = false,
+          .shadowmatte = true
+      }
+  };
+
+#pragma endregion
+
+
+
+
+  struct texture_option{
+    texture_type type;
+
+    f32 sharpness;
+    f32 brightness;
+    f32 contrast;
+    f32 origin_offset[3];
+    f32 scale[3];
+    f32 turbulence[3];
+    int texture_resolution;
+
+    bool clamp;
+    char imfchan;
+    bool blendu;
+    bool blendv;
+    f32  bump_multiplier;
+
+    string colorspace;
+  };
+  struct material{
+    string name;
+
+    f32    ambient[3];
+    f32    diffuse[3];
+    f32    specular[3];
+    f32    transmittance[3];
+    f32    emission[3];
+    f32    shininess;
+    f32    ior;
+    f32    dissolve;
+
+    int illum;
+
+    string ambient_texname;             // map_Ka
+    string diffuse_texname;             // map_Kd
+    string specular_texname;            // map_Ks
+    string specular_highlight_texname;  // map_Ns
+    string bump_texname;                // map_bump, map_Bump, bump
+    string displacement_texname;        // disp
+    string alpha_texname;               // map_d
+    string reflection_texname;          // refl
+
+
+    texture_option_t ambient_texopt;
+    texture_option_t diffuse_texopt;
+    texture_option_t specular_texopt;
+    texture_option_t specular_highlight_texopt;
+    texture_option_t bump_texopt;
+    texture_option_t displacement_texopt;
+    texture_option_t alpha_texopt;
+    texture_option_t reflection_texopt;
+
+    // PBR extension
+    // http://exocortex.com/blog/extending_wavefront_mtl_to_support_pbr
+    f32 roughness;            // [0, 1] default 0
+    f32 metallic;             // [0, 1] default 0
+    f32 sheen;                // [0, 1] default 0
+    f32 clearcoat_thickness;  // [0, 1] default 0
+    f32 clearcoat_roughness;  // [0, 1] default 0
+    f32 anisotropy;           // aniso. [0, 1] default 0
+    f32 anisotropy_rotation;  // anisor. [0, 1] default 0
+
+    string roughness_texname;  // map_Pr
+    string metallic_texname;   // map_Pm
+    string sheen_texname;      // map_Ps
+    string emissive_texname;   // map_Ke
+    string normal_texname;     // norm. For normal mapping.
+
+    texture_option roughness_texopt;
+    texture_option metallic_texopt;
+    texture_option sheen_texopt;
+    texture_option emissive_texopt;
+    texture_option normal_texopt;
+
+    std::map<std::string, std::string> unknown_parameter;
+  };
+  struct tag{
+    string name;
+
+    vector<i32>    i32_values;
+    vector<f32>    f32_values;
+    vector<string> string_values;
+  };
+  struct joint_and_weight{
+    i32 joint_id;
+    f32 weight;
+  };
+  struct skin_weight{
+    i32 vertex_id;
+
+    vector<joint_and_weight> weight_values;
+  };
+  struct index{
+    i32 vertex;
+    i32 normal;
+    i32 texcoord;
+  };
+  struct mesh{
+    vector<index> indices;
+    vector<u8>  num_face_vertices;          // The number of vertices per
+    // face. 3 = triangle, 4 = quad,
+    // ... Up to 255 vertices per face.
+    vector<i32> material_ids;  // per-face material ID
+    vector<u32> smoothing_group_ids;  // per-face smoothing group
+    // ID(0 = off. positive value
+    // = group id)
+    vector<tag> tags;                        // SubD tag
+  };
+
+  struct lines{
+    // Linear flattened indices.
+    vector<index> indices;        // indices for vertices(poly lines)
+    vector<i32> num_line_vertices;  // The number of vertices per line.
+  };
+  struct points{
+    vector<index> indices;  // indices for points
+  };
+  struct shape {
+    string name;
+    mesh   mesh;
+    lines  lines;
+    points points;
+  };
+
+// Vertex attributes
+  struct attributes{
+    vector<f32> vertices;  // 'v'(xyz)
+
+    // For backward compatibility, we store vertex weight in separate array.
+    vector<f32> vertex_weights;  // 'v'(w)
+    vector<f32> normals;         // 'vn'
+    vector<f32> texcoords;       // 'vt'(uv)
+
+    // For backward compatibility, we store texture coordinate 'w' in separate
+    // array.
+    vector<f32> texcoord_ws;  // 'vt'(w)
+    vector<f32> colors;       // extension: vertex colors
+
+    //
+    // TinyObj extension.
+    //
+
+    // NOTE(syoyo): array index is based on the appearance order.
+    // To get a corresponding skin weight for a specific vertex id `vid`,
+    // Need to reconstruct a look up table: `skin_weight_t::vertex_id` == `vid`
+    // (e.g. using std::map, std::unordered_map)
+    vector<skin_weight> skin_weights;
+
+    attributes() {}
+
+    //
+    // For pybind11
+    //
+    const std::vector<real_t> & GetVertices() const { return vertices; }
+
+    const std::vector<real_t> &GetVertexWeights() const { return vertex_weights; }
+  };
+
+  struct callbacks {
+    // W is optional and set to 1 if there is no `w` item in `v` line
+    void (*vertex_cb)(void *user_data, real_t x, real_t y, real_t z, real_t w);
+    void (*normal_cb)(void *user_data, real_t x, real_t y, real_t z);
+
+    // y and z are optional and set to 0 if there is no `y` and/or `z` item(s) in
+    // `vt` line.
+    void (*texcoord_cb)(void *user_data, real_t x, real_t y, real_t z);
+
+    // called per 'f' line. num_indices is the number of face indices(e.g. 3 for
+    // triangle, 4 for quad)
+    // 0 will be passed for undefined index in index_t members.
+    void (*index_cb)(void *user_data, index_t *indices, int num_indices);
+    // `name` material name, `material_id` = the array index of material_t[]. -1
+    // if
+    // a material not found in .mtl
+    void (*usemtl_cb)(void *user_data, const char *name, int material_id);
+    // `materials` = parsed material data.
+    void (*mtllib_cb)(void *user_data, const material_t *materials,
+                      int num_materials);
+    // There may be multiple group names
+    void (*group_cb)(void *user_data, const char **names, int num_names);
+    void (*object_cb)(void *user_data, const char *name);
+
+    callbacks()
+        : vertex_cb(nullptr),
+          normal_cb(nullptr),
+          texcoord_cb(nullptr),
+          index_cb(nullptr),
+          usemtl_cb(nullptr),
+          mtllib_cb(nullptr),
+          group_cb(nullptr),
+          object_cb(nullptr) {}
+  };
+
+  /*typedef enum {
     TEXTURE_TYPE_NONE,  // default
     TEXTURE_TYPE_SPHERE,
     TEXTURE_TYPE_CUBE_TOP,
@@ -191,6 +545,7 @@ typedef double real_t;
     real_t shininess;
     real_t ior;       // index of refraction
     real_t dissolve;  // 1 == opaque; 0 == fully transparent
+
     // illumination model (see http://www.fileformat.info/format/material/)
     int illum;
 
@@ -239,89 +594,6 @@ typedef double real_t;
     int pad2;
 
     std::map<std::string, std::string> unknown_parameter;
-
-#ifdef TINY_OBJ_LOADER_PYTHON_BINDING
-    // For pybind11
-  std::array<double, 3> GetDiffuse() {
-    std::array<double, 3> values;
-    values[0] = double(diffuse[0]);
-    values[1] = double(diffuse[1]);
-    values[2] = double(diffuse[2]);
-
-    return values;
-  }
-
-  std::array<double, 3> GetSpecular() {
-    std::array<double, 3> values;
-    values[0] = double(specular[0]);
-    values[1] = double(specular[1]);
-    values[2] = double(specular[2]);
-
-    return values;
-  }
-
-  std::array<double, 3> GetTransmittance() {
-    std::array<double, 3> values;
-    values[0] = double(transmittance[0]);
-    values[1] = double(transmittance[1]);
-    values[2] = double(transmittance[2]);
-
-    return values;
-  }
-
-  std::array<double, 3> GetEmission() {
-    std::array<double, 3> values;
-    values[0] = double(emission[0]);
-    values[1] = double(emission[1]);
-    values[2] = double(emission[2]);
-
-    return values;
-  }
-
-  std::array<double, 3> GetAmbient() {
-    std::array<double, 3> values;
-    values[0] = double(ambient[0]);
-    values[1] = double(ambient[1]);
-    values[2] = double(ambient[2]);
-
-    return values;
-  }
-
-  void SetDiffuse(std::array<double, 3> &a) {
-    diffuse[0] = real_t(a[0]);
-    diffuse[1] = real_t(a[1]);
-    diffuse[2] = real_t(a[2]);
-  }
-
-  void SetAmbient(std::array<double, 3> &a) {
-    ambient[0] = real_t(a[0]);
-    ambient[1] = real_t(a[1]);
-    ambient[2] = real_t(a[2]);
-  }
-
-  void SetSpecular(std::array<double, 3> &a) {
-    specular[0] = real_t(a[0]);
-    specular[1] = real_t(a[1]);
-    specular[2] = real_t(a[2]);
-  }
-
-  void SetTransmittance(std::array<double, 3> &a) {
-    transmittance[0] = real_t(a[0]);
-    transmittance[1] = real_t(a[1]);
-    transmittance[2] = real_t(a[2]);
-  }
-
-  std::string GetCustomParameter(const std::string &key) {
-    std::map<std::string, std::string>::const_iterator it =
-        unknown_parameter.find(key);
-
-    if (it != unknown_parameter.end()) {
-      return it->second;
-    }
-    return std::string();
-  }
-
-#endif
   };
 
   struct tag_t {
@@ -353,9 +625,8 @@ typedef double real_t;
   };
 
   struct mesh_t {
-    std::vector<index_t> indices;
-    std::vector<unsigned char>
-        num_face_vertices;          // The number of vertices per
+    std::vector<index_t>       indices;
+    std::vector<unsigned char> num_face_vertices;          // The number of vertices per
     // face. 3 = triangle, 4 = quad,
     // ... Up to 255 vertices per face.
     std::vector<int> material_ids;  // per-face material ID
@@ -445,14 +716,19 @@ typedef double real_t;
     void (*object_cb)(void *user_data, const char *name);
 
     callback_t()
-        : vertex_cb(NULL),
-          normal_cb(NULL),
-          texcoord_cb(NULL),
-          index_cb(NULL),
-          usemtl_cb(NULL),
-          mtllib_cb(NULL),
-          group_cb(NULL),
-          object_cb(NULL) {}
+        : vertex_cb(nullptr),
+          normal_cb(nullptr),
+          texcoord_cb(nullptr),
+          index_cb(nullptr),
+          usemtl_cb(nullptr),
+          mtllib_cb(nullptr),
+          group_cb(nullptr),
+          object_cb(nullptr) {}
+  };*/
+
+  class material_loader{};
+  class object_loader{
+
   };
 
   class MaterialReader {
@@ -474,11 +750,11 @@ typedef double real_t;
     // Path could contain separator(';' in Windows, ':' in Posix)
     explicit MaterialFileReader(const std::string &mtl_basedir)
         : m_mtlBaseDir(mtl_basedir) {}
-    virtual ~MaterialFileReader() TINYOBJ_OVERRIDE {}
+    virtual ~MaterialFileReader() override {}
     virtual bool operator()(const std::string &matId,
                             std::vector<material_t> *materials,
                             std::map<std::string, int> *matMap, std::string *warn,
-                            std::string *err) TINYOBJ_OVERRIDE;
+                            std::string *err) override;
 
   private:
     std::string m_mtlBaseDir;
@@ -491,11 +767,11 @@ typedef double real_t;
   public:
     explicit MaterialStreamReader(std::istream &inStream)
         : m_inStream(inStream) {}
-    virtual ~MaterialStreamReader() TINYOBJ_OVERRIDE {}
+    virtual ~MaterialStreamReader() override {}
     virtual bool operator()(const std::string &matId,
                             std::vector<material_t> *materials,
                             std::map<std::string, int> *matMap, std::string *warn,
-                            std::string *err) TINYOBJ_OVERRIDE;
+                            std::string *err) override;
 
   private:
     std::istream &m_inStream;
@@ -590,7 +866,7 @@ typedef double real_t;
 /// Returns true when loading .obj become success.
 /// Returns warning message into `warn`, and error message into `err`
 /// 'mtl_basedir' is optional, and used for base directory for .mtl file.
-/// In default(`NULL'), .mtl file is searched from an application's working
+/// In default(`nullptr'), .mtl file is searched from an application's working
 /// directory.
 /// 'triangulate' is optional, and used whether triangulate polygon face in .obj
 /// or not.
@@ -599,7 +875,7 @@ typedef double real_t;
   bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                std::vector<material_t> *materials, std::string *warn,
                std::string *err, const char *filename,
-               const char *mtl_basedir = NULL, bool triangulate = true,
+               const char *mtl_basedir = nullptr, bool triangulate = true,
                bool default_vcols_fallback = true);
 
 /// Loads .obj from a file with custom user callback.
@@ -609,9 +885,9 @@ typedef double real_t;
 /// Returns warning message into `warn`, and error message into `err`
 /// See `examples/callback_api/` for how to use this function.
   bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
-                           void *user_data = NULL,
-                           MaterialReader *readMatFn = NULL,
-                           std::string *warn = NULL, std::string *err = NULL);
+                           void *user_data = nullptr,
+                           MaterialReader *readMatFn = nullptr,
+                           std::string *warn = nullptr, std::string *err = nullptr);
 
 /// Loads object from a std::istream, uses `readMatFn` to retrieve
 /// std::istream for materials.
@@ -620,7 +896,7 @@ typedef double real_t;
   bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                std::vector<material_t> *materials, std::string *warn,
                std::string *err, std::istream *inStream,
-               MaterialReader *readMatFn = NULL, bool triangulate = true,
+               MaterialReader *readMatFn = nullptr, bool triangulate = true,
                bool default_vcols_fallback = true);
 
 /// Loads materials into std::map
@@ -1193,7 +1469,7 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
   bool found_texname = false;
   std::string texture_name;
 
-  const char *token = linebuf;  // Assume line ends with NULL
+  const char *token = linebuf;  // Assume line ends with nullptr
 
   while (!IS_NEW_LINE((*token))) {
     token += strspn(token, " \t");  // skip space
@@ -2213,7 +2489,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, std::istream *inStream,
-             MaterialReader *readMatFn /*= NULL*/, bool triangulate,
+             MaterialReader *readMatFn /*= nullptr*/, bool triangulate,
              bool default_vcols_fallback) {
   std::stringstream errss;
 
@@ -2770,10 +3046,10 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 }
 
 bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
-                         void *user_data /*= NULL*/,
-                         MaterialReader *readMatFn /*= NULL*/,
-                         std::string *warn, /* = NULL*/
-                         std::string *err /*= NULL*/) {
+                         void *user_data /*= nullptr*/,
+                         MaterialReader *readMatFn /*= nullptr*/,
+                         std::string *warn, /* = nullptr*/
+                         std::string *err /*= nullptr*/) {
   std::stringstream errss;
 
   // material
@@ -2981,7 +3257,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                             static_cast<int>(names_out.size()));
 
         } else {
-          callback.group_cb(user_data, NULL, 0);
+          callback.group_cb(user_data, nullptr, 0);
         }
       }
 

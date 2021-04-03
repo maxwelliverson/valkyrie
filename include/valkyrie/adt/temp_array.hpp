@@ -5,27 +5,41 @@
 #ifndef VALKYRIE_ADT_TEMP_ARRAY_HPP
 #define VALKYRIE_ADT_TEMP_ARRAY_HPP
 
-#include "array_ref.hpp"
+#include <valkyrie/adt/array_ref.hpp>
+#include <valkyrie/adt/ptr.hpp>
+#include <valkyrie/memory/default_allocator.hpp>
 
-#include <memory>
-#include <utility>
 
 namespace valkyrie{
 
-  template <typename T, typename Alloc = std::allocator<T>>
+  namespace detail{
+    template <typename RawAlloc, typename Type = reference_type_t<RawAlloc>>
+    struct allocator_state_param{
+      using type = const typename allocator_traits<RawAlloc>::allocator_type&;
+    };
+    template <typename RawAlloc>
+    struct allocator_state_param<RawAlloc, reference_stateful>{
+      using type = typename allocator_traits<RawAlloc>::allocator_type&;
+    };
+  }
+
+  template <typename T, raw_allocator Alloc = default_allocator, typename Ptr = borrowed_ptr<T>>
   class temp_array {
 
-    using alloc_traits = std::allocator_traits<Alloc>;
+    //using alloc_state_t = typename allocator_traits<Alloc>::allocator_type;
+    using alloc_param_t = typename detail::allocator_state_param<Alloc>::type;
 
   public:
 
-    using size_type = size_t;
+    using allocator_type  = allocator_reference<Alloc>;
+
+    using size_type       = size_t;
     using difference_type = i64;
-    using value_type = T;
-    using pointer = typename alloc_traits::pointer;
-    using reference = decltype(*std::declval<pointer>());
-    using const_pointer = typename alloc_traits::const_pointer;
-    using const_reference = decltype(*std::declval<const_pointer>());
+    using value_type      = T;
+    using pointer         = Ptr;
+    using reference       = typename pointer::reference;
+    using const_pointer   = ptr_rebind_t<const value_type, pointer>;
+    using const_reference = typename const_pointer::reference;
 
     using iterator = pointer;
     using const_iterator = const_pointer;
@@ -38,13 +52,16 @@ namespace valkyrie{
 
     temp_array() = default;
     temp_array(const temp_array &) = delete;
-    temp_array(temp_array && other) noexcept : allocator_(std::move(other.allocator_)), ptr_(other.ptr_), size_(other.size_){
+    temp_array(temp_array && other) noexcept
+        : allocator_(std::move(other.allocator_)), ptr_(other.ptr_), size_(other.size_){
       other.ptr_ = nullptr;
       other.size_ = 0; // not strictly necessary?
     }
 
-    explicit temp_array(size_t length_) : temp_array(length_, {}){}
-    temp_array(size_t length_, const Alloc& allocator) : allocator_(allocator), ptr_(alloc_traits::allocate(allocator_, length_)), size_(length_){
+    explicit temp_array(size_t length_) requires(!stateful_allocator<Alloc>) : temp_array(length_, {}){}
+    temp_array(size_type length_, )
+    temp_array(size_t length_, alloc_param_t allocator)
+        : allocator_(std::move(allocator)), ptr_(), size_(length_){
       if constexpr (!std::is_trivially_default_constructible_v<T>) {
         for (size_t i = 0; i < length_; ++i) {
           alloc_traits::construct(allocator_, ptr_ + i);
@@ -108,13 +125,10 @@ namespace valkyrie{
 
 
   private:
-    [[no_unique_address]] Alloc allocator_{};
-    pointer                     ptr_ = nullptr;
-    size_type                   size_ = 0;
+    [[no_unique_address]] allocator_type allocator_{};
+    pointer                              ptr_  = nullptr;
+    size_type                            size_ = 0;
   };
-
-
-
 }
 
 #endif //VALKYRIE_ADT_TEMP_ARRAY_HPP

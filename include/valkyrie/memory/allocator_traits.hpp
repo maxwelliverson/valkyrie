@@ -338,14 +338,14 @@ public:
   }
 
 #if !defined(DOXYGEN)
-  using foonathan_memory_default_traits = std::true_type;
+  using default_traits = std::true_type;
 #endif
 };
 
 namespace detail
 {
   template <class RawAllocator>
-  typename allocator_traits<RawAllocator>::foonathan_memory_default_traits
+  typename allocator_traits<RawAllocator>::default_traits
   alloc_uses_default_traits(RawAllocator&);
 
   std::false_type alloc_uses_default_traits(...);
@@ -574,6 +574,9 @@ struct is_composable_allocator
         std::declval<T&>()))>
 {
 };
+
+
+
 }
 
 #endif//VALKYRIE_MEMORY_ALLOCATOR_TRAITS_HPP

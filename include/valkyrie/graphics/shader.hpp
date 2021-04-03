@@ -14,7 +14,7 @@ namespace valkyrie::graphics{
   class Shader{
 
   public:
-    virtual Span<const u32> compiledCode() const noexcept = 0;
+    virtual span<const u32> compiledCode() const noexcept = 0;
   };
   class VertexShader : public Shader{};
   class TessellationControlShader{};

@@ -289,7 +289,7 @@ namespace valkyrie{
       constexpr BasicExtents(IndexType_&&... indices) noexcept requires(sizeof...(IndexType_) == rankDynamic())
           : Storage_(std::forward<IndexType_>(indices)...){}
 
-      constexpr explicit BasicExtents(Span<index_type, rankDynamic()> indices) noexcept
+      constexpr explicit BasicExtents(span<index_type, rankDynamic()> indices) noexcept
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
       template</*detail::ExtentLike<IndexType>*/ auto ...OtherExtents>
@@ -305,7 +305,7 @@ namespace valkyrie{
 
     private:
       template<size_t ...I>
-      constexpr BasicExtents(Span<index_type, rankDynamic()> indices, std::index_sequence<I...>) noexcept
+      constexpr BasicExtents(span<index_type, rankDynamic()> indices, std::index_sequence<I...>) noexcept
           : Storage_{indices[I]...}{}
     };
 
@@ -351,7 +351,7 @@ namespace valkyrie{
       constexpr BasicExtents(IndexType_&&... indices) noexcept requires(sizeof...(IndexType_) == rankDynamic())
           : Storage_(std::forward<IndexType_>(indices)...){}
 
-      constexpr explicit BasicExtents(Span<index_type, rankDynamic()> indices) noexcept
+      constexpr explicit BasicExtents(span<index_type, rankDynamic()> indices) noexcept
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
       template</*detail::ExtentLike<IndexType>*/ auto ...OtherExtents>
@@ -367,7 +367,7 @@ namespace valkyrie{
 
     private:
       template<size_t ...I>
-      constexpr BasicExtents(Span<index_type, rankDynamic()> indices, std::index_sequence<I...>) noexcept
+      constexpr BasicExtents(span<index_type, rankDynamic()> indices, std::index_sequence<I...>) noexcept
           : Storage_{indices[I]...}{}
     };
 
@@ -824,7 +824,7 @@ namespace valkyrie{
       VK_gpu_inline explicit constexpr BasicArrayView(pointer ptr, Index&&... dynamicExtents) noexcept
           : storage(std::forward<Index>(dynamicExtents)...), ptr_{ptr}{}
       template <typename Index>
-      VK_gpu_inline explicit constexpr BasicArrayView(param_t<pointer> ptr, Span<Index, rankDynamic()> dynamicExtents) noexcept
+      VK_gpu_inline explicit constexpr BasicArrayView(param_t<pointer> ptr, span<Index, rankDynamic()> dynamicExtents) noexcept
           : storage(dynamicExtents), ptr_{ptr}{}
       VK_gpu_inline constexpr BasicArrayView(pointer ptr, const mapping_type& mapping) noexcept
           : storage(mapping), ptr_{ptr}{}
@@ -848,7 +848,7 @@ namespace valkyrie{
         return this->getAccessor().access(ptr_, this->getMapping()(indices...));
       }
       template <std::convertible_to<index_type> Index>
-      VK_nodiscard VK_gpu_inline constexpr reference operator()(Span<Index, rank()> indices) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr reference operator()(span<Index, rank()> indices) const noexcept {
         return applySpanArgs_(indices, spanAccessor);
       }
 
@@ -883,7 +883,7 @@ namespace valkyrie{
         return this->getMapping().requiredSpanSize();
       }
 
-      VK_nodiscard VK_gpu_inline constexpr Span<element_type> span() const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr span<element_type> span() const noexcept {
         return {ptr_, size()};
       }
       VK_nodiscard VK_gpu_inline constexpr param_t<pointer> data() const noexcept { return ptr_; }
@@ -898,7 +898,7 @@ namespace valkyrie{
     private:
 
       template <typename Index, size_t ...I>
-      VK_nodiscard VK_gpu_inline constexpr auto applySpanArgs_(Span<Index, rank()> span, std::index_sequence<I...>) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr auto applySpanArgs_(span<Index, rank()> span, std::index_sequence<I...>) const noexcept {
         return this->getAccessor().access(ptr_, this->getMapping()(span[I]...));
       }
     };
@@ -1092,7 +1092,7 @@ namespace valkyrie{
       VK_gpu_inline explicit constexpr BasicArray(Index&&... dynamicExtents) noexcept
           : view_storage(std::forward<Index>(dynamicExtents)...), storage_{this->uniqueSize()}{}
       template <typename Index>
-      VK_gpu_inline explicit constexpr BasicArray(Span<Index, rankDynamic()> dynamicExtents) noexcept
+      VK_gpu_inline explicit constexpr BasicArray(span<Index, rankDynamic()> dynamicExtents) noexcept
           : view_storage(dynamicExtents), storage_{this->uniqueSize()}{}
       VK_gpu_inline constexpr BasicArray(const mapping_type& mapping) noexcept
           : view_storage(mapping), storage_{this->uniqueSize()}{}
@@ -1116,7 +1116,7 @@ namespace valkyrie{
         return this->getAccessor().access(storage_.getPointer(), this->getMapping()(indices...));
       }
       template <std::convertible_to<index_type> Index>
-      VK_nodiscard VK_gpu_inline constexpr reference operator()(Span<Index, rank()> indices) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr reference operator()(span<Index, rank()> indices) const noexcept {
         return applySpanArgs_(indices, spanAccessor);
       }
 
@@ -1150,7 +1150,7 @@ namespace valkyrie{
         return { data(), mapping(), accessor() };
       }
 
-      VK_nodiscard VK_gpu_inline constexpr Span<element_type> span() const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr span<element_type> span() const noexcept {
         return { storage_.getPointer(), size() };
       }
       VK_nodiscard VK_gpu_inline constexpr param_t<pointer> data() const noexcept { return storage_.getPointer(); }
@@ -1160,7 +1160,7 @@ namespace valkyrie{
 
     private:
       template <typename Index, size_t ...I>
-      VK_nodiscard VK_gpu_inline constexpr auto applySpanArgs_(Span<Index, rank()> span, std::index_sequence<I...>) const noexcept {
+      VK_nodiscard VK_gpu_inline constexpr auto applySpanArgs_(span<Index, rank()> span, std::index_sequence<I...>) const noexcept {
         return this->getAccessor().access(data(), this->getMapping()(span[I]...));
       }
     };
@@ -1431,26 +1431,26 @@ namespace valkyrie {
     }
   };
   template<typename T, size_t Extent_>
-  struct traits::static_array<Span<T, Extent_>> {
+  struct traits::static_array<span<T, Extent_>> {
     using element_type = T;
-    inline constexpr static T *data(Span<T, Extent_> span) noexcept {
+    inline constexpr static T *data(span<T, Extent_> span) noexcept {
       return span.data();
     }
     inline constexpr static size_t size = Extent_;
   };
 
   template<typename T>
-  struct traits::DynamicArray<Span<T>> {
+  struct traits::DynamicArray<span<T>> {
     using element_type = T;
-    inline constexpr static T *data(Span<T> span) noexcept {
+    inline constexpr static T *data(span<T> span) noexcept {
       return span.data();
     }
-    inline constexpr static size_t size(Span<T> span) noexcept {
+    inline constexpr static size_t size(span<T> span) noexcept {
       return span.size();
     }
   };
   template<typename T, auto Ext>
-  struct traits::View<Span<T, Ext>> {};
+  struct traits::View<span<T, Ext>> {};
 
   /*template<typename T, size_t N>
   struct traits::static_array<CArray<T, N>> {

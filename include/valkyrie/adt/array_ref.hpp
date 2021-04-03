@@ -383,6 +383,21 @@ namespace valkyrie{
     }
 
 
+    inline pointer         data()       noexcept requires StrideCompatible<sizeof(T)> {
+      if constexpr (Self::dynamicStride()) {
+        if (this->stride() != sizeof(T))
+          return nullptr;
+      }
+      return pArray;
+    }
+    inline const_pointer   data() const noexcept requires StrideCompatible<sizeof(T)> {
+      if constexpr (Self::dynamicStride()) {
+        if (this->stride() != sizeof(T))
+          return nullptr;
+      }
+      return pArray;
+    }
+
     inline iterator        begin()       noexcept {
       return iterator(pArray, *this);
     }
@@ -447,8 +462,23 @@ namespace valkyrie{
   array_ref(T*, u64) -> array_ref<T, dynamicExtent, sizeof(T)>;
 
 
+  /*template <auto MemPtr, typename Arr>
+  array_ref<>*/
+
+
+  template <member_pointer auto MemPtr, std::derived_from<member_pointer_class_t<decltype(MemPtr)>> T, auto Extent, auto Stride>
+  auto subobject_span(const array_ref<T, Extent, Stride>& array) noexcept {
+    //using element_type           = member_pointer_pointee_t<decltype(MemPtr)>;
+    //constexpr static auto size   = array_traits<Arr>::size;
+    //constexpr static auto stride =
+    return array_ref(array, MemPtr);
+  }
+
+
+
+
   template <typename T, auto Ext_ = dynamicExtent>
-  using Span = array_ref<T, Ext_, sizeof(T)>;
+  using span = array_ref<T, Ext_, sizeof(T)>;
 }
 
 

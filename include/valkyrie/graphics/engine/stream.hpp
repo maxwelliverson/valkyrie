@@ -8,14 +8,14 @@
 #include <valkyrie/graphics/api/queue.hpp>
 
 namespace valkyrie::graphics::engine{
-  class Stream{
-    struct {
-      api::GraphicsQueue lowPriority;
-      api::GraphicsQueue averagePriority;
-      api::GraphicsQueue highPriority;
-    } graphics, compute;
-    api::TransferQueue transfer;
-    api::SparseBindingQueue sparseBinding;
+  class stream{
+
+    enum { low_priority, average_priority, high_priority };
+
+    api::graphics_queue graphics[3];
+    api::compute_queue  compute[3];
+    api::transfer_queue transfer;
+    api::sparse_binding_queue sparseBinding;
   public:
 
   };

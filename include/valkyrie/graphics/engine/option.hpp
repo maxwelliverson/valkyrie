@@ -8,7 +8,7 @@
 
 #include <valkyrie/adt/array_ref.hpp>
 #include <valkyrie/adt/flat_map.hpp>
-#include <valkyrie/utility/version.hpp>
+#include <valkyrie/adt/temp_array.hpp>
 #include <valkyrie/adt/string.hpp>
 
 

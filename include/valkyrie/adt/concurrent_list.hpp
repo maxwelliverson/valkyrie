@@ -16,34 +16,46 @@ namespace valkyrie{
 
   namespace impl{
 
-    struct alignas(16) cslist_node {
-      cslist_node * next;
-      byte          data[];
-    };
-    struct clist_node {};
-
-    struct alignas(16) cslist_header{
-      u64 alignment;
-      u64 data;
-    };
-
     class concurrent_forward_list{
 
       forward_ilist_header header;
-      atomic<u64> list_length_;
+
+      using node_t = forward_ilist_node_base*;
+
+      u64         native_length() const noexcept;
+
+      inline void inc_length() noexcept {
+        ++atomic<u64&>(header.length);
+      }
+      inline void dec_length() noexcept {
+        --atomic<u64&>(header.length);
+      }
+
+      inline void add_length(u64 val) noexcept {
+        atomic<u64&>(header.length).fetch_add(val);
+      }
+      inline void sub_length(u64 val) noexcept {
+        atomic<u64&>(header.length).fetch_sub(val);
+      }
+
+      inline void reset_length(u64 len, u64 val = 0) noexcept {
+        atomic<u64&>(header.length).compare_exchange_strong(len, val);
+      }
+
+      //static void   insert_node(node_t after_node, node_t node) noexcept;
+      //static node_t remove_node(node_t after_node) noexcept;
 
     protected:
 
-      void clear() noexcept;
-      void push_front(cslist_node * node) noexcept;
-      void pop_front(cslist_node * node) noexcept;
-      void push_back(cslist_node * node) noexcept;
-      void pop_back(cslist_node * node) noexcept;
-      static void insert_node(cslist_node * after_node, cslist_node * node) noexcept;
-      static void remove_node(cslist_node * after_node) noexcept;
+      void init() noexcept;
 
-      inline u64 size() const noexcept {
-        return list_length_.load(std::memory_order_acquire);
+      node_t clear() noexcept;
+      void   push_front(node_t node) noexcept;
+      node_t pop_front() noexcept;
+
+
+      VK_nodiscard inline u64 size() const noexcept {
+        return atomic<const u64&>(header.length).load();
       }
     };
     class concurrent_list {

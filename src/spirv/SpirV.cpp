@@ -3370,7 +3370,7 @@ Reflect::ShaderModule::~ShaderModule() {
 Reflect::Result Reflect::ShaderModule::getStatus() const noexcept {
   return m_result;
 }
-valkyrie::Span<const u32> Reflect::ShaderModule::getCode() const noexcept{
+valkyrie::span<const u32> Reflect::ShaderModule::getCode() const noexcept{
   return {m_module._internal->spirv_code, m_module._internal->spirv_size};
 }
 

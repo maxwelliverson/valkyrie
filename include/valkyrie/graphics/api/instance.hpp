@@ -59,7 +59,7 @@ namespace valkyrie::graphics::api{
     bool isEnabled(ValidationFeatureID validationFeatureId) const noexcept;
     bool isAvailable(ValidationFeatureID validationFeatureId) const noexcept;
 
-    Span<const physical_device>   physicalDevices() const noexcept;
+    span<const physical_device>   physicalDevices() const noexcept;
   };
 
   enum class ValidationFeatureEnable{
@@ -117,12 +117,12 @@ namespace valkyrie::graphics::api{
   public:
     constexpr ValidationFeatures() noexcept : InputStruct((StructureType)1000247000){}
 
-    constexpr ValidationFeatures& enable(Span<ValidationFeatureEnable> enabled) noexcept {
+    constexpr ValidationFeatures& enable(span<ValidationFeatureEnable> enabled) noexcept {
       enabledValidationFeatureCount = enabled.size();
       pEnabledValidationFeatures = enabled.data();
       return *this;
     }
-    constexpr ValidationFeatures& disable(Span<ValidationFeatureDisable> disabled) noexcept {
+    constexpr ValidationFeatures& disable(span<ValidationFeatureDisable> disabled) noexcept {
       disabledValidationFeatureCount = disabled.size();
       pDisabledValidationFeatures = disabled.data();
       return *this;

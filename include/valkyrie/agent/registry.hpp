@@ -6,10 +6,10 @@
 #define VALKYRIE_AGENT_REGISTRY_HPP
 
 #include "agent.hpp"
-#include <valkyrie/adt/temp_array.hpp>
+//#include <valkyrie/adt/temp_array.hpp>
 
 namespace valkyrie{
-  class AgentRegistry{
+  class agent_registry{
   public:
 
   };

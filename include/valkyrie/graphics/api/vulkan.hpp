@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/enums.hpp>
 #include <valkyrie/utility/interval.hpp>
 #include <valkyrie/utility/shapes.hpp>
-#include <valkyrie/status/maybe.hpp>
+#include <valkyrie/status/result.hpp>
 
 #include <concepts>
 #include <tuple>
@@ -22,40 +22,44 @@ namespace valkyrie::graphics::api{
     class QueueFamily;
   }
 
-  enum class status_code : u32{
+  enum class vulkan_status_code : u32{
     Success = 0
   };
 
-  class VulkanStatusDomain : public status_domain{
-    inline static status_code enumValue(const status_code<void>& status) noexcept {
+  class vulkan_status_domain final : public status_domain{
+    inline static vulkan_status_code enumValue(const status_code<void>& status) noexcept {
+      return static_cast<const status_code<vulkan_status_domain>&>(status).value();
       //VK_assert();
     }
   public:
-    using value_type = status_code;
+    using value_type = vulkan_status_code;
 
-    constexpr VulkanStatusDomain() noexcept : status_domain(uuid("8ad355cf-d68b-4712-beb6-7e0938c9f835")){}
+    constexpr vulkan_status_domain() noexcept : status_domain(uuid("8ad355cf-d68b-4712-beb6-7e0938c9f835")){}
 
 
     string_ref name() const noexcept override{
       return VK_string("Vulkan api");
     }
 
-    code doCode(const status_code<void> &status) const noexcept override {}
-    string_ref doMessage(const status_code<void> &status) const noexcept override {}
-    bool doFailure(const status_code<void> &status) const noexcept override {}
-    severity doSeverity(const status_code<void> &status) const noexcept override {}
-    bool doEquivalent(const status_code<void> &statusA, const status_code<void> &statusB) const noexcept override {}
+    code do_generic_code(const status_code<void> &status) const noexcept override {}
+    string_ref do_message(const status_code<void> &status) const noexcept override {}
+    bool do_failure(const status_code<void> &status) const noexcept override {}
+    severity do_severity(const status_code<void> &status) const noexcept override {}
+    bool do_equivalent(const status_code<void> &statusA, const status_code<void> &statusB) const noexcept override {}
 
-    inline static const VulkanStatusDomain& get() noexcept {
-      constexpr static VulkanStatusDomain domainInstance{};
+    inline static const vulkan_status_domain& get() noexcept {
+      constexpr static vulkan_status_domain domainInstance{};
       return domainInstance;
     }
   };
 
-  using status = status_code<VulkanStatusDomain>;
-  using Error  = error_code<VulkanStatusDomain>;
+  using status = status_code<vulkan_status_domain>;
+  using error  = error_code<vulkan_status_domain>;
+  template <typename T, typename NoValuePolicy = void>
+  using basic_result = valkyrie::basic_result<T, vulkan_status_domain, NoValuePolicy>;
   template <typename T>
-  using Result = maybe<T, VulkanStatusDomain>;
+  using result = basic_result<T>;
+
 
   class instance;
   class physical_device;
@@ -63,39 +67,39 @@ namespace valkyrie::graphics::api{
   class queue;
   class semaphore;
   class command_buffer;
-  class Fence;
+  class fence;
   class device_memory;
   class buffer;
   class image;
   class event;
-  class QueryPool;
-  class BufferView;
-  class ImageView;
+  class query_pool;
+  class buffer_view;
+  class image_view;
   class shader_module;
-  class PipelineCache;
-  class PipelineLayout;
+  class pipeline_cache;
+  class pipeline_layout;
   class render_pass;
   class pipeline;
-  class DescriptorSetLayout;
-  class Sampler;
-  class DescriptorPool;
-  class DescriptorSet;
-  class Framebuffer;
+  class descriptor_set_layout;
+  class sampler;
+  class descriptor_pool;
+  class descriptor_set;
+  class framebuffer;
   class command_pool;
-  class SamplerYcbcrConversion;
-  class DescriptorUpdateTemplate;
+  class sampler_ycbcr_conversion;
+  class descriptor_update_template;
   class surface;
-  class Swapchain;
+  class swapchain;
   class display;
-  class DisplayMode;
-  class DebugReportCallback;
-  class DebugUtilsMessenger;
+  class display_mode;
+  class debug_report_callback;
+  class debug_utils_messenger;
   class acceleration_structure;
-  class ValidationCache;
-  class PerformanceConfiguration;
-  class DeferredOperation;
-  class IndirectCommandsLayout;
-  class PrivateDataSlot;
+  class validation_cache;
+  class performance_configuration;
+  class deferred_operation;
+  class indirect_commands_layout;
+  class private_data_slot;
 
   class VulkanType{};
 

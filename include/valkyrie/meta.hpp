@@ -188,6 +188,26 @@ namespace valkyrie{
     struct is_same_as : false_type {};
     template <typename A>
     struct is_same_as<A, A> : true_type {};
+
+
+    template <typename T>
+    struct is_a_member_pointer : false_type {};
+    template <typename T, typename C>
+    struct is_a_member_pointer<T C::*> : true_type {};
+
+    template <typename T>
+    struct member_pointer_pointee;
+    template <typename T, typename C>
+    struct member_pointer_pointee<T C::*>{
+      using type = T;
+    };
+
+    template <typename T>
+    struct member_pointer_class;
+    template <typename T, typename C>
+    struct member_pointer_class<T C::*>{
+      using type = C;
+    };
   }
 
   template <typename T>
@@ -215,6 +235,12 @@ namespace valkyrie{
 
   template <typename T>
   using add_const_past_pointer_t = typename meta::add_const_past_pointer<T>::type;
+
+
+  template <typename P> requires meta::is_a_member_pointer<P>::value
+  using member_pointer_pointee_t = typename meta::member_pointer_pointee<P>::type;
+  template <typename P> requires meta::is_a_member_pointer<P>::value
+  using member_pointer_class_t = typename meta::member_pointer_class<P>::type;
 
 
   inline namespace concepts{
@@ -466,8 +492,48 @@ namespace valkyrie{
     static_assert(set_equivalent_to<set<int, float, double>, set<double, int, float>>);
     static_assert(strict_subset_of<set<int>, set<float, double, int>>);
   }
+
+
+
+
+
+
+  namespace impl{
+
+    template <auto MemPtr>
+    struct get_member_offset;
+    template <typename Member, typename Class, Member Class::* MemPtr>
+    struct get_member_offset<MemPtr>{
+
+      inline constexpr static size_t MemberArraySize = sizeof(Class) / sizeof(Member);
+
+      union{
+        char   init{};
+        Member member[MemberArraySize];
+        Class  object;
+      };
+
+      constexpr size_t calculate() const noexcept {
+        const auto result_addr = std::addressof(std::addressof(object)->*MemPtr);
+        size_t I = 0;
+        for (;I < MemberArraySize; ++I) {
+          if (member + I == result_addr)
+            return I * sizeof(Member);
+        }
+        //return (std::addressof(std::addressof(object)->*MemPtr) - member) * sizeof(Member);
+      }
+    };
+  }
+
+  template <auto Ptr>
+  inline constexpr size_t offset_of() noexcept {
+    impl::get_member_offset<Ptr> str_;
+    return str_.calculate();
+  }
+
 }
 
+#define VK_offsetof(type, member) ::valkyrie::offset_of<&type::member>()
 #define VK_wrap(...) decltype(::valkyrie::meta::detail::wrap_<__VA_ARGS__>(::valkyrie::meta::overload<2>{}))
 #define VK_instantiable_with(...) concepts::specialized<VK_foreach_delimit(VK_wrap, VK_comma_delimiter, ##__VA_ARGS__)>
 

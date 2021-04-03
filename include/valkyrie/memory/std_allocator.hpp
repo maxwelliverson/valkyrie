@@ -6,6 +6,7 @@
 #define VALKYRIE_MEMORY_STD_ALLOCATOR_HPP
 
 #include "detail/utility.hpp"
+#include <valkyrie/adt/ptr.hpp>
 #include "allocator_storage.hpp"
 
 namespace valkyrie{
@@ -57,11 +58,23 @@ namespace valkyrie{
     }
   };
 
+
+  namespace impl{
+    template <typename T>
+    struct reference_typedef{
+      using reference = T&;
+      using const_reference = const T&;
+    };
+    template <>
+    struct reference_typedef<void>{};
+  }
+
   /// Wraps a \concept{concept_rawallocator,RawAllocator} and makes it a "normal" \c Allocator.
   /// It allows using a \c RawAllocator anywhere a \c Allocator is required.
   /// \ingroup adapter
-  template <typename T, class RawAllocator>
+  template <typename T, class RawAllocator, typename Ptr = borrowed_ptr<T>>
   class std_allocator :
+      public impl::reference_typedef<T>,
 #if defined _MSC_VER && defined __clang__
       protected allocator_reference<RawAllocator>
 #else
@@ -74,15 +87,21 @@ namespace valkyrie{
 
           using prop_traits = propagation_traits<RawAllocator>;
 
+          template <typename U>
+          using ptr_t = ptr_rebind_t<U, Ptr>;
+
+          template <typename U>
+          using param_ptr_t = copy_cvref_t<ptr_t<U>, param_t<Ptr>>;
+
           public:
           //=== typedefs ===//
           using value_type      = T;
-          using pointer         = T*;
-          using const_pointer   = const T*;
-          using reference       = T&;
-          using const_reference = const T&;
+          using pointer         = Ptr;
+          using const_pointer   = ptr_t<const T>;
+          //using reference       = T&;
+          //using const_reference = const T&;
           using size_type       = u64;
-          using difference_type = i64;
+          using difference_type = typename pointer::difference_type;
 
           using propagate_on_container_swap = typename prop_traits::propagate_on_container_swap;
           using propagate_on_container_move_assignment =
@@ -184,23 +203,59 @@ namespace valkyrie{
             deallocate_impl(is_any{}, p, n);
           }
 
+          template <typename U>
+          ptr_t<U> allocate_object(size_type n = 1){
+            VK_assert(n != 0);
+            return ptr_t<U>(allocate_impl<U>(n));
+          }
+          template <typename U>
+          void     deallocate_object(param_ptr_t<U> p, size_type n = 1) noexcept {
+            VK_assert(n != 0);
+            deallocate_impl(std::to_address(p), n);
+          }
+
+
+
           //=== construction/destruction ===//
           /// \effects Creates an object of type \c U at given address using the passed arguments.
           template <typename U, typename... Args>
-          void construct(U* p, Args&&... args)
+          void construct(param_t<ptr_t<U>> p, Args&&... args)
           {
-            void* mem = p;
+            void* mem = std::to_address(p);
             ::new (mem) U(std::forward<Args>(args)...);
           }
 
           /// \effects Calls the destructor for an object of type \c U at given address.
           template <typename U>
-          void destroy(U* p) noexcept
-          {
-            // This is to avoid a MSVS 2015 'unreferenced formal parameter' warning
-            (void)p;
+          void destroy(param_ptr_t<U> p) noexcept {
             p->~U();
           }
+
+
+          template <typename U, typename ...Args> requires std::constructible_from<U, Args...>
+          ptr_t<U> new_object(Args&& ...args) {
+            auto result = this->allocate_object<U>();
+
+#if VK_exceptions_enabled
+            try {
+              this->construct(result, std::forward<Args>(args)...);
+            } catch(...) {
+              this->deallocate(result);
+              throw;
+            }
+#else
+            this->construct(result, std::forward<Args>(args)...);
+#endif
+            return result;
+          }
+          template <typename U>
+          void     delete_object(param_ptr_t<U> p) noexcept {
+            this->destroy(p);
+            this->deallocate_object(p);
+          }
+
+
+
 
           //=== getter ===//
           /// \returns The maximum size for an allocation which is <tt>max_array_size() / sizeof(value_type)</tt>.
@@ -228,65 +283,47 @@ namespace valkyrie{
           /// @}
 
           private:
-          // any_allocator_reference: use virtual function which already does a dispatch on node/array
-          void* allocate_impl(std::true_type, size_type n)
-          {
-            return get_allocator().allocate_impl(n, sizeof(T), alignof(T));
+
+          template <typename U>
+          U*    allocate_impl(size_type n){
+            void* p;
+            if constexpr (is_any::value) {
+              p = get_allocator().allocate_impl();
+            }
+            else {
+              if (n == 1)
+                p = this->allocate_node(sizeof(U), alignof(U));
+              else
+                p = this->allocate_array(n, sizeof(U), alignof(U));
+            }
+            return static_cast<U*>(p);
+          }
+          template <typename U>
+          void  deallocate_impl(U* p, size_type n) noexcept {
+            if constexpr (is_any::value) {
+              get_allocator().deallocate_impl(p, n, sizeof(U), alignof(U));
+            }
+            else {
+              if (n == 1)
+                this->deallocate_node(p, sizeof(U), alignof(U));
+              else
+                this->deallocate_array(p, n, sizeof(U), alignof(U));
+            }
           }
 
-          void deallocate_impl(std::true_type, void* ptr, size_type n)
-          {
-            get_allocator().deallocate_impl(ptr, n, sizeof(T), alignof(T));
-          }
-
-          // alloc_reference: decide between node/array
-          void* allocate_impl(std::false_type, size_type n)
-          {
-            if (n == 1)
-              return this->allocate_node(sizeof(T), alignof(T));
+          template <typename U>
+          bool equal_to(const std_allocator<U, RawAllocator>& other) const noexcept {
+            if constexpr ( is_shared_allocator<RawAllocator>::value )
+              return get_allocator() == other.get_allocator();
+            else if constexpr ( allocator_traits<RawAllocator>::is_stateful::value )
+              return &get_allocator() == &other.get_allocator();
             else
-              return this->allocate_array(n, sizeof(T), alignof(T));
+              return true;
           }
 
-          void deallocate_impl(std::false_type, void* ptr, size_type n)
-          {
-            if (n == 1)
-              this->deallocate_node(ptr, sizeof(T), alignof(T));
-            else
-              this->deallocate_array(ptr, n, sizeof(T), alignof(T));
-          }
-
-          template <typename U> // stateful
-          bool equal_to_impl(std::true_type,
-          const std_allocator<U, RawAllocator>& other) const noexcept
-          {
-            return &get_allocator() == &other.get_allocator();
-          }
-
-          template <typename U> // non-stateful
-          bool equal_to_impl(std::false_type,
-          const std_allocator<U, RawAllocator>&) const noexcept
-          {
-            return true;
-          }
-
-          template <typename U> // shared
-          bool equal_to(std::true_type,
-          const std_allocator<U, RawAllocator>& other) const noexcept
-          {
-            return get_allocator() == other.get_allocator();
-          }
-
-          template <typename U> // not shared
-          bool equal_to(std::false_type,
-          const std_allocator<U, RawAllocator>& other) const noexcept
-          {
-            return equal_to_impl(typename allocator_traits<RawAllocator>::is_stateful{}, other);
-          }
 
           template <typename T1, typename T2, class Impl>
-          friend bool operator==(const std_allocator<T1, Impl>& lhs,
-          const std_allocator<T2, Impl>& rhs) noexcept;
+          friend bool operator==(const std_allocator<T1, Impl>& lhs, const std_allocator<T2, Impl>& rhs) noexcept;
 
           template <typename U, class OtherRawAllocator>
           friend class std_allocator;
@@ -299,10 +336,10 @@ namespace valkyrie{
   bool operator==(const std_allocator<T, Impl>& lhs,
                   const std_allocator<U, Impl>& rhs) noexcept
 {
-  return lhs.equal_to(is_shared_allocator<Impl>{}, rhs);
+  return lhs.equal_to(rhs);
 }
 
-/// \effects Compares two \ref std_allocator object, they are equal if either stateless or reference the same allocator.
+/*/// \effects Compares two \ref std_allocator object, they are equal if either stateless or reference the same allocator.
 /// \returns The result of the comparision for inequality.
 /// \relates std_allocator
 template <typename T, typename U, class Impl>
@@ -310,7 +347,7 @@ bool operator!=(const std_allocator<T, Impl>& lhs,
                 const std_allocator<U, Impl>& rhs) noexcept
 {
 return !(lhs == rhs);
-}
+}*/
 
 /// \returns A new \ref std_allocator for a given type using a certain allocator object.
 /// \relates std_allocator

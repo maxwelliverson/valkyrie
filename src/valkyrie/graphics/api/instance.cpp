@@ -79,9 +79,9 @@ public:
     auto* availExt    = (VkExtensionProperties*)alloca(instanceExtSize * sizeof(VkExtensionProperties));
     freeFunctions.enumerateLayers(&layerSize, availLayers);
     freeFunctions.enumerateInstanceExtensions(nullptr, &instanceExtSize, availExt);
-    for (const auto& layer : Span<VkLayerProperties>{availLayers, layerSize})
+    for (const auto& layer : span<VkLayerProperties>{availLayers, layerSize})
       availableLayers.emplace_back(layer.layerName);
-    for (const auto& ext : Span<VkExtensionProperties>{availExt, instanceExtSize})
+    for (const auto& ext : span<VkExtensionProperties>{availExt, instanceExtSize})
       availableExtensions.emplace_back(ext.extensionName);
     uint32_t versionNum = 0;
     freeFunctions.getInstanceVersion(&versionNum);
@@ -133,7 +133,7 @@ public:
     if (auto physicalDeviceResult = instanceFunctions->enumeratePhysicalDevices(handle, &physicalDeviceCount, physicalDeviceArray))
       return physicalDeviceResult;
     Impl* copyImpl = this;
-    for (auto device : Span<VkPhysicalDevice>{physicalDeviceArray, physicalDeviceCount}) {
+    for (auto device : span<VkPhysicalDevice>{physicalDeviceArray, physicalDeviceCount}) {
       physicalDevices.emplace_back(*reinterpret_cast<Instance*>(&copyImpl), device);
     }
 
@@ -142,18 +142,18 @@ public:
 
 
 
-  Span<const string_view> getEnabledExtensions() const noexcept {
+  span<const string_view> getEnabledExtensions() const noexcept {
     return { enabledExtensions.data(), enabledExtensions.size() };
   }
-  Span<const string_view> getEnabledLayers() const noexcept {
+  span<const string_view> getEnabledLayers() const noexcept {
     return { enabledExtensions.data(), enabledExtensions.size() };
   }
 };
 
 
-Span<const string_view> Instance::enabledExtensions() const noexcept {
+span<const string_view> Instance::enabledExtensions() const noexcept {
   return pImpl->getEnabledExtensions();
 }
-Span<const string_view> Instance::enabledLayers() const noexcept {
+span<const string_view> Instance::enabledLayers() const noexcept {
   return pImpl->getEnabledLayers();
 }*/

@@ -330,7 +330,9 @@ namespace valkyrie{
     }
 
     inline constexpr void priv_sort_() noexcept {
-      std::sort(m_set_.begin(), m_set_.end(), [&order](in_param_t A, in_param_t B){ return order(A, B) == std::weak_ordering::less; });
+      std::sort(m_set_.begin(), m_set_.end(), [this](in_param_t A, in_param_t B){
+        return order(A, B) == std::weak_ordering::less;
+      });
       VK_constexpr_assert(checkIsSorted());
     }
     inline constexpr void priv_sort_() noexcept requires(std::is_const_v<value_type>){
@@ -345,7 +347,9 @@ namespace valkyrie{
     }
     
     inline constexpr auto get_less_than() const noexcept {
-      return [&order](auto&& a, auto&& b){ return order(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b)) == std::weak_ordering::less; }
+      return [this](auto&& a, auto&& b){
+        return order(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b)) == std::weak_ordering::less;
+      }
     }
 
     container_type m_set_{};

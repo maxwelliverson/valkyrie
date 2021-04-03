@@ -26,6 +26,55 @@ namespace valkyrie{
 
   namespace impl{
 
+    template <auto MemFnPtr, typename = meta::overload<1>>
+    struct get_function_ptr;
+
+    template <typename Ret, typename ...Args, Ret(*FnPtr)(Args...) noexcept>
+    struct get_function_ptr<FnPtr, meta::overload<1>>{
+      inline constexpr static auto value = FnPtr;
+    };
+    template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) noexcept>
+    struct get_function_ptr<MemFn, meta::overload<1>>{
+      static Ret value(Class* p, Args... args) noexcept {
+        return (p->*MemFn)(std::forward<Args>(args)...);
+      }
+    };
+    template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) const noexcept>
+    struct get_function_ptr<MemFn, meta::overload<1>>{
+      static Ret value(const Class* p, Args... args) noexcept {
+        return (p->*MemFn)(std::forward<Args>(args)...);
+      }
+    };
+
+    template <typename Ret, typename ...Args, Ret(*FnPtr)(Args...)>
+    struct get_function_ptr<FnPtr, meta::overload<0>>{
+      inline constexpr static auto value = FnPtr;
+    };
+    template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...)>
+    struct get_function_ptr<MemFn, meta::overload<0>>{
+      static Ret value(Class* p, Args... args) {
+        return (p->*MemFn)(std::forward<Args>(args)...);
+      }
+    };
+    template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) const>
+    struct get_function_ptr<MemFn, meta::overload<0>>{
+      static Ret value(const Class* p, Args... args) {
+        return (p->*MemFn)(std::forward<Args>(args)...);
+      }
+    };
+
+    template <auto Fn>
+    struct get_function_ptr<Fn, meta::overload<1>> : get_function_ptr<Fn, meta::overload<0>>{};
+
+
+
+
+
+    //template <auto Fn>
+
+
+
+
     template <typename Derived,
               typename Ptr,
               typename RefType,
@@ -67,6 +116,17 @@ namespace valkyrie{
     };
 
 
+    template <typename Fn>
+    using function_ptr = Fn*;
+
+    template <typename Derived, typename Ptr>
+    concept has_on_acquire = requires(function_ptr<Ptr(Derived*, param_t<Ptr>) noexcept>& fn){
+      fn = get_function_ptr<&Derived::on_acquire>::value;
+    };
+    template <typename Derived>
+    concept has_on_release = requires(function_ptr<void(Derived*) noexcept>& fn){
+      fn = get_function_ptr<&Derived::on_release>::value;
+    };
 
 
 
@@ -122,8 +182,8 @@ namespace valkyrie{
 
       using ptr_param_t = param_t<Ptr>;
 
-      using PFN_on_acquire = Ptr(*)(Derived*, ptr_param_t) noexcept;
-      using PFN_on_release = void(*)(Derived*) noexcept;
+      using PFN_on_acquire = Ptr(*)(Derived*, ptr_param_t) /*noexcept*/;
+      using PFN_on_release = void(*)(Derived*) /*noexcept*/;
 
       /*template <auto pfn_on_release>
       consteval bool is_trivial_release() {
@@ -143,19 +203,19 @@ namespace valkyrie{
         return pfn_on_acquire == &ptr_storage::on_acquire;
       }*/
 
-      template <PFN_on_release = &Derived::on_release>
+      /*template <PFN_on_release = &Derived::on_release>
       static auto get_on_release(meta::overload<1>) -> meta::true_type;
       static auto get_on_release(meta::fallback)    -> meta::false_type;
 
       template <PFN_on_acquire = &Derived::on_acquire>
       static auto get_on_acquire(meta::overload<1>) -> meta::true_type;
-      static auto get_on_acquire(meta::fallback)    -> meta::false_type;
+      static auto get_on_acquire(meta::fallback)    -> meta::false_type;*/
 
 
       //inline constexpr static bool IsTrivialRelease          = is_trivial_release<&Derived::on_release>();
       //inline constexpr static bool IsTrivialAcquire          = is_trivial_acquire<&Derived::on_acquire>();
-      inline constexpr static bool IsTrivialRelease          = !decltype(get_on_release(meta::overload<1>{}))::value;
-      inline constexpr static bool IsTrivialAcquire          = !decltype(get_on_acquire(meta::overload<1>{}))::value;
+      inline constexpr static bool IsTrivialRelease          = !has_on_release<Derived>;
+      inline constexpr static bool IsTrivialAcquire          = !has_on_acquire<Derived, Ptr>;
       inline constexpr static bool IsTrivial                 = IsTrivialAcquire && IsTrivialRelease;
       inline constexpr static bool IsNullable                = std::constructible_from<Ptr, std::nullptr_t>;
 
@@ -240,11 +300,11 @@ namespace valkyrie{
     private:
 
       inline void do_release()              noexcept requires(!IsTrivialRelease) {
-        constexpr static PFN_on_release on_release_ = &Derived::on_release;
+        constexpr static PFN_on_release on_release_ = get_function_ptr<&Derived::on_release>::value;
         on_release_(static_cast<derived_type*>(this));
       }
       inline Ptr  do_acquire(ptr_param_t p) noexcept requires(!IsTrivialAcquire) {
-        constexpr static PFN_on_acquire on_acquire_ = &Derived::on_acquire;
+        constexpr static PFN_on_acquire on_acquire_ = get_function_ptr<&Derived::on_acquire>::value;
         return on_acquire_(static_cast<derived_type*>(this), p);
       }
 
@@ -313,7 +373,8 @@ namespace valkyrie{
 
       derived_type& operator++()    noexcept {
         derived_type& This = derived();
-        This.reset(++This.get());
+        auto&& p = This.get();
+        This.reset(++p);
         return This;
       }
       derived_type  operator++(int) noexcept {
@@ -442,9 +503,15 @@ namespace valkyrie{
     };
 
 
+    template <typename Ptr, typename = meta::overload<1>>
+    struct ptr_default_ordering_type : ptr_default_ordering_type<Ptr, meta::overload<0>>{};
     template <typename Ptr>
-    struct ptr_default_ordering_type{
+    struct ptr_default_ordering_type<Ptr, meta::overload<0>>{
       using type = not_ordered;
+    };
+    template <typename Ptr> requires requires(const Ptr& a){ a < a; a == a; }
+    struct ptr_default_ordering_type<Ptr, meta::overload<0>>{
+      using type = strong_ordering;
     };
     template <typename Ptr>
     requires requires(const Ptr& a){
@@ -452,13 +519,10 @@ namespace valkyrie{
       a < a;
       a == a;
     }
-    struct ptr_default_ordering_type<Ptr>{
+    struct ptr_default_ordering_type<Ptr, meta::overload<1>>{
       using type = std::compare_three_way_result_t<const Ptr&, const Ptr&>;
     };
-    template <typename Ptr> requires requires(const Ptr& a){ a < a; a == a; }
-    struct ptr_default_ordering_type<Ptr>{
-      using type = strong_ordering;
-    };
+
 
 
     template <typename Ptr, typename = meta::overload<2>>
@@ -546,17 +610,26 @@ namespace valkyrie{
 
 
   /**
-   * A version of ptr_facade that also provides storage, access, and optional
-   * lifetime tracking.
+   * An extension of ptr_facade that also provides storage, access,
+   * and optional lifetime tracking.
    *
-   * @tparam Derived The actual type inheriting from ptr_base.
-   *                 Unlike ptr_facade, Derived doesn't need to
-   *                 define any extra methods for full functionality,
-   *                 but two optional hooks are provided for
-   *                 lifetime tracking. It is valid to only provide
-   *                 one hook but not the other.
-   *                   - Ptr acquire(param_t<Ptr>) OR static Ptr acquire(Derived*, param_t<Ptr>)
-   *                   -
+   * @tparam Derived  The actual type inheriting from ptr_base.
+   *                  Unlike ptr_facade, Derived doesn't need to
+   *                  define any extra methods for full functionality,
+   *                  but two optional hooks are provided for
+   *                  lifetime tracking. It is valid to only provide
+   *                  one hook but not the other.
+   *                    - Ptr on_acquire(param_t<Ptr>) noexcept
+   *                      OR
+   *                      static Ptr on_acquire(Derived*, param_t<Ptr>) noexcept
+   *                    - void on_release() noexcept
+   *                      OR
+   *                      static void on_release(Derived*) noexcept
+   *
+   * @tparam Ptr      See ptr_facade
+   * @tparam RefType  See ptr_facade
+   * @tparam Ordering See ptr_facade
+   * @tparam DiffType See ptr_facade
    *
    * */
   template <typename Derived,
@@ -595,8 +668,47 @@ namespace valkyrie{
     }
   };
 
+  template <typename T, typename Deleter = std::default_delete<T>>
+  class unique_ptr : public ptr_base<unique_ptr<T>, T*>{
+    using base = ptr_base<unique_ptr, T*>;
+  public:
+    using base::base;
 
-  void hello(borrowed_ptr<>)
+    unique_ptr(const unique_ptr&) = delete;
+    unique_ptr& operator=(const unique_ptr&) = delete;
+
+
+
+    void on_release() noexcept {
+      if (auto p = this->get())
+        deleter(p);
+    }
+
+  private:
+    [[no_unique_address]] Deleter deleter{};
+  };
+
+  /*struct HelloTest{
+    int hi;
+    HelloTest* next;
+
+    int member_func(float) noexcept;
+    static int static_func(HelloTest*, float);
+  };
+
+  void hello(borrowed_ptr<HelloTest> ptr) {
+    auto& p = ++ptr;
+    assert( ptr < p );
+  }
+  void hello(borrowed_ptr<void> ptr) {
+    assert( (ptr <=> ptr) == strong_ordering::equal);
+  }
+
+  void test(){
+    using fn_ptr = int(*)(HelloTest*, float);
+    fn_ptr a = impl::get_function_ptr<&HelloTest::static_func>::value;
+    fn_ptr b = impl::get_function_ptr<&HelloTest::member_func>::value;
+  }*/
 
 
 #define VK_nonnull VK_if(VK_compiler_clang(_Nonnull))

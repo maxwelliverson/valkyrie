@@ -46,19 +46,19 @@ namespace valkyrie::graphics::api{
     const void* const pEnabledFeatures = nullptr;
   public:
     constexpr DeviceCreateInfo() noexcept : InputStruct((StructureType)3){}
-    constexpr DeviceCreateInfo(Span<const DeviceQueueCreateInfo> queueCreateInfo, Span<const utf8* const> enabledExtensions) noexcept
+    constexpr DeviceCreateInfo(span<const DeviceQueueCreateInfo> queueCreateInfo, span<const utf8* const> enabledExtensions) noexcept
         : InputStruct((StructureType)3),
           queueCreateInfoCount(queueCreateInfo.size()),
           pQueueCreateInfos(queueCreateInfo.data()),
           enabledExtensionCount(enabledExtensions.size()),
           ppEnabledExtensionNames(enabledExtensions.data()){}
 
-    constexpr DeviceCreateInfo& setQueueCreateInfo(Span<DeviceQueueCreateInfo> createInfos) noexcept {
+    constexpr DeviceCreateInfo& setQueueCreateInfo(span<DeviceQueueCreateInfo> createInfos) noexcept {
       this->queueCreateInfoCount = createInfos.size();
       this->pQueueCreateInfos = createInfos.data();
       return *this;
     }
-    constexpr DeviceCreateInfo& setEnabledExtensions(Span<const utf8*> extensions) noexcept {
+    constexpr DeviceCreateInfo& setEnabledExtensions(span<const utf8*> extensions) noexcept {
       enabledExtensionCount = extensions.size();
       ppEnabledExtensionNames = extensions.data();
       return *this;

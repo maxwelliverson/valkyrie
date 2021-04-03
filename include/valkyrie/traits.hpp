@@ -175,6 +175,10 @@ namespace valkyrie{
     
     namespace detail{
 
+
+
+
+
       template <typename T>
       inline constexpr static const T& referenceTo(const T* pVal) noexcept {
         return *pVal;
@@ -777,6 +781,10 @@ namespace valkyrie{
 
     template <typename P, typename T = const void>
     concept pointer_fwd_ref = pointer<std::remove_reference_t<P>, T>;
+
+    template <typename P>
+    concept member_pointer = meta::is_a_member_pointer<P>::value;
+
 
     template <typename T, typename U>
     concept aliased_by = requires{

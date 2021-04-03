@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_GRAPHICS_API_QUEUE_HPP
 #define VALKYRIE_GRAPHICS_API_QUEUE_HPP
 
-#include <valkyrie/adt/array_ref.hpp.hpp>
+#include <valkyrie/adt/array_ref.hpp>
 #include <valkyrie/graphics/api/vulkan.hpp>
 #include <valkyrie/utility/bitflag.hpp>
 #include <valkyrie/utility/interval.hpp>
@@ -25,10 +25,10 @@ namespace valkyrie::graphics::api{
   protected:
     device * pDevice;
   };
-  class GraphicsQueue : public queue {};
-  class ComputeQueue : public queue {};
-  class TransferQueue : public queue {};
-  class SparseBindingQueue : public queue {};
+  class graphics_queue : public queue {};
+  class compute_queue : public queue {};
+  class transfer_queue : public queue {};
+  class sparse_binding_queue : public queue {};
 
 
   class DeviceQueueGlobalPriority : public InputStruct{
@@ -58,7 +58,7 @@ namespace valkyrie::graphics::api{
     constexpr DeviceQueueCreateInfo(u32 queueFamily) noexcept
         : InputStruct((StructureType)2),
           queueFamilyIndex(queueFamily){}
-    constexpr DeviceQueueCreateInfo& setPriorities(Span<float> priorities) noexcept {
+    constexpr DeviceQueueCreateInfo& setPriorities(span<float> priorities) noexcept {
       queueCount = priorities.size();
       pQueuePriorities = priorities.data();
       return *this;
