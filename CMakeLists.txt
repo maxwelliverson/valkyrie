@@ -135,6 +135,9 @@ add_object(valkyrie.async.agent)
 add_object(valkyrie.async.task)
 
 add_object(valkyrie.utility)
+
+add_object(valkyrie.status.domains.std)
+
 add_object(valkyrie.status.error)
 add_object(valkyrie.status.system)
 
@@ -163,6 +166,7 @@ add_object(valkyrie.gui.dxgi)
 
 add_object(valkyrie.graphics.engine.engine)
 add_object(valkyrie.graphics.engine.option)
+add_object(valkyrie.graphics.engine.obj)
 
 add_object_library(valkyrie.status OBJECTS error system)
 add_object_library(valkyrie.memory.detail OBJECTS align debug_helpers free_list free_list_array small_free_list)

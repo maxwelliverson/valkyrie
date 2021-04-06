@@ -116,7 +116,7 @@ allocator_storage() = default;
 template <typename Alloc>
 allocator_storage(Alloc&& alloc)
     requires(!std::derived_from<std::remove_cvref_t<Alloc>, allocator_storage> &&
-              std::constructible_from<storage_policy, Alloc>)
+              std::is_constructible_v<storage_policy, Alloc&&>)
 : storage_policy(std::forward<Alloc>(alloc))
 {
 }
@@ -569,14 +569,15 @@ class reference_storage : impl::reference_storage<RawAllocator> {
           return storage::get_allocator();
         }
 
+  ~reference_storage() noexcept = default;
         protected:
-        ~reference_storage() noexcept = default;
+
 
         bool is_composable() const noexcept
         {
           return is_composable_allocator<allocator_type>::value;
         }
-    };
+};
 
 /// Specialization of the class template \ref reference_storage that is type-erased.
 /// It is triggered by the tag type \ref any_allocator.

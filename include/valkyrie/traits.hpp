@@ -807,6 +807,9 @@ namespace valkyrie{
     template <typename T>
     concept is_register_copyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
 
+    template <typename Rng, typename U = void>
+    concept contiguous_range = std::ranges::contiguous_range<Rng> &&
+                               (same_as<U, void> || std::convertible_to<std::ranges::range_reference_t<Rng>, U&>);
 
     template <typename A, typename T = byte>
     concept contiguous_range_type = requires(A&& a){

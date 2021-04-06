@@ -156,7 +156,7 @@ namespace valkyrie{
         VK_assert_msg(result, "null pointer access detected");
         return *result;
       }
-      Ptr operator->() const noexcept requires std::is_compound_v<remove_cv_t<ptr_element_t<Ptr>>> {
+      Ptr operator->() const noexcept /*requires std::is_compound_v<remove_cv_t<ptr_element_t<Ptr>>>*/ {
         auto result = derived().get();
         VK_assert_msg(result, "null pointer access detected");
         return result;
@@ -763,7 +763,14 @@ namespace valkyrie{
 
     friend bool operator==(const nonnull& a, std::nullptr_t) noexcept { return false; }
   };
-
 }
+
+/*template <typename T>
+struct std::pointer_traits<valkyrie::borrowed_ptr<T>>{
+
+  //using pointer
+
+
+};*/
 
 #endif//VALKYRIE_ADT_PTR_HPP

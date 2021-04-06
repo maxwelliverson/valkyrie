@@ -6,6 +6,7 @@
 #define VALKYRIE_STRING_VIEW_HPP
 
 #include <valkyrie/traits.hpp>
+#include <valkyrie/utility/casting.hpp>
 
 #include <iterator>
 #include <string_view>
@@ -353,11 +354,11 @@ namespace valkyrie{
 
   class string_view {
     const utf8* pString = u8"";
-    u32 byteLength_ = 0;
+    u64 length_ = 0;
   public:
 
     using value_type = const utf8;
-    using size_type = u32;
+    using size_type = u64;
     using pointer = const utf8*;
     using cstring_type = const char*;
 
@@ -377,45 +378,66 @@ namespace valkyrie{
 
     /*constexpr */~string_view() noexcept = default;
 
+    template <contiguous_range<const utf8> Rng>
+    constexpr string_view(Rng& rng) noexcept
+        : pString(std::ranges::data(rng)),
+          length_(std::ranges::size(rng)){}
 
-    template <typename Str> requires(!std::same_as<string_view, std::remove_cvref_t<Str>> && requires(Str&& str){
+    template <size_t N>
+    constexpr string_view(const utf8(&str)[N]) noexcept
+        : pString(str),
+          length_(N - 1){}
+    template <size_t N>
+    /*constexpr*/ string_view(const char(&str)[N]) noexcept
+        : pString(reinterpret_cast<const utf8(&)[N]>(str)),
+          length_(N - 1){}
+
+
+    /*template <typename Str> requires(!std::same_as<string_view, std::remove_cvref_t<Str>> && requires(Str&& str){
       { detail::StringInfo<std::remove_cvref_t<Str>>::data((Str&&)str) } noexcept;
     })
     constexpr string_view(Str&& str) noexcept
         : pString(detail::StringInfo<std::remove_cvref_t<Str>>::data(std::forward<Str>(str))),
-          byteLength_(detail::StringInfo<std::remove_cvref_t<Str>>::byteLength(std::forward<Str>(str))){}
+          length_(detail::StringInfo<std::remove_cvref_t<Str>>::byteLength(std::forward<Str>(str))){}*/
 
-    constexpr string_view(const utf8* pData, u32 stringLength) noexcept
+    constexpr string_view(const utf8* pData) noexcept
         : pString(pData),
-          byteLength_(stringLength){}
+          length_(std::char_traits<utf8>::length(pData)){}
+    /*constexpr*/ explicit string_view(const char* pData) noexcept
+        : pString(reinterpret_cast<utf8_string>(pData)),
+          length_(std::char_traits<char>::length(pData)){}
+
+    constexpr string_view(const utf8* pData, u64 stringLength) noexcept
+        : pString(pData),
+          length_(stringLength){}
 
 
     [[nodiscard]] cstring_type c_str() const noexcept { return (cstring_type)pString; }
 
     [[nodiscard]] constexpr pointer data() const noexcept { return pString; }
 
-    [[nodiscard]] constexpr u32 size() const noexcept { return byteLength_; }
-    [[nodiscard]] constexpr u32 length() const noexcept { return byteLength_; }
+    [[nodiscard]] constexpr u64 size() const noexcept { return length_; }
+    [[nodiscard]] constexpr u64 length() const noexcept { return length_; }
 
-    [[nodiscard]] constexpr u32 byteLength() const noexcept { return byteLength_; }
+    //[[nodiscard]] constexpr u64 byteLength() const noexcept { return length_; }
 
     [[nodiscard]] reference front() const noexcept { return *begin(); }
-    [[nodiscard]] reference back() const noexcept { return *(pString + byteLength_ - 1); }
+    [[nodiscard]] reference back() const noexcept { return *(pString + length_ - 1); }
 
     [[nodiscard]] iterator begin()        const noexcept { return iterator(pString); }
     [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
-    [[nodiscard]] sentinel end()          const noexcept { return sentinel(pString + byteLength_); }
+    [[nodiscard]] sentinel end()          const noexcept { return sentinel(pString + length_); }
     [[nodiscard]] const_sentinel cend()   const noexcept { return end(); }
 
     [[nodiscard]] friend bool operator==(string_view A, string_view B) noexcept {
-      return A.byteLength_ == B.byteLength_ &&
-             detail::stringCompare(A.pString, B.pString, A.byteLength_) == std::strong_ordering::equal;
+      return A.length_ == B.length_ &&
+             detail::stringCompare(A.pString, B.pString, A.length_) == std::strong_ordering::equal;
     }
     [[nodiscard]] friend std::strong_ordering operator<=>(string_view A, string_view B) noexcept {
-      auto compResult = detail::stringCompare(A.pString, B.pString, std::min(A.byteLength_, B.byteLength_));
+      auto compResult = detail::stringCompare(A.pString, B.pString, std::min(A.length_, B.length_));
       if (compResult != std::strong_ordering::equal)
         return compResult;
-      return A.byteLength_ <=> B.byteLength_;
+      return A.length_ <=> B.length_;
     }
   };
   class mutable_string_view {

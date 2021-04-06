@@ -444,6 +444,39 @@ namespace valkyrie{
 
 
 
+  //TODO: Refactor...
+  template <std::integral To, std::integral From>
+  inline To narrow_cast(From from) noexcept {
+    if constexpr ( std::signed_integral<From> ) {
+      if constexpr ( std::unsigned_integral<To> ) {
+        VK_assert( from >= 0 );
+        return static_cast<To>(from);
+      }
+      else if constexpr ( sizeof(To) < sizeof(From) ) {
+        VK_assert(std::numeric_limits<To>::min() <= from && from <= std::numeric_limits<To>::max());
+        return static_cast<To>(from);
+      }
+      else {
+        return from;
+      }
+    }
+    else if constexpr ( std::signed_integral<To> ) {
+      if constexpr (sizeof(To) <= sizeof(From)) {
+        VK_assert(from <= std::numeric_limits<To>::max());
+        return static_cast<To>(from);
+      }
+      else {
+        return from;
+      }
+    }
+    else if constexpr ( sizeof(To) < sizeof(From) ) {
+      VK_assert(std::numeric_limits<To>::min() <= from && from <= std::numeric_limits<To>::max());
+      return static_cast<To>(from);
+    }
+    else {
+      return from;
+    }
+  }
 
 
 

@@ -147,8 +147,8 @@ namespace valkyrie {
     unsigned ItemSize;
 
   protected:
-    explicit symbol_registry_impl(unsigned itemSize) : ItemSize(itemSize) {}
-    symbol_registry_impl(symbol_registry_impl &&RHS)
+    explicit symbol_registry_impl(unsigned itemSize) noexcept : ItemSize(itemSize) {}
+    symbol_registry_impl(symbol_registry_impl &&RHS) noexcept
         : TheTable(RHS.TheTable), NumBuckets(RHS.NumBuckets),
           NumItems(RHS.NumItems), NumTombstones(RHS.NumTombstones),
           ItemSize(RHS.ItemSize) {
@@ -222,7 +222,7 @@ namespace valkyrie {
   public:
     using MapEntryTy = detail::symbol_registry_entry<ValueTy>;
 
-    symbol_map() : symbol_registry_impl(static_cast<unsigned>(sizeof(MapEntryTy))) {}
+    symbol_map() noexcept : symbol_registry_impl(static_cast<unsigned>(sizeof(MapEntryTy))) {}
 
     explicit symbol_map(unsigned InitialSize)
         : symbol_registry_impl(InitialSize, static_cast<unsigned>(sizeof(MapEntryTy))) {}
@@ -266,8 +266,8 @@ namespace valkyrie {
           continue;
         }
 
-        TheTable[I] = MapEntryTy::Create(
-            static_cast<MapEntryTy *>(Bucket)->getKey(), Allocator,
+        TheTable[I] = MapEntryTy::create(
+            static_cast<MapEntryTy *>(Bucket)->key(), Allocator,
             static_cast<MapEntryTy *>(Bucket)->getValue());
         HashTable[I] = RHSHashTable[I];
       }
@@ -294,7 +294,7 @@ namespace valkyrie {
         for (unsigned I = 0, E = NumBuckets; I != E; ++I) {
           detail::symbol_registry_entry_base *Bucket = TheTable[I];
           if (Bucket && Bucket != get_tombstone_val()) {
-            static_cast<MapEntryTy *>(Bucket)->Destroy(Allocator);
+            static_cast<MapEntryTy *>(Bucket)->destroy(Allocator);
           }
         }
       }
@@ -358,7 +358,7 @@ namespace valkyrie {
 
     template<typename InputTy>
     size_type count(const detail::symbol_registry_entry<InputTy> &MapEntry) const {
-      return count(MapEntry.getKey());
+      return count(MapEntry.key());
     }
 
     /// equal - check whether both of the containers are equal.
@@ -367,7 +367,7 @@ namespace valkyrie {
         return false;
 
       for (const auto &KeyValue : *this) {
-        auto FindInRHS = RHS.find(KeyValue.getKey());
+        auto FindInRHS = RHS.find(KeyValue.key());
 
         if (FindInRHS == RHS.end())
           return false;
@@ -383,7 +383,7 @@ namespace valkyrie {
     /// already exists in the map, return false and ignore the request, otherwise
     /// insert it and return true.
     bool insert(MapEntryTy *KeyValue) {
-      unsigned BucketNo = lookup_bucket_for(KeyValue->getKey());
+      unsigned BucketNo = lookup_bucket_for(KeyValue->key());
       detail::symbol_registry_entry_base *&Bucket = TheTable[BucketNo];
       if (Bucket && Bucket != get_tombstone_val())
         return false;// Already exists in map.
@@ -430,7 +430,7 @@ namespace valkyrie {
 
       if (Bucket == get_tombstone_val())
         --NumTombstones;
-      Bucket = MapEntryTy::Create(Key, Allocator, std::forward<ArgsTy>(Args)...);
+      Bucket = MapEntryTy::create(Key, Allocator, std::forward<ArgsTy>(Args)...);
       ++NumItems;
       assert(NumItems + NumTombstones <= NumBuckets);
 
@@ -448,7 +448,7 @@ namespace valkyrie {
       for (unsigned I = 0, E = NumBuckets; I != E; ++I) {
         detail::symbol_registry_entry_base *&Bucket = TheTable[I];
         if (Bucket && Bucket != get_tombstone_val()) {
-          static_cast<MapEntryTy *>(Bucket)->Destroy(Allocator);
+          static_cast<MapEntryTy *>(Bucket)->destroy(Allocator);
         }
         Bucket = nullptr;
       }
@@ -464,7 +464,7 @@ namespace valkyrie {
     void erase(iterator I) {
       MapEntryTy &V = *I;
       remove(&V);
-      V.Destroy(Allocator);
+      V.destroy(Allocator);
     }
 
     bool erase(string_view Key) {
@@ -498,7 +498,7 @@ namespace valkyrie {
       return static_cast<DerivedTy &>(*this);
     }
 
-    bool operator==(const DerivedTy &RHS) const { return Ptr == RHS.Ptr; }
+
 
     DerivedTy &operator++() {// Preincrement
       ++Ptr;
@@ -511,6 +511,10 @@ namespace valkyrie {
       ++*this;
       return Tmp;
     }
+
+
+    friend bool operator==(const DerivedTy& LHS, const DerivedTy &RHS) noexcept {
+      return LHS.Ptr == RHS.Ptr; }
 
   private:
     void AdvancePastEmptyBuckets() {
@@ -573,7 +577,7 @@ namespace valkyrie {
         : base(std::move(Iter)) {}
 
     string_view &operator*() {
-      Key = this->wrapped()->getKey();
+      Key = this->wrapped()->key();
       return Key;
     }
 
@@ -608,7 +612,7 @@ namespace valkyrie {
     template <typename ValueTy>
     std::pair<typename Base::iterator, bool>
     insert(const detail::symbol_registry_entry<ValueTy> &mapEntry) {
-      return insert(mapEntry.getKey());
+      return insert(mapEntry.key());
     }
   };
 

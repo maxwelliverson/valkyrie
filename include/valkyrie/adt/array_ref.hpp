@@ -6,10 +6,12 @@
 #define VALKYRIE_ADT_ARRAY_REF_HPP
 
 #include <valkyrie/traits.hpp>
+#include <valkyrie/utility/casting.hpp>
 
 namespace valkyrie{
   inline constexpr static enum class DynamicExtentType{} dynamicExtent{};
   inline constexpr static DynamicExtentType _{};
+
 
   template <typename T, auto Extent_ = dynamicExtent, auto Stride_ = dynamicExtent>
   class array_ref;
@@ -36,7 +38,7 @@ namespace valkyrie{
       u32 Extent_ = 0;
     public:
       constexpr ArrayRefExtentStorage() = default;
-      constexpr explicit ArrayRefExtentStorage(u64 extent) : Extent_(extent){}
+      constexpr explicit ArrayRefExtentStorage(u64 extent) : Extent_(narrow_cast<u32>(extent)){}
 
       inline static constexpr bool isDynamic() noexcept {
         return true;
@@ -67,7 +69,7 @@ namespace valkyrie{
       u32 Stride_;
     public:
       constexpr ArrayRefStrideStorage() = default;
-      constexpr explicit ArrayRefStrideStorage(u64 stride) noexcept : Stride_(stride) {}
+      constexpr explicit ArrayRefStrideStorage(u64 stride) noexcept : Stride_(narrow_cast<u32>(stride)) {}
 
       inline constexpr static bool dynamicStride() noexcept {
         return true;
@@ -313,14 +315,14 @@ namespace valkyrie{
     template <std::derived_from<T> U, auto UExt_, auto UStr_>
     requires(ExtentCompatible<UExt_> && StrideCompatible<UStr_>)
     constexpr explicit(ExtentNarrowing<UExt_> || StrideNarrowing<UStr_>)
-        array_ref(const array_ref<U, UExt_, UStr_>& other) : Storage(other.size(), other.stride()), pArray(other.pArray){
+    array_ref(const array_ref<U, UExt_, UStr_>& other) : Storage(other.size(), other.stride()), pArray(other.pArray){
       VK_assert(this->size() == other.size());
       VK_assert(this->stride() == other.stride());
     }
     template <std::derived_from<T> U, auto UExt_, auto UStr_>
     requires(ExtentCompatible<UExt_> && StrideCompatible<UStr_>)
     constexpr explicit(ExtentNarrowing<UExt_> || StrideNarrowing<UStr_>)
-        array_ref(array_ref<U, UExt_, UStr_>&& other) noexcept : Storage(other.size(), other.stride()), pArray(other.pArray){
+    array_ref(array_ref<U, UExt_, UStr_>&& other) noexcept : Storage(other.size(), other.stride()), pArray(other.pArray){
       VK_assert(this->size() == other.size());
       VK_assert(this->stride() == other.stride());
     }

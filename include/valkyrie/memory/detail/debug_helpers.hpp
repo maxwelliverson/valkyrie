@@ -72,7 +72,7 @@ namespace valkyrie{
     public:
       no_leak_checker() noexcept = default;
       no_leak_checker(no_leak_checker &&) noexcept = default;
-      ~no_leak_checker() noexcept = default;
+      //~no_leak_checker() noexcept = default;
 
       no_leak_checker &operator=(no_leak_checker &&) noexcept = default;
 
@@ -92,7 +92,7 @@ namespace valkyrie{
         other.allocated_ = 0;
       }
 
-      ~object_leak_checker() noexcept {
+      ~object_leak_checker() /*noexcept*/ {
         if (allocated_ != 0)
           this->operator()(allocated_);
       }
@@ -160,7 +160,7 @@ namespace valkyrie{
     template<class Handler>
     atomic<i64> global_leak_checker_impl<Handler>::allocated_(0);
 
-#if defined(EBUG_GLOBAL_LEAK_CHECKING)
+#if defined(DEBUG_GLOBAL_LEAK_CHECKING)
     template<class Handler>
     using global_leak_checker = global_leak_checker_impl<Handler>;
 

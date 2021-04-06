@@ -29,15 +29,10 @@ namespace valkyrie::detail{
   public:
     using is_stateful = std::false_type;
 
-    lowlevel_allocator() noexcept
-    {
-    }
-    lowlevel_allocator(lowlevel_allocator&&) noexcept
-    {
-    }
-    ~lowlevel_allocator() noexcept
-    {
-    }
+    lowlevel_allocator() noexcept = default;
+    lowlevel_allocator(lowlevel_allocator&&) noexcept = default;
+
+    //~lowlevel_allocator() = default;
 
     lowlevel_allocator& operator=(lowlevel_allocator&&) noexcept
     {

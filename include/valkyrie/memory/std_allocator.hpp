@@ -72,7 +72,7 @@ namespace valkyrie{
   /// Wraps a \concept{concept_rawallocator,RawAllocator} and makes it a "normal" \c Allocator.
   /// It allows using a \c RawAllocator anywhere a \c Allocator is required.
   /// \ingroup adapter
-  template <typename T, class RawAllocator, typename Ptr = borrowed_ptr<T>>
+  template <typename T, class RawAllocator, typename Ptr = T*>
   class std_allocator :
       public impl::reference_typedef<T>,
 #if defined _MSC_VER && defined __clang__
@@ -101,7 +101,7 @@ namespace valkyrie{
           //using reference       = T&;
           //using const_reference = const T&;
           using size_type       = u64;
-          using difference_type = typename pointer::difference_type;
+          using difference_type = ptr_difference_t<pointer>;
 
           using propagate_on_container_swap = typename prop_traits::propagate_on_container_swap;
           using propagate_on_container_move_assignment =
@@ -192,7 +192,7 @@ namespace valkyrie{
           /// \throws Anything thrown by the \c RawAllocator.
           pointer allocate(size_type n, void* = nullptr)
           {
-            return static_cast<pointer>(allocate_impl(is_any{}, n));
+            return static_cast<pointer>(allocate_impl<T>(n));
           }
 
           /// \effects Deallcoates memory using the underlying \concept{concept_rawallocator,RawAllocator}.
@@ -200,13 +200,13 @@ namespace valkyrie{
           /// \requires The pointer must come from a previous call to \ref allocate() with the same \c n on this object or any copy of it.
           void deallocate(pointer p, size_type n) noexcept
           {
-            deallocate_impl(is_any{}, p, n);
+            deallocate_impl(std::to_address(p), n);
           }
 
           template <typename U>
           ptr_t<U> allocate_object(size_type n = 1){
             VK_assert(n != 0);
-            return ptr_t<U>(allocate_impl<U>(n));
+            return ptr_t<U>(this->template allocate_impl<U>(n));
           }
           template <typename U>
           void     deallocate_object(param_ptr_t<U> p, size_type n = 1) noexcept {
