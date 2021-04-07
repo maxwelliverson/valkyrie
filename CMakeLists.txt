@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(Valkyrie)
 
+
+
 find_package(Vulkan REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 message(STATUS "Vulkan Include Directory: ${Vulkan_INCLUDE_DIRS}")
@@ -43,6 +45,7 @@ endif()
 
 
 set(CMAKE_CXX_STANDARD 20)
+#set(CMAKE_C_STANDARD   11)
 
 set(OptiX_INCLUDE_PATH "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0/include")
 include_directories(${OptiX_INCLUDE_PATH})
@@ -147,6 +150,7 @@ add_object(valkyrie.utility.json)
 add_object(valkyrie.utility.random)
 add_object(valkyrie.utility.library)
 add_object(valkyrie.utility.components)
+add_object(valkyrie.utility.reflect)
 
 add_object(valkyrie.graphics.api.instance)
 add_object(valkyrie.graphics.api.physical_device)
@@ -249,10 +253,10 @@ set_target_properties(imgui_glfw PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_
 
 add_executable(graph_gui test/graph_gui.cpp)
 target_link_libraries(graph_gui PUBLIC valkyrie.status valkyrie.memory imgui imgui_vulkan imgui_glfw)
-
+add_executable(windowsapi_test test/windowsapi.cpp)
 
 add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h)
-
+#set_target_properties(JSON PROPERTIES C_STANDARD 11)
 
 
 

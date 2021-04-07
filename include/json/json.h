@@ -279,7 +279,7 @@ typedef struct json_value{
     json_big_integer_t*  m_big_int;
     json_big_float_t  *  m_big_float;
   };
-} json_value_t;
+}     json_value_t;
 typedef struct json_array_ref{
   json_u64_t          length;
   const json_value_t* p_values;

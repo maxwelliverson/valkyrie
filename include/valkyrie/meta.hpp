@@ -491,7 +491,9 @@ namespace valkyrie{
     static_assert(subset_of<set<int, float>, set<float, int, double>>);
     static_assert(set_equivalent_to<set<int, float, double>, set<double, int, float>>);
     static_assert(strict_subset_of<set<int>, set<float, double, int>>);
+
   }
+
 
 
 
