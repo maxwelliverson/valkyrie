@@ -5,7 +5,30 @@
 #ifndef VALKYRIE_JSONMM_TYPES_H
 #define VALKYRIE_JSONMM_TYPES_H
 
+
 #include <json/json.h>
+
+/**
+ * Default size of the virtual memory space used by the primary document allocator.
+ *
+ * Equal to 4GB
+ *
+ * */
+#define JSON_ALLOCATOR_VIRTUAL_MEMORY_SPACE_SIZE (0x1ULL << 31)
+
+/**
+ * Default size of the virtual pages used by string pools.
+ *
+ * Equal to 64KB
+ *
+ * */
+#define JSON_VIRTUAL_PAGE_SIZE (0x1ULL << 15)
+
+
+#define JSON_SMALL_OBJECT_MAX_SIZE 256
+
+
+
 
 JSON_BEGIN_C_NAMESPACE
 
@@ -28,6 +51,24 @@ typedef const struct json_generic_array*    json_generic_array_const_t;
 typedef struct json_virtual_page*           json_virtual_page_t;
 typedef struct json_virtual_page_manager*   json_virtual_page_manager_t;
 typedef struct json_virtual_page_desc*      json_virtual_page_desc_t;
+
+
+typedef struct json_virtual_page {
+  json_byte_t data[];
+} json_virtual_page;
+typedef struct json_virtual_page_desc{
+  json_virtual_page_t pageAddress;
+  json_size_t         contiguousPageCount;
+  json_bool_t         isCommitted;
+} json_virtual_page_desc;
+typedef struct json_virtual_page_manager{
+
+  json_generic_stack_t    pageStack;
+
+  json_virtual_page_desc* pageDescriptors;
+  json_size_t             descriptorCount;
+  json_u64_t              pageSize;
+} json_virtual_page_manager;
 
 
 
@@ -105,8 +146,12 @@ typedef struct json_fixed_size_allocator{
   json_fixed_chunk_t         emptyChunk;
 }   json_fixed_size_allocator;
 typedef struct json_internal_allocator{
-  json_fixed_size_allocator fixedSizeAllocators[9]; // 1, 2, 4, 8, 16, 32, 64, 128, 256
-} json_internal_allocator;
+  json_fixed_size_allocator*  fixedSizeAllocators;
+  json_virtual_page_manager_t virtualPageManager;
+  json_size_t                 minSize;
+  json_size_t                 maxSize;
+  json_size_t                 blocksPerChunk;
+}     json_internal_allocator;
 
 
 typedef struct json_address_interval{

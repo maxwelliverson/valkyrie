@@ -13,6 +13,10 @@ JSON_BEGIN_C_NAMESPACE
 #define JSON_DONT_CARE ((json_u32_t)-1)
 
 
+json_status_t json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);
+json_status_t json_internal_allocator_cleanup(json_internal_allocator_t allocator);
+
+
 json_status_t json_internal_alloc(json_address_t* pResult, json_internal_allocator_t allocator, json_u64_t size);
 json_status_t json_internal_realloc(json_address_t* pAddress, json_bool_t* pMoved, json_internal_allocator_t allocator, json_u64_t newSize, json_u64_t oldSize);
 json_status_t json_internal_free(json_internal_allocator_t allocator, json_address_t address, json_u64_t size);

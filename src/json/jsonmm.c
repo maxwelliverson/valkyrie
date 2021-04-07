@@ -10,24 +10,9 @@
 #include <assert.h>
 #include <string.h>
 #include <intrin.h>
+#include <stdint.h>
 
 
-
-/**
- * Default size of the virtual memory space used by the primary document allocator.
- *
- * Equal to 4GB
- *
- * */
-#define JSON_ALLOCATOR_VIRTUAL_MEMORY_SPACE_SIZE (0x1ULL << 31)
-
-/**
- * Default size of the virtual pages used by string pools.
- *
- * Equal to 64KB
- *
- * */
-#define JSON_STRING_POOL_VIRTUAL_PAGE_SIZE (0x1ULL << 15)
 
 
 
@@ -149,7 +134,7 @@ typedef struct json_traced_context{
 } json_traced_context;
 
 
-struct json_virtual_page{
+/*struct json_virtual_page{
   json_byte_t data[];
 };
 
@@ -164,7 +149,7 @@ struct json_virtual_page_manager{
   json_virtual_page_desc* pAllocPage;
   json_virtual_page_desc* pDeallocPage;
   json_virtual_page_desc* pEmptyPage;
-};
+};*/
 
 typedef struct json_internal_allocator json_internal_allocator;
 
@@ -182,13 +167,16 @@ inline static json_u32_t         json_ceil_log2__(json_u32_t value) {
     return 1;
   return 0x2 << result;
 }
+inline static json_u32_t         json_fixed_alloc_index__(json_u32_t size, json_u32_t minSize, json_u32_t maxSize) {
+  _cr
+}
 
 
 inline static json_status_t      json_chunk_init__(json_fixed_chunk_t chunk, json_internal_allocator_t alloc, json_u32_t blockSizeLog2, json_u32_t blocks) {
 
   json_status_t result;
 
-  assert((blocks << blockSizeLog2) <= JSON_STRING_POOL_VIRTUAL_PAGE_SIZE);
+  assert((blocks << blockSizeLog2) <= JSON_VIRTUAL_PAGE_SIZE);
   assert(blocks <= 256);
 
   result = json_internal_alloc((json_address_t*)&chunk->data, alloc, blocks << blockSizeLog2);
@@ -445,10 +433,18 @@ inline static json_interval_tree_node_t json_interval_tree_find__(json_interval_
 json_status_t json_internal_alloc(json_address_t* pResult, json_internal_allocator_t allocator, json_u64_t size) {
   //TODO: Replace temporary implementation
 
-  if (!pResult)
+  if (!pResult || size == 0)
     return JSON_ERROR_INVALID_ARGUMENT;
 
-  *pResult = malloc(size);
+  if (size > allocator->maxSize)
+    *pResult = malloc(size);
+  else {
+    const json_u32_t size_lg2 = json_ceil_log2__((json_u32_t)size);
+    *pResult = allocator->fixedSizeAllocators[];
+  }
+
+
+  //*pResult = malloc(size);
   if (*pResult)
     return JSON_SUCCESS;
   return JSON_ERROR_UNKNOWN;
@@ -540,7 +536,7 @@ void          json_destroy_stack(json_generic_stack_t stack, json_internal_alloc
 }
 json_status_t json_stack_push(json_generic_stack_t stack, json_u32_t elementSize, json_u32_t elementCount) {
   const json_u64_t pushedSize = elementCount * elementSize;
-  if (pushedSize > UINT_MAX)
+  if (pushedSize > UINT32_MAX)
     return JSON_ERROR_INVALID_ARGUMENT;
   const json_u32_t oldSize = stack->endAddr - stack->startAddr;
   const json_u32_t newSize = json_ceil_log2__((json_u32_t)((oldSize + (json_u32_t)pushedSize) * 1.5));
