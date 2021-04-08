@@ -53,24 +53,6 @@ typedef struct json_virtual_page_manager*   json_virtual_page_manager_t;
 typedef struct json_virtual_page_desc*      json_virtual_page_desc_t;
 
 
-typedef struct json_virtual_page {
-  json_byte_t data[];
-} json_virtual_page;
-typedef struct json_virtual_page_desc{
-  json_virtual_page_t pageAddress;
-  json_size_t         contiguousPageCount;
-  json_bool_t         isCommitted;
-} json_virtual_page_desc;
-typedef struct json_virtual_page_manager{
-
-  json_generic_stack_t    pageStack;
-
-  json_virtual_page_desc* pageDescriptors;
-  json_size_t             descriptorCount;
-  json_u64_t              pageSize;
-} json_virtual_page_manager;
-
-
 
 typedef enum json_stack_flags{
   JSON_STACK_DEFAULT_FLAGS   = 0x0,
@@ -154,7 +136,7 @@ typedef struct json_internal_allocator{
 }     json_internal_allocator;
 
 
-typedef struct json_address_interval{
+/*typedef struct json_address_interval{
   void* min;
   void* max;
 }              json_address_interval;
@@ -200,7 +182,7 @@ typedef struct json_interval_tree{
   json_fixed_size_allocator nodeAllocator;
   json_u32_t                blackDepth;
 } json_interval_tree;
-typedef json_interval_tree*            json_interval_tree_t;
+typedef json_interval_tree*            json_interval_tree_t;*/
 
 
 JSON_END_C_NAMESPACE

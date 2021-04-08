@@ -10,7 +10,7 @@
 
 JSON_BEGIN_C_NAMESPACE
 
-#define JSON_DONT_CARE ((json_u32_t)-1)
+
 
 
 json_status_t json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);

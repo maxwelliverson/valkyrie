@@ -12,9 +12,7 @@
 #include <intrin.h>
 #include <stdint.h>
 
-
-
-
+#pragma intrinsic(__lzcnt, __lzcnt64/*, __ll_lshift, __ll_rshift, __ull_rshift*/)
 
 
 
@@ -155,31 +153,77 @@ typedef struct json_internal_allocator json_internal_allocator;
 
 
 
-#define IS_IN_CHUNK(p, chunk, blockSizeLog2, blocks) ((typeof(p))(chunk)->data < (p) && (p) < (typeof(p))((chunk)->data + ((blocks) << (blockSizeLog2))))
+#define IS_IN_CHUNK(p, chunk, blockSize, blocks) ((typeof(p))(chunk)->data < (p) && (p) < (typeof(p))((chunk)->data + ((blocks) * (blockSize))))
+
+#define U64_HIGHEST_BIT ~((~0ULL) >> 1)
+
+inline static json_u64_t         json_bit_ceil__(json_u64_t value) {
 
 
 
-inline static json_u32_t         json_ceil_log2__(json_u32_t value) {
-  unsigned long result;
+  /*
+     json_u64_t tmp = value - 1;
+
+     while (value & tmp) {  // L0
+       tmp |= value;        // L1
+       tmp |= tmp >> 1;     // L2
+       value = tmp + 1;     // L3
+     }
+     return value;
+   *
+   *
+   *
+   *
+   * value =     01100010 10100100
+   * tmp   =     01100010 10100011
+   *
+   * L0 while    01100010 10100000
+   * L1 tmp      01100010 10100111
+   *    tmp>>1   00110001 01010011
+   * L2 tmp      01110011 11110111
+   * L3 value    01110011 11111000
+   * L0 while    01110011 11110000
+   * L1 tmp      01110011 11111111
+   *    tmp>>1   00111001 11111111
+   * L2 tmp      01111011 11111111
+   * L3 value    01111100 00000000
+   * L0 while    01111000 00000000
+   * L1 tmp      01111111 11111111
+   *    tmp>>1   00111111 11111111
+   * L2 tmp      01111111 11111111
+   * L3 value    10000000 00000000
+   * */
+
   if (!(value & (value - 1)))
     return value;
-  if (!_BitScanReverse(&result, value))
-    return 1;
-  return 0x2 << result;
+  return __ull_rshift(U64_HIGHEST_BIT, (json_i32_t)(__lzcnt64(value) - 1));
 }
-inline static json_u32_t         json_fixed_alloc_index__(json_u32_t size, json_u32_t minSize, json_u32_t maxSize) {
-  _cr
+
+inline static json_u32_t         json_ceil_log2__(json_u64_t value) {
+  assert(value != 0);
+  if (!(value & (value - 1)))
+    return value;
+  unsigned long result;
+  return 64 - __lzcnt64(value);
+
+  /*
+   * 00000010 10101100 00111010 10110100
+   * 32 - 6
+   * */
+}
+inline static json_u64_t         json_fixed_alloc_index__(json_u64_t size, json_u64_t minSize, json_u64_t maxSize) {
+
 }
 
 
-inline static json_status_t      json_chunk_init__(json_fixed_chunk_t chunk, json_internal_allocator_t alloc, json_u32_t blockSizeLog2, json_u32_t blocks) {
+inline static json_status_t      json_chunk_init__(json_fixed_chunk_t chunk, json_internal_allocator_t alloc, const json_u32_t blockSize, const json_u32_t blocks) {
 
   json_status_t result;
 
-  assert((blocks << blockSizeLog2) <= JSON_VIRTUAL_PAGE_SIZE);
+  assert((blocks * blockSize) <= JSON_VIRTUAL_PAGE_SIZE);
   assert(blocks <= 256);
 
-  result = json_internal_alloc((json_address_t*)&chunk->data, alloc, blocks << blockSizeLog2);
+  result = json_internal_alloc((json_address_t*)&chunk->data, alloc, blocks * blockSize);
   if (result != JSON_SUCCESS)
     return result;
 
@@ -187,7 +231,7 @@ inline static json_status_t      json_chunk_init__(json_fixed_chunk_t chunk, jso
   chunk->blocksAvailable     = blocks;
 
 
-  const json_u32_t blockSize = 0x1 << blockSizeLog2;
+  //const json_u32_t blockSize = 0x1 << blockSizeLog2;
 
   unsigned char i = 0;
   unsigned char* p = chunk->data;
@@ -208,14 +252,14 @@ inline static json_address_t     json_chunk_alloc__(json_fixed_chunk_t chunk, js
 inline static void               json_chunk_dealloc__(json_fixed_chunk_t chunk, void* p, json_u32_t blockSizeLog2) {
   assert(p >= (void*)chunk->data);
   unsigned char* pRelease = (unsigned char*)p;
-  assert(((pRelease - chunk->data) & (blockSizeLog2 - 1)) == 0);
+  assert(((pRelease - chunk->data) & ((0x1 << blockSizeLog2) - 1)) == 0);  // test if alignment is proper
   *pRelease = chunk->firstAvailableBlock;
   chunk->firstAvailableBlock = (pRelease - chunk->data) >> blockSizeLog2;
   ++chunk->blocksAvailable;
 }
-inline static void               json_chunk_destroy__(json_fixed_chunk_t chunk, json_internal_allocator_t alloc, json_u32_t blockSizeLog2, json_u32_t blocks) {
+inline static void               json_chunk_destroy__(json_fixed_chunk_t chunk, json_internal_allocator_t alloc, json_u32_t blockSize, json_u32_t blocks) {
   assert(blocks == chunk->blocksAvailable);
-  json_internal_free(alloc, (json_address_t)chunk->data, blocks << blockSizeLog2);
+  json_internal_free(alloc, (json_address_t)chunk->data, blocks * blockSize);
 }
 inline static void               json_chunk_swap__(json_fixed_chunk_t chunkA, json_fixed_chunk_t chunkB) {
   struct json_fixed_chunk__ tmp;
@@ -339,7 +383,7 @@ json_status_t      json_fixed_allocator_init(json_fixed_size_allocator_t fixed, 
   if (result != JSON_SUCCESS)
     return result;
 
-  fixed->blockSizeLog2 = json_ceil_log2__(blockSize);
+  fixed->blockSizeLog2 = json_bit_ceil__(blockSize);
   fixed->blocks        = blocks;
 
   result = json_fixed_push_chunk__(fixed);

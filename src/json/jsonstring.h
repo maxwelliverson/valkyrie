@@ -2,10 +2,10 @@
 // Created by Maxwell on 2021-02-16.
 //
 
-#ifndef VALKYRIE_JSONSTRING_H
-#define VALKYRIE_JSONSTRING_H
+#ifndef VALKYRIE_INTERNAL_JSON_STRING_H
+#define VALKYRIE_INTERNAL_JSON_STRING_H
 
 #include <json/json.h>
 
 
-#endif//VALKYRIE_JSONSTRING_H
+#endif //VALKYRIE_INTERNAL_JSON_STRING_H
