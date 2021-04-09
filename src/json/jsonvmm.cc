@@ -20,7 +20,7 @@ typedef struct json_virtual_page_desc{
 } json_virtual_page_desc;
 typedef struct json_virtual_page_manager{
 
-  json_generic_stack_t    pageStack;
+  json_stack_t pageStack;
 
   json_virtual_page_desc* pageDescriptors;
   json_size_t             descriptorCount;

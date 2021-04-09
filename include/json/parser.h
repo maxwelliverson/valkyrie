@@ -46,7 +46,7 @@ typedef json_flags_t json_create_parser_flags_t;
 
 typedef struct json_create_parser_params{
   json_create_parser_flags_t flags;
-  json_context_t context;
+  json_ctx_t context;
 } json_create_parser_params_t;
 
 

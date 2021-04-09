@@ -48,6 +48,7 @@
 
 
 
+JSON_BEGIN_C_NAMESPACE
 
 
 /* =================[ Primitive Types ]================= */
@@ -129,10 +130,37 @@ typedef enum json_status{
 
 
 
-/* =================[ Core Record Types ]================= */
+/* =================[ Core Type Declarations ]================= */
+
+/**
+ * \brief Contains the "global state" used internally by the whole library.
+ *
+ *
+ *
+ * */
+typedef struct json_ctx*      json_ctx_t;
+typedef struct json_stream*   json_stream_t;
+typedef struct json_task*     json_task_t;
+
+
+typedef struct json_file*     json_file_t;
+typedef struct json_document* json_document_t;
+
+typedef struct json_symbol*   json_symbol_t;
+
+typedef struct json_value*    json_value_t;
 
 
 
+
+
+typedef struct json_buffer{
+  json_address_t address;
+  json_u64_t     size;
+} json_buffer_t;
+
+
+JSON_END_C_NAMESPACE
 
 
 #endif//VALKYRIE_JSON_CORE_H

@@ -255,7 +255,7 @@ add_executable(graph_gui test/graph_gui.cpp)
 target_link_libraries(graph_gui PUBLIC valkyrie.status valkyrie.memory imgui imgui_vulkan imgui_glfw)
 add_executable(windowsapi_test test/windowsapi.cpp)
 
-add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h src/json/jsonvmm.cc src/json/jsonvmm.h include/json/file.h include/json/core.h include/json/parser.h include/json/document.h include/json/context.h include/json/value.h include/json/writer.h include/json/string.h include/json/validation.h include/json/async.h include/json/stream.h src/json/jsonvalue.h src/json/jsonnumber.h src/json/jsonvalue.c)
+add_library(JSON src/json/json.c src/json/jsonmm.c src/json/jsonmm.h src/json/jsonctx.h src/json/jsonstring.h src/json/json_interval_tree.cpp src/json/jsonmm_types.h src/json/jsonvmm.cc src/json/jsonvmm.h include/json/file.h include/json/core.h include/json/parser.h include/json/document.h include/json/context.h include/json/value.h include/json/writer.h include/json/string.h include/json/validation.h include/json/task.h include/json/stream.h src/json/jsonvalue.h src/json/jsonnumber.h src/json/jsonvalue.c src/json/jsonasync.h src/json/jsonctx.c)
 #set_target_properties(JSON PROPERTIES C_STANDARD 11)
 
 

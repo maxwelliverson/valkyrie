@@ -6,7 +6,6 @@
 #define VALKYRIE_JSON_STREAM_H
 
 #include "core.h"
-#include "context.h"
 #include "file.h"
 #include "string.h"
 
@@ -14,7 +13,9 @@
 JSON_BEGIN_C_NAMESPACE
 
 
-typedef struct json_stream* json_stream_t;
+
+
+
 
 enum json_stream_flag_bits{
   JSON_STREAM_INPUT  = 0x1,
@@ -34,8 +35,9 @@ typedef json_flags_t json_create_stream_flags_t;
 
 typedef struct json_create_stream_params{
   json_create_stream_flags_t flags;
-  json_context_t             context;
-  json_file_t                fromFile;
+  json_ctx_t                 context;
+  json_file_t                file;
+  json_buffer_t              buffer;
 } json_create_stream_params_t;
 
 

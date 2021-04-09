@@ -88,6 +88,14 @@ struct json_object{
 };
 
 
+typedef struct json_value_pool {
+
+} json_value_pool;
+typedef struct json_object_pool{
+
+} json_object_pool;
+
+
 //ASSERT_TYPE_SIZE(json_value_t, JSON_GENERIC_VALUE_SIZE);
 
 

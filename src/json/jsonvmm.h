@@ -6,11 +6,19 @@
 #define VALKYRIE_INTERNAL_JSONVMM_H
 
 
-#include "jsonmm_types.h"
+#include <json/core.h>
 
 
 
 JSON_BEGIN_C_NAMESPACE
+
+
+
+typedef struct json_virtual_page*           json_virtual_page_t;
+typedef struct json_virtual_page_manager*   json_virtual_page_manager_t;
+typedef struct json_virtual_page_desc*      json_virtual_page_desc_t;
+
+
 
 
 json_status_t json_vmem_manager_init(struct json_virtual_page_manager* manager);
@@ -26,6 +34,17 @@ json_status_t json_vmem_reserve(json_virtual_page_t* pResultPage, json_virtual_p
 json_status_t json_vmem_commit(json_virtual_page_t pageRange, json_u64_t size, json_u64_t offset);
 json_status_t json_vmem_decommit(json_virtual_page_t pageRange);
 json_status_t json_vmem_release(json_virtual_page_t pageRange);
+
+
+
+
+typedef struct json_virtual_page_manager{
+  json_address_t initialAddress;
+  json_u64_t     addressSpaceSize;
+
+  struct json_virtual_page_desc* pageDescriptors;
+
+} json_virtual_page_manager;
 
 
 

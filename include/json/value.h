@@ -31,13 +31,14 @@ typedef struct json_array{
 
 
 typedef enum json_type{
-  JSON_TYPE_NULL,
-  JSON_TYPE_FALSE,
-  JSON_TYPE_TRUE,
-  JSON_TYPE_STRING,
-  JSON_TYPE_NUMBER,
-  JSON_TYPE_OBJECT,
-  JSON_TYPE_ARRAY
+  JSON_TYPE_NULL     = 0x00,
+  JSON_TYPE_FALSE    = 0x01,
+  JSON_TYPE_TRUE     = 0x41,
+  JSON_TYPE_STRING   = 0x02,
+  JSON_TYPE_INT      = 0x04,
+  JSON_TYPE_FLOAT    = 0x08,
+  JSON_TYPE_OBJECT   = 0x10,
+  JSON_TYPE_ARRAY    = 0x20
 } json_type_t;
 
 
@@ -52,11 +53,11 @@ typedef struct json_array_ref{
 
 typedef struct json_value_ref{
   json_value_t   value;
-  json_context_t ctx;
+  json_ctx_t ctx;
 }  json_value_ref_t;
 typedef struct json_object_ref{
   json_object_t  object;
-  json_context_t ctx;
+  json_ctx_t ctx;
 } json_object_ref_t;
 
 
@@ -68,8 +69,8 @@ json_bool_t       json_value_is_type(json_value_t value, json_type_t type);
 void              json_value_set_value(json_value_ref_t value,   json_value_t otherValue);
 void              json_value_set_object(json_value_ref_t value,  json_object_t object);
 void              json_value_set_array(json_value_ref_t value,   json_array_ref_t array);
-void              json_value_set_string(json_value_ref_t value,  json_string_ref_t string);
-void              json_value_set_symbol(json_value_ref_t value,  json_symbol_t symbol);
+void              json_value_set_string(json_value_ref_t value,  json_string_ref_t string, json_bool_t copyString);
+//void              json_value_set_symbol(json_value_ref_t value,  json_symbol_t symbol);
 void              json_value_set_uint(json_value_ref_t value,    json_u64_t u64);
 void              json_value_set_int(json_value_ref_t value,     json_i64_t u64);
 void              json_value_set_float(json_value_ref_t value,   json_f64_t f64);
@@ -104,11 +105,13 @@ json_status_t     json_get_value(json_value_t*     value,
                                  json_object_t     object,
                                  json_string_ref_t key);
 
+/*
 json_status_t     json_get_member(json_member_t* pMember,    json_document_t document, json_object_t* pObject, json_string_ref_t key);
 
 json_status_t     json_member_set_key  (json_document_t document, json_member_t* pMember, json_string_ref_t memberName);
 json_status_t     json_member_set_value(json_document_t document, json_member_t* pMember, json_value_t value);
 
+*/
 
 
 

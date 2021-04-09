@@ -24,7 +24,8 @@ typedef enum json_document_flags{
 
 
 enum json_create_document_flag_bits{
-  JSON_CREATE_DOCUMENT_OPEN_FILE        = 0x1
+  JSON_CREATE_DOCUMENT_OPEN_FILE        = 0x1,
+  JSON_CREATE_DOCUMENT_REVERSIBLE       = 0x2,
 };
 
 typedef json_flags_t json_create_document_flags_t;
@@ -33,7 +34,7 @@ typedef json_flags_t json_create_document_flags_t;
 
 typedef struct json_create_document_params{
   json_create_document_flags_t flags;
-  json_context_t               context;
+  json_ctx_t               context;
   json_file_t                  file;
 } json_create_document_params_t;
 
