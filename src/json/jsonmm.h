@@ -5,24 +5,44 @@
 #ifndef VALKYRIE_JSONMM_H
 #define VALKYRIE_JSONMM_H
 
-#include "jsonmm_types.h"
+#include <json/core.h>
+#include "jsondefs.h"
 
-#include <limits.h>
-
-
-#define JSON_FIXED_SIZE_ALLOCATOR_COUNT 17
-#define JSON_SMALL_OBJECT_MAX_SIZE      (UCHAR_MAX + 1)
 
 
 JSON_BEGIN_C_NAMESPACE
 
 
-typedef struct json_internal_allocator*     json_internal_allocator_t;
-typedef struct json_fixed_size_allocator*   json_fixed_size_allocator_t;
+typedef struct json_internal_allocator*       json_internal_allocator_t;
+typedef struct json_fixed_size_allocator*     json_fixed_size_allocator_t;
 
-typedef struct json_stack *          json_stack_t;
+
+
+json_status_t  json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);
+json_status_t  json_internal_allocator_cleanup(json_internal_allocator_t allocator);
+
+void*          json_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocator_t allocator);
+void           json_free(void* address, json_u64_t size, json_internal_allocator_t allocator);
+
+void*          json_alloc_dynamic(json_status_t* pStatus, json_u64_t sizePerObject, json_u64_t count, json_internal_allocator_t allocator);
+void*          json_realloc_dynamic(json_status_t* pStatus, void* address, json_u64_t size, json_u64_t newCount, json_u64_t oldCount, json_internal_allocator_t allocator);
+void           json_free_dynamic(void* address, json_u64_t sizePerObject, json_u64_t count, json_internal_allocator_t allocator);
+
+
+
+
+json_status_t  json_fixed_allocator_init(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t blockSize);
+void           json_fixed_allocator_cleanup(json_fixed_size_allocator_t fixed);
+
+void*          json_fixed_size_alloc(json_fixed_size_allocator_t allocator);
+void           json_fixed_size_dealloc(void* address, json_fixed_size_allocator_t allocator);
+
+
+
+
+// json_stack_t
+/*typedef struct json_stack *          json_stack_t;
 typedef const struct json_stack *    json_stack_const_t;
-
 
 enum json_stack_flag_bits{
   JSON_STACK_DEFAULT_FLAGS   = 0x0,
@@ -42,9 +62,6 @@ typedef struct json_create_stack_params{
   json_u64_t                  maxSize;
 } json_create_stack_params_t;
 
-
-
-
 typedef struct json_stack {
   json_internal_allocator_t allocator;
   json_address_t            ownedMemory;
@@ -54,72 +71,11 @@ typedef struct json_stack {
   json_bool_t               isFixedSize;
 }                 json_stack;
 
-typedef struct json_fixed_size_chunk {
-  unsigned char* data;
-  unsigned char  firstAvailableBlock;
-  unsigned char  blocksAvailable;
-}*     json_chunk_t;
-typedef struct json_chunk_stack{
-  struct json_fixed_size_chunk* startAddr;
-  struct json_fixed_size_chunk* topAddr;
-  struct json_fixed_size_chunk* endAddr;
-} json_chunk_stack_t;
-typedef struct json_fixed_size_allocator{
-  json_u32_t                 blockSize;
-  json_u32_t                 blocks;
-  json_u32_t                 blockAtomSizeLog2;
-  json_u32_t                 chunkTotalSize;  // exact size of each chunk, cached to slightly speed up allocations
-  json_chunk_stack_t         chunkStack;
-  json_internal_allocator_t  allocator;
-  json_chunk_t               allocChunk;
-  json_chunk_t               deallocChunk;
-  json_chunk_t               emptyChunk;
-  json_bool_t                initialized;
-}   json_fixed_size_allocator;
-typedef struct json_small_object_allocator{
-  json_fixed_size_allocator        fixedSizeAllocators[JSON_FIXED_SIZE_ALLOCATOR_COUNT];
-  // {  1,   2,   4,   8,  16,
-  //   24,  32,  40,  48,  64,
-  //   80,  96, 112, 128, 144,
-  //  160, 176, 192, 208, 224,
-  //  240, 256 }
-}    json_small_object_allocator_t;
-
-
-
-typedef struct json_internal_allocator{
-  json_small_object_allocator_t     smallAllocator;
-  struct json_virtual_page_manager* virtualPageManager;
-}     json_internal_allocator;
-
-
-
-
-json_status_t json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);
-json_status_t json_internal_allocator_cleanup(json_internal_allocator_t allocator);
-
-
-void*         json_internal_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocator_t allocator);
-void*         json_internal_realloc(json_status_t* pStatus, void* addr, /*json_bool_t* pMoved,*/ json_u64_t newSize, json_u64_t oldSize, json_internal_allocator_t allocator);
-void          json_internal_free(void* address, json_u64_t size, json_internal_allocator_t allocator);
-
-json_status_t  json_fixed_allocator_init(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t blockSize);
-void           json_fixed_allocator_cleanup(json_fixed_size_allocator_t fixed);
-void*          json_fixed_alloc(json_fixed_size_allocator_t allocator);
-void           json_fixed_dealloc(void* address, json_fixed_size_allocator_t allocator);
-
-
-/**
- * Creates a new stack with the given parameters.
- *
- * @param [out] pStack Pointer to the address in which the stack handle will be returned
- * @param [in] pParams Optional parameters. Can be null.
- * */
 json_status_t json_create_stack(json_stack_t * pStack, json_internal_allocator_t alloc, const json_create_stack_params_t* pParams);
 void          json_destroy_stack(json_stack_t stack, json_internal_allocator_t allocator);
 json_status_t json_stack_push(json_stack_t stack, json_u32_t elementSize, json_u32_t elementCount);
 json_status_t json_stack_pop(json_address_t* pResult, json_stack_t stack, json_u32_t elementSize, json_u32_t elementCount);
-json_status_t json_stack_top(json_address_t* pResult, json_stack_const_t stack, json_u32_t elementSize);
+json_status_t json_stack_top(json_address_t* pResult, json_stack_const_t stack, json_u32_t elementSize);*/
 
 
 // json_generic_array_t

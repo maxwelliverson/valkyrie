@@ -105,6 +105,7 @@ typedef enum json_status{
 
   JSON_ERROR_UNKNOWN,
 
+  JSON_ERROR_INTERNAL,
   JSON_ERROR_CONTEXT_DESTROYED,
   JSON_ERROR_DISCARDED_RESULT,
   JSON_ERROR_INVALID_ARGUMENT,
@@ -120,6 +121,7 @@ typedef enum json_status{
 
   // State Errors, signify invalid state. Application should attempt to fix the state before trying again.
 
+  JSON_ERROR_SYSTEM_MEMORY,
   JSON_ERROR_POOL_OUT_OF_MEMORY,
   JSON_ERROR_POOL_CORRUPTED,
   JSON_ERROR_POOL_TOO_FRAGMENTED,
