@@ -29,6 +29,31 @@ struct json_fixed_size_chunk {
   unsigned char  firstAvailableBlock;
   unsigned char  blocksAvailable;
 };
+struct json_pool_chunk{
+  unsigned char* data;
+  struct {
+    json_u16_t offsetInBlock;
+    json_u8_t  firstAvailableBlock;
+    json_u8_t  blocksAvailable;
+  } info[2];
+};
+struct json_pool_node{
+  struct json_pool_chunk* chunk;
+  struct json_pool_node*  prev;
+  struct json_pool_node*  next;
+  json_u32_t              chunkTotalSizeLog2;
+  json_u16_t              blockSize;
+  json_bool_t             isPrimary;
+  json_u8_t               blockSizeLog2;
+};
+struct json_pool{
+  struct json_pool_node  nodes;
+  struct json_pool_node* allocNode;
+  struct json_pool_node* deallocNode;
+  struct json_pool_node* emptyNode;
+  json_bool_t            initialized;
+};
+
 struct json_chunk_stack{
   struct json_fixed_size_chunk* startAddr;
   struct json_fixed_size_chunk* topAddr;

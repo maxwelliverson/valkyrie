@@ -41,7 +41,7 @@ typedef struct json_async_ctx {
 
 
 typedef struct json_ctx_vtable_record{
-  json_status_t(* const setValueSetValue)(json_ctx_t, json_value_t, const void*, json_exact_type_t);
+  json_status_t(* const setValueSetValue)(void*, json_value_t, const void*, json_exact_type_t);
 } json_ctx_vtable_record;
 typedef const  json_ctx_vtable_record*  json_ctx_vtable_t;
 
@@ -49,16 +49,19 @@ extern const json_ctx_vtable_record json_standard_ctx_vtable;
 extern const json_ctx_vtable_record json_async_ctx_vtable;
 
 
-
+typedef struct json_ctx_backend{
+  json_ctx_vtable_t vtable;
+  json_ctx_flags_t  flags;
+  union{
+    json_async_ctx    asyncCtx;
+    json_standard_ctx standardCtx;
+  };
+} json_ctx_backend_t;
 
 
 typedef struct json_ctx{
-  json_ctx_flags_t  flags;
-  json_ctx_vtable_t vtable;
-  union{
-    json_standard_ctx standardCtx;
-    json_async_ctx    asyncCtx;
-  };
+  json_ctx_backend_t* backend;
+  json_
 } json_ctx;
 
 

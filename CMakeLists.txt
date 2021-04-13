@@ -189,7 +189,7 @@ add_object_library(valkyrie.gui             OBJECTS window monitor)
 target_link_libraries(valkyrie.gui PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
 
 
-add_library(valkyrie src/valkyrie/valkyrie.cpp)
+add_library(valkyrie src/valkyrie/valkyrie.cpp src/valkyrie/common.h)
 #target_link_libraries(valkyrie PUBLIC valkyrie.Core valkyrie.graphics.api)
 
 
@@ -259,7 +259,7 @@ add_library(JSON src/json/json.c
                  src/json/jsonmm.c
                  src/json/jsonvmm.c
                  src/json/jsonvalue.c
-                 src/json/jsonctx.c)
+                 src/json/jsonctx.c src/json/mimalloc.h src/json/jsonbitmap.h src/json/jsonbitmap.c)
 #set_target_properties(JSON PROPERTIES C_STANDARD 11)
 
 

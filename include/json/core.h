@@ -7,16 +7,6 @@
 
 
 
-/* =================[ Preprocessor Configuration ]================= */
-
-
-#if !defined(_MSC_VER)
-#define JSON_MAY_ALIAS __attribute__((__may_alias__))
-#else
-#define JSON_MAY_ALIAS
-#endif
-
-
 #if defined(__cplusplus)
 #define JSON_BEGIN_C_NAMESPACE extern "C" {
 #define JSON_END_C_NAMESPACE }
@@ -28,6 +18,112 @@
 
 
 
+/* =================[ Portable Attributes ]================= */
+
+
+#define JSON_cache_aligned     JSON_alignas(JSON_CACHE_LINE)
+
+#if defined(__cplusplus)
+# if (__cplusplus >= 201103L) || (_MSC_VER > 1900)  // C++11
+#  define JSON_noexcept   noexcept
+# else
+#  define JSON_noexcept   throw()
+# endif
+# if (__cplusplus >= 201703)
+#  define JSON_nodiscard [[nodiscard]]
+# endif
+#else
+# define JSON_noexcept
+# if (__GNUC__ >= 4) || defined(__clang__)
+#  define JSON_nodiscard    __attribute__((warn_unused_result))
+# elif (_MSC_VER >= 1700)
+#  define JSON_nodiscard    _Check_return_
+# else
+#  define JSON_nodiscard
+# endif
+#endif
+
+
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+# if !defined(JSON_SHARED_LIB)
+#  define JSON_api
+# elif defined(JSON_SHARED_LIB_EXPORT)
+#  define JSON_api __declspec(dllexport)
+# else
+#  define JSON_api __declspec(dllimport)
+# endif
+#
+# if defined(__MINGW32__)
+#  define JSON_restrict
+#  define JSON_malloc __attribute__((malloc))
+# else
+#  if (_MSC_VER >= 1900) && !defined(__EDG__)
+#   define JSON_restrict __declspec(allocator) __declspec(restrict)
+#  else
+#   define JSON_restrict __declspec(restrict)
+#  endif
+#
+#  define JSON_malloc
+# endif
+# pragma warning(disable:4127)   // suppress constant conditional warning (due to JSON_MEM_SECURE paths)
+# define JSON_noinline          __declspec(noinline)
+# define JSON_noalias           __declspec(noalias)
+# define JSON_thread_local      __declspec(thread)
+# define JSON_alignas(n)        __declspec(align(n))
+#
+# define JSON_cdecl __cdecl
+# define JSON_may_alias
+# define JSON_alloc_size(...)
+# define JSON_alloc_align(p)
+#
+# define JSON_assume(...) __assume(__VA_ARGS__)
+# define JSON_unreachable JSON_assume(false)
+#
+#elif defined(__GNUC__)                 // includes clang and icc
+#
+# define JSON_cdecl                      // leads to warnings... __attribute__((cdecl))
+# define JSON_may_alias __attribute__((may_alias))
+# define JSON_api                __attribute__((visibility("default")))
+# define JSON_restrict
+# define JSON_malloc                __attribute__((malloc))
+# define JSON_noinline          __attribute__((noinline))
+# define JSON_noalias
+# define JSON_thread_local      __thread
+# define JSON_alignas(n)        __attribute__((aligned(n)))
+# define JSON_assume(...)
+# define JSON_unreachable __builtin_unreachable()
+#
+# if (defined(__clang_major__) && (__clang_major__ < 4)) || (__GNUC__ < 5)
+#  define JSON_alloc_size(...)
+#  define JSON_alloc_align(p)
+# elif defined(__INTEL_COMPILER)
+#  define JSON_alloc_size(...)       __attribute__((alloc_size(__VA_ARGS__)))
+#  define JSON_alloc_align(p)
+# else
+#  define JSON_alloc_size(...)       __attribute__((alloc_size(__VA_ARGS__)))
+#  define JSON_alloc_align(p)      __attribute__((alloc_align(p)))
+# endif
+#else
+# define JSON_cdecl
+# define JSON_api
+# define JSON_may_alias
+# define JSON_restrict
+# define JSON_malloc
+# define JSON_alloc_size(...)
+# define JSON_alloc_align(p)
+# define JSON_noinline
+# define JSON_noalias
+# define JSON_thread_local            __thread        // hope for the best :-)
+# define JSON_alignas(n)
+# define JSON_assume(...)
+# define JSON_unreachable JSON_assume(false)
+#endif
+
+#define JSON_no_default default: JSON_unreachable
+
+
+
 
 /* =================[ Constants ]================= */
 
@@ -35,30 +131,30 @@
 #define JSON_DONT_CARE          ((json_u64_t)-1)
 #define JSON_NULL_HANDLE        0
 
-#define JSON_GENERIC_VALUE_SIZE (8 + sizeof(void*))
-#define JSON_INLINE_STRING_MAX_LENGTH (JSON_GENERIC_VALUE_SIZE - 2)
 
-#define JSON_BIG_INTEGER_BIT_COUNT 3328
-#define JSON_BIG_INTEGER_CAPACITY (JSON_BIG_INTEGER_BIT_COUNT / sizeof(json_u64_t))
-#define JSON_BIG_INTEGER_TYPE_BIT (sizeof(json_u64_t) * 8)
-
-#define JSON_BIG_FLOAT_EXPONENT_SIZE 20
-#define JSON_BIG_FLOAT_FRACTION_SIZE 236
-#define JSON_BIG_FLOAT_EXPONENT_BIAS 0x3FFFF
+#define JSON_CACHE_LINE 64
 
 
 
-JSON_BEGIN_C_NAMESPACE
+
+
+
+/* ================================================ */
+
 
 
 /* =================[ Primitive Types ]================= */
 
-typedef struct JSON_MAY_ALIAS json_byte { unsigned char : 8; } json_byte_t;
+JSON_BEGIN_C_NAMESPACE
+
+typedef struct JSON_may_alias json_byte { unsigned char : 8; } json_byte_t;
 typedef json_byte_t*                                           json_address_t;
 typedef const json_byte_t*                                     json_const_address_t;
 
 
-typedef short              json_i16_t;
+typedef signed char        json_i8_t;
+typedef unsigned char      json_u8_t;
+typedef signed short       json_i16_t;
 typedef unsigned short     json_u16_t;
 typedef int                json_i32_t;
 typedef unsigned           json_u32_t;
@@ -68,9 +164,14 @@ typedef float              json_f32_t;
 typedef double             json_f64_t;
 typedef char               json_char_t;
 
-typedef int                json_bool_t;
-#define JSON_FALSE         0
-#define JSON_TRUE          1
+#if defined(__cplusplus)
+typedef bool               json_bool_t;
+#else
+typedef _Bool              json_bool_t;
+#define false         0
+#define true          1
+#endif
+
 
 typedef json_u32_t         json_size_t;
 typedef json_u32_t         json_flags_t;
@@ -154,13 +255,10 @@ typedef struct json_value*    json_value_t;
 
 
 
-
-
-typedef struct json_buffer{
+/*typedef struct json_buffer{
   json_address_t address;
   json_u64_t     size;
-} json_buffer_t;
-
+} json_buffer_t;*/
 
 JSON_END_C_NAMESPACE
 
