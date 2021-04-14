@@ -439,7 +439,7 @@ JSON_FORCE_INLINE static json_status_t      json_fixed_allocator_init_from_info_
 
   fixed->allocator   = allocator;
   fixed->emptyChunk  = fixed->allocChunk;
-  fixed->initialized = JSON_TRUE;
+  fixed->initialized = true;
 
   exit:
   return result;
@@ -486,7 +486,7 @@ json_status_t      json_fixed_allocator_init(json_fixed_size_allocator_t fixed, 
   }
 
   fixed->emptyChunk = fixed->allocChunk;
-  fixed->initialized = JSON_TRUE;
+  fixed->initialized = true;
 
 exit:
   return result;
@@ -514,11 +514,12 @@ void               json_fixed_allocator_cleanup(json_fixed_size_allocator_t fixe
 void* json_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocator_t allocator) {
   //TODO: Replace temporary implementation
 
-  assert( pStatus );
+  //assert( pStatus );
 
   if ( allocator == JSON_NULL_HANDLE ) {
     void* result =  malloc(size);
-    *pStatus = result ? JSON_SUCCESS : JSON_ERROR_SYSTEM_MEMORY;
+    if ( pStatus )
+      *pStatus = result ? JSON_SUCCESS : JSON_ERROR_SYSTEM_MEMORY;
     return result;
   }
 
@@ -527,18 +528,21 @@ void* json_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocato
     const json_u32_t fixedSizeIndex = json_small_obj_get_index__(size);
     assert( fixedSizeIndex < JSON_FIXED_SIZE_ALLOCATOR_COUNT );
     json_fixed_size_allocator_t fixedSizeAlloc = &allocator->fixedSizeAllocators[fixedSizeIndex];
-    if ( !fixedSizeAlloc->initialized ) {
-      *pStatus = json_fixed_allocator_init_from_info__(fixedSizeAlloc, allocator, fixedSizeIndex);
-      if ( !*pStatus )
-        return NULL;
+    if ( pStatus ) {
+      if ( !fixedSizeAlloc->initialized ) {
+        *pStatus = json_fixed_allocator_init_from_info__(fixedSizeAlloc, allocator, fixedSizeIndex);
+        if ( !*pStatus )
+          return NULL;
+      }
+      else
+        *pStatus = JSON_SUCCESS;
     }
-    else
-      *pStatus = JSON_SUCCESS;
     return json_fixed_size_alloc(fixedSizeAlloc);
   }
   else {
     //TODO: Implement
-    *pStatus = JSON_ERROR_NOT_IMPLEMENTED;
+    if ( pStatus )
+      *pStatus = JSON_ERROR_NOT_IMPLEMENTED;
     return NULL;
   }
 
@@ -558,33 +562,11 @@ void* json_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocato
     return JSON_SUCCESS;
   return JSON_ERROR_UNKNOWN;*/
 }
-void* json_internal_realloc(json_status_t * pStatus, void* address, json_u64_t newSize, json_u64_t oldSize, json_internal_allocator_t allocator) {
-
-  /*//TODO: Replace temporary implementation
-
-  if (!pAddress)
-    return JSON_ERROR_INVALID_ARGUMENT;
-
-  json_address_t oldAddr = *pAddress;
-
-  *pAddress = realloc(oldAddr, newSize);
-
-  if (!*pAddress)
-    return JSON_ERROR_UNKNOWN;
-
-  if (pMoved)
-    *pMoved = (*pAddress != oldAddr);
-
-  return JSON_SUCCESS;*/
-  *pStatus = JSON_ERROR_NOT_IMPLEMENTED;
-  return NULL;
-}
 void  json_free(void* address, json_u64_t size, json_internal_allocator_t allocator) {
 
   if ( allocator == JSON_NULL_HANDLE )
     free(address);
-
-  if ( size <= JSON_SMALL_OBJECT_MAX_SIZE ) {
+  else if ( size <= JSON_SMALL_OBJECT_MAX_SIZE ) {
     const json_u32_t fixedSizeIndex = json_small_obj_get_index__(size);
     assert( fixedSizeIndex < JSON_FIXED_SIZE_ALLOCATOR_COUNT );
     json_fixed_size_allocator_t fixedSizeAlloc = &allocator->fixedSizeAllocators[fixedSizeIndex];
@@ -593,7 +575,7 @@ void  json_free(void* address, json_u64_t size, json_internal_allocator_t alloca
   } else {
     //TODO: Replace temporary implementation
     //free(address);
-    assert( JSON_FALSE );
+    assert( false );
   }
 
 

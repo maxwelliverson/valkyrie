@@ -66,26 +66,25 @@ namespace valkyrie {
     public:
       using symbol_registry_entry_storage<ValueTy>::symbol_registry_entry_storage;
 
-      string_view key() const {
+      VK_nodiscard string_view key() const {
         return string_view(get_key_data(), this->get_key_length());
       }
 
       /// get_key_data - Return the start of the string data that is the key for this
       /// value.  The string data is always stored immediately after the
       /// symbol_registry_entry object.
-      utf8_string get_key_data() const {
+      VK_nodiscard utf8_string get_key_data() const {
         return reinterpret_cast<const utf8 *>(this + 1);
       }
 
-      string_view first() const {
+      VK_nodiscard string_view first() const {
         return key();
       }
 
       /// Create a symbol_registry_entry for the specified key construct the value using
       /// \p InitiVals.
       template<typename AllocatorTy, typename... InitTy>
-      static symbol_registry_entry *create(string_view key, AllocatorTy &allocator,
-                                           InitTy &&...initVals) {
+      static symbol_registry_entry *create(string_view key, AllocatorTy &allocator, InitTy &&...initVals) {
         size_t keyLength = key.size();
 
         // Allocate a new item with space for the string at the end and a null

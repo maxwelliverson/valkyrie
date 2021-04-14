@@ -33,67 +33,7 @@ JSON_BEGIN_C_NAMESPACE
  *
  * */
 
-enum json_exact_type{
-  JSON_EXACT_TYPE_NULL          = 0x00,
-  JSON_EXACT_TYPE_FALSE         = 0x01,
-  JSON_EXACT_TYPE_SYMBOL        = 0x02,
-  JSON_EXACT_TYPE_INT           = 0x04,
-  JSON_EXACT_TYPE_FLOAT         = 0x08,
-  JSON_EXACT_TYPE_OBJECT        = 0x10,
-  JSON_EXACT_TYPE_ARRAY         = 0x20,
-  JSON_EXACT_TYPE_TRUE          = 0x41,
-  JSON_EXACT_TYPE_INLINE_STRING = 0x42,  /**< No support yet */
-  JSON_EXACT_TYPE_UINT          = 0x44,  /**< No support yet */
-  JSON_EXACT_TYPE_BIG_FLOAT     = 0x48,  /**< No support yet */
-  JSON_EXACT_TYPE_STRING_REF    = 0x82,  /**< No support yet */
-  JSON_EXACT_TYPE_BIG_INT       = 0x84,  /**< No support yet */
 
-
-  JSON_EXACT_TYPE_BOOLEAN_BIT   = 0x01,
-  JSON_EXACT_TYPE_STRING_BIT    = 0x02,
-  JSON_EXACT_TYPE_INTEGER_BIT   = 0x04,
-  JSON_EXACT_TYPE_FLOAT_BIT     = 0x08,
-
-  JSON_EXACT_TYPE_NUMBER_BITS   = JSON_EXACT_TYPE_INTEGER_BIT | JSON_EXACT_TYPE_FLOAT_BIT
-};
-typedef unsigned char json_exact_type_t;
-
-
-struct json_value{
-  union{
-    struct {
-      json_byte_t       padding[JSON_GENERIC_VALUE_SIZE - sizeof(json_exact_type_t)];
-      json_exact_type_t type;
-    };
-    json_array_t       array;
-    json_object_t      object;
-    json_symbol_t      symbol;
-    json_char_t        inlineString[JSON_GENERIC_VALUE_SIZE - sizeof(json_exact_type_t)];
-    json_string_ref_t  stringRef;
-    json_u64_t         u64;
-    json_i64_t         i64;
-    json_f64_t         f64;
-    json_big_integer_t bigInt;
-    json_big_float_t   bigFloat;
-  };
-};
-
-struct json_object_member{
-  json_value_t key;
-  json_value_t value;
-};
-
-struct json_object{
-
-};
-
-
-typedef struct json_value_pool {
-
-} json_value_pool;
-typedef struct json_object_pool{
-
-} json_object_pool;
 
 
 //ASSERT_TYPE_SIZE(json_value_t, JSON_GENERIC_VALUE_SIZE);

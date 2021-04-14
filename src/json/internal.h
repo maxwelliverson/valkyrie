@@ -8,10 +8,12 @@
 #include <limits.h>
 #include <json/core.h>
 
-#include "intrin.h"
+#include <intrin.h>
+#include <immintrin.h>
 
 
 #ifdef _MSC_VER
+#pragma intrinsic(__lzcnt, __lzcnt64)
 #pragma warning(disable:4214) // bitfield is not int
 #endif
 
@@ -361,12 +363,15 @@ static inline size_t json_ctz(uintptr_t x) {
 
 #elif defined(_MSC_VER)
 #define JSON_HAVE_FAST_BITSCAN 1
-static inline size_t json_clz(uintptr_t x) {
+/*static inline size_t json_clz(uintptr_t x) {
   if (x==0)
     return JSON_INTPTR_BITS;
   unsigned long idx;
   _BitScanReverse64(&idx, x);
   return ((JSON_INTPTR_BITS - 1) - idx);
+}*/
+static inline size_t json_clz(uintptr_t x) {
+  return __lzcnt64(x);
 }
 static inline size_t json_ctz(uintptr_t x) {
   if (x==0) return JSON_INTPTR_BITS;
@@ -428,8 +433,21 @@ static inline size_t json_ctz(uintptr_t x) {
 #endif
 
 // "bit scan reverse": Return index of the highest bit (or JSON_INTPTR_BITS if `x` is zero)
-static inline size_t json_bsr(uintptr_t x) {
+static inline json_u32_t json_bsr(uintptr_t x) {
+#if defined(_MSC_VER)
+  if (JSON_unlikely(x==0))
+    return JSON_INTPTR_BITS;
+  unsigned long idx;
+  _BitScanReverse64(&idx, x);
+  return idx;
+#else
   return (x==0 ? JSON_INTPTR_BITS : JSON_INTPTR_BITS - 1 - json_clz(x));
+#endif
+}
+
+
+static inline json_u64_t json_bit_ceil(json_u64_t x) {
+  return 0x1 << (json_bsr(x - 1) + 1);
 }
 
 

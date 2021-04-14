@@ -8,34 +8,109 @@
 
 #include <json/core.h>
 #include <json/file.h>
+#include <json/value.h>
 #include "jsondefs.h"
+#include "internal_fwd.h"
 
 
 JSON_BEGIN_C_NAMESPACE
 
-typedef struct json_internal_allocator*       json_internal_allocator_t;
-typedef struct json_fixed_size_allocator*     json_fixed_size_allocator_t;
-typedef struct json_fixed_size_chunk*         json_chunk_t;
-typedef struct json_chunk_stack*              json_chunk_stack_t;
+enum json_exact_type{
+  JSON_EXACT_TYPE_NULL          = 0x00,
+  JSON_EXACT_TYPE_FALSE         = 0x01,
+  JSON_EXACT_TYPE_SYMBOL        = 0x02,
+  JSON_EXACT_TYPE_INT           = 0x04,
+  JSON_EXACT_TYPE_FLOAT         = 0x08,
+  JSON_EXACT_TYPE_OBJECT        = 0x10,
+  JSON_EXACT_TYPE_ARRAY         = 0x20,
+  JSON_EXACT_TYPE_TRUE          = 0x41,
+  JSON_EXACT_TYPE_INLINE_STRING = 0x42,  /**< No support yet */
+  JSON_EXACT_TYPE_UINT          = 0x44,  /**< No support yet */
+  JSON_EXACT_TYPE_BIG_FLOAT     = 0x48,  /**< No support yet */
+  JSON_EXACT_TYPE_STRING_REF    = 0x82,  /**< No support yet */
+  JSON_EXACT_TYPE_BIG_INT       = 0x84,  /**< No support yet */
 
-typedef struct vpage *                        vpage_t;
-typedef struct vmem_placeholder *             vmem_placeholder_t;
-typedef struct vmem_node *                    vmem_node_t;
-typedef struct vmem_split *                   vmem_split_t;
-typedef struct vmem_manager *                 vmem_manager_t;
+
+  JSON_EXACT_TYPE_BOOLEAN_BIT   = 0x01,
+  JSON_EXACT_TYPE_STRING_BIT    = 0x02,
+  JSON_EXACT_TYPE_INTEGER_BIT   = 0x04,
+  JSON_EXACT_TYPE_FLOAT_BIT     = 0x08,
+
+  JSON_EXACT_TYPE_NUMBER_BITS   = JSON_EXACT_TYPE_INTEGER_BIT | JSON_EXACT_TYPE_FLOAT_BIT
+};
+typedef unsigned char json_exact_type_t;
+
+
+struct json_value{
+  union{
+    struct {
+      json_byte_t       padding[JSON_GENERIC_VALUE_SIZE - sizeof(json_exact_type_t)];
+      json_exact_type_t type;
+    };
+    json_array_t       array;
+    json_object_t      object;
+    json_symbol_t      symbol;
+    json_char_t        inlineString[JSON_GENERIC_VALUE_SIZE - sizeof(json_exact_type_t)];
+    json_string_ref_t  stringRef;
+    json_u64_t         u64;
+    json_i64_t         i64;
+    json_f64_t         f64;
+    json_big_integer_t bigInt;
+    json_big_float_t   bigFloat;
+  };
+};
+struct json_object_member_node{
+  struct json_object_member_node* prev;
+  struct json_object_member_node* next;
+};
+struct json_object_member{
+  struct json_object_member_node node;
+  struct json_value              value;
+  json_u32_t                     length;
+  json_char_t                    data[];
+};
+struct json_object{
+  json_u32_t                     numItems;
+  json_u32_t                     numBuckets;
+  json_u32_t                     numTombstones;
+  struct json_object_member**    memberTable;
+  struct json_object_member_node header;
+  json_internal_allocator_t      allocator;
+};
+
+struct json_symbol{
+  json_u32_t         length;
+  json_u32_t         refCount;
+  json_char_t        data[];
+};
+struct json_symbol_registry{
+  struct json_symbol**      symbolTable;
+  json_internal_allocator_t allocator;
+  json_u32_t                numBuckets;
+  json_u32_t                numItems;
+  json_u32_t                numTombstones;
+  //json_u32_t                itemSize;
+};
 
 struct json_fixed_size_chunk {
   unsigned char* data;
   unsigned char  firstAvailableBlock;
   unsigned char  blocksAvailable;
 };
+
+
 struct json_pool_chunk{
   unsigned char* data;
   struct {
+    json_u32_t offsetInBlock       : 16;
+    json_u32_t firstAvailableBlock : 8;
+    json_u32_t blocksAvailable     : 8;
+  } info[2];
+  /*struct {
     json_u16_t offsetInBlock;
     json_u8_t  firstAvailableBlock;
     json_u8_t  blocksAvailable;
-  } info[2];
+  } info[2];*/
 };
 struct json_pool_node{
   struct json_pool_chunk* chunk;
@@ -46,7 +121,7 @@ struct json_pool_node{
   json_bool_t             isPrimary;
   json_u8_t               blockSizeLog2;
 };
-struct json_pool{
+struct json_pool_bin{
   struct json_pool_node  nodes;
   struct json_pool_node* allocNode;
   struct json_pool_node* deallocNode;
@@ -71,6 +146,14 @@ struct json_fixed_size_allocator{
   json_chunk_t               emptyChunk;
   json_bool_t                initialized;
 };
+
+typedef struct json_object_pool{
+  struct json_fixed_size_allocator fixedAllocator;
+
+} json_object_pool;
+
+
+
 
 struct vpage {
   json_byte_t data[];
@@ -118,11 +201,32 @@ struct json_internal_allocator{
 };
 
 
+struct json_document{
+  json_object_pool   objectPool;
+  struct json_object rootObject;
+};
+
+
+struct json_stream{
+
+};
+
+
+
 struct json_file{
   json_file_native_t nativeHandle;
   json_u64_t         maxSize;
 };
 
+
+
+
+
+
+
+inline static json_bool_t symbol_registry_is_empty(const struct json_symbol_registry* registry) {
+  return registry->numItems == 0;
+}
 
 
 

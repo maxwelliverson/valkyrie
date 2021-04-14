@@ -7,23 +7,31 @@
 
 #include <json/string.h>
 
+#include "internal_fwd.h"
+
 
 JSON_BEGIN_C_NAMESPACE
 
-typedef struct json_symbol{
-  json_u32_t         refCount;
-  json_u32_t         length;
-  json_u64_t         hash;
-  json_char_t        data[];
-} json_symbol;
 
-typedef struct json_symbol_registry{
-  json_symbol_t* symbols;
-  json_symbol_t* deadSymbols;
-} json_symbol_registry;
+inline static json_u32_t inline_string_get_length__(const char* inlineString) {
+  return JSON_INLINE_STRING_MAX_LENGTH - inlineString[JSON_INLINE_STRING_MAX_LENGTH];
+}
+inline static void       inline_string_set_length__(char* inlineString, json_u32_t length) {
+  json_assert_internal(length <= JSON_INLINE_STRING_MAX_LENGTH);
+  inlineString[JSON_INLINE_STRING_MAX_LENGTH] = JSON_INLINE_STRING_MAX_LENGTH - (char)length;
+}
 
-typedef json_symbol_registry* json_symbol_registry_t;
 
+json_status_t  symbol_registry_init(json_symbol_registry_t registry, json_u32_t initSize, json_internal_allocator_t allocator);
+void           symbol_registry_cleanup(json_symbol_registry_t registry);
+
+json_symbol_t* symbol_registry_find(json_symbol_registry_t registry, const char* buffer, json_u64_t length);
+json_symbol_t  symbol_registry_register_symbol(json_symbol_registry_t registry, const char* string, json_u64_t length);
+json_symbol_t  symbol_registry_remove(json_symbol_registry_t registry, const char* string, json_u64_t length);
+void           symbol_registry_remove_symbol(json_symbol_registry_t registry, json_symbol_t symbol);
+json_bool_t    symbol_registry_erase(json_symbol_registry_t registry, const char* string, json_u64_t length);
+void           symbol_registry_erase_symbol(json_symbol_registry_t registry, json_symbol_t symbol);
+void           symbol_registry_clear(json_symbol_registry_t registry);
 
 
 
