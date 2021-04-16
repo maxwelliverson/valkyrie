@@ -9,11 +9,14 @@
 #include <json/core.h>
 #include <json/file.h>
 #include <json/value.h>
+#include <json/parser.h>
 #include "jsondefs.h"
 #include "internal_fwd.h"
 
 
 JSON_BEGIN_C_NAMESPACE
+
+typedef const char* json_cstring_t;
 
 enum json_exact_type{
   JSON_EXACT_TYPE_NULL          = 0x00,
@@ -207,8 +210,34 @@ struct json_document{
 };
 
 
+
+
+
+
+
+
 struct json_stream{
 
+  json_stream_flags_t flags;
+
+
+  json_stream_interface_t callbacks;
+};
+
+
+struct json_writer{
+  json_u32_t     currentIndentationLevel;
+  json_cstring_t indentString;
+
+
+};
+
+struct json_parser{
+
+  json_parse_status_t status;
+  json_u64_t          errorOffset;
+
+  json_callbacks_t    callbacks;
 };
 
 

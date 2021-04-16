@@ -40,7 +40,7 @@ enum {
 };
 
 
-JSON_FORCE_INLINE static json_u64_t bit_ceil__(json_u64_t value) {
+JSON_forceinline static json_u64_t bit_ceil__(json_u64_t value) {
 
 
 
@@ -81,7 +81,7 @@ JSON_FORCE_INLINE static json_u64_t bit_ceil__(json_u64_t value) {
     return value;
   return __ull_rshift(U64_HIGHEST_BIT, (json_i32_t)(__lzcnt64(value) - 1));
 }
-JSON_FORCE_INLINE static json_u32_t pow2_log2__(json_u64_t value) {
+JSON_forceinline static json_u32_t pow2_log2__(json_u64_t value) {
   assert(value && !(value & (value - 1)));
   unsigned long index;
   unsigned char result = _BitScanReverse64(&index, value);
