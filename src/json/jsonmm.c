@@ -169,14 +169,13 @@ static const json_u32_t fixed_size_allocator_index_table__[JSON_SMALL_OBJECT_MAX
 #undef UB
 
 
-
-JSON_FORCE_INLINE static json_u32_t         json_small_obj_get_index__(json_u64_t sz) {
+JSON_forceinline static json_u32_t         json_small_obj_get_index__(json_u64_t sz) {
   assert(sz <= 256);
   return fixed_size_allocator_index_table__[sz - 1];
 }
 
 
-JSON_FORCE_INLINE static json_bool_t        json_is_in_chunk__(void* addr, const struct json_fixed_size_chunk* chunk, json_u32_t blockSize, json_u32_t blocks){
+JSON_forceinline static json_bool_t        json_is_in_chunk__(void* addr, const struct json_fixed_size_chunk* chunk, json_u32_t blockSize, json_u32_t blocks){
   return (chunk->data <= (unsigned char*)addr) && ((unsigned char*)addr < (chunk->data + (blockSize * blocks)));
 }
 inline static json_u64_t         json_align_to__(json_u64_t value, json_u64_t align){
@@ -226,10 +225,10 @@ inline static json_u64_t         json_bit_ceil__(json_u64_t value) {
     return value;
   return __ull_rshift(U64_HIGHEST_BIT, (json_i32_t)(__lzcnt64(value) - 1));
 }
-JSON_FORCE_INLINE static json_u64_t         json_pow2_factor__(json_u64_t value) {
+JSON_forceinline static json_u64_t         json_pow2_factor__(json_u64_t value) {
   return ((value ^ (value - 1)) + 1) >> 1;
 }
-JSON_FORCE_INLINE static json_u32_t         json_ceil_log2__(json_u64_t value) {
+JSON_forceinline static json_u32_t         json_ceil_log2__(json_u64_t value) {
   assert(value != 0);
   return 64 - __lzcnt64(value);
 
@@ -240,7 +239,7 @@ JSON_FORCE_INLINE static json_u32_t         json_ceil_log2__(json_u64_t value) {
 }
 
 
-JSON_FORCE_INLINE static json_status_t      json_chunk_init__(json_chunk_t chunk, json_fixed_size_allocator_t alloc) {
+JSON_forceinline static json_status_t      json_chunk_init__(json_chunk_t chunk, json_fixed_size_allocator_t alloc) {
 
   json_status_t result;
 
@@ -270,7 +269,7 @@ JSON_FORCE_INLINE static json_status_t      json_chunk_init__(json_chunk_t chunk
 exit:
   return result;
 }
-JSON_FORCE_INLINE static void*              json_chunk_alloc__(json_chunk_t chunk, json_u32_t blockAtomSizeLog2) {
+JSON_forceinline static void*              json_chunk_alloc__(json_chunk_t chunk, json_u32_t blockAtomSizeLog2) {
   if (!chunk->blocksAvailable)
     return NULL;
 
@@ -279,7 +278,7 @@ JSON_FORCE_INLINE static void*              json_chunk_alloc__(json_chunk_t chun
   --chunk->blocksAvailable;
   return pData;
 }
-JSON_FORCE_INLINE static void               json_chunk_dealloc__(json_chunk_t chunk, void* p, json_u32_t blockAtomSizeLog2) {
+JSON_forceinline static void               json_chunk_dealloc__(json_chunk_t chunk, void* p, json_u32_t blockAtomSizeLog2) {
   assert(p >= (void*)chunk->data);
   unsigned char* pRelease = p;
   assert(((pRelease - chunk->data) & ((0x1 << blockAtomSizeLog2) - 1)) == 0);  // test if alignment is proper
@@ -287,18 +286,18 @@ JSON_FORCE_INLINE static void               json_chunk_dealloc__(json_chunk_t ch
   chunk->firstAvailableBlock = (pRelease - chunk->data) >> blockAtomSizeLog2;
   ++chunk->blocksAvailable;
 }
-JSON_FORCE_INLINE static void               json_chunk_destroy__(json_chunk_t chunk, json_fixed_size_allocator_t fixed) {
+JSON_forceinline static void               json_chunk_destroy__(json_chunk_t chunk, json_fixed_size_allocator_t fixed) {
   assert(fixed->blocks == chunk->blocksAvailable);
   json_free((json_address_t) chunk->data, fixed->chunkTotalSize, fixed->allocator);
 }
-JSON_FORCE_INLINE static void               json_chunk_swap__(json_chunk_t chunkA, json_chunk_t chunkB) {
+JSON_forceinline static void               json_chunk_swap__(json_chunk_t chunkA, json_chunk_t chunkB) {
   struct json_fixed_size_chunk tmp;
   memcpy(&tmp, chunkA, sizeof(struct json_fixed_size_chunk));
   memmove(chunkA, chunkB, sizeof(struct json_fixed_size_chunk));
   memcpy(chunkB, &tmp, sizeof(struct json_fixed_size_chunk));
 }
 
-JSON_FORCE_INLINE static json_status_t      json_chunk_stack_init__(json_chunk_stack_t chunkStack, json_internal_allocator_t alloc) {
+JSON_forceinline static json_status_t      json_chunk_stack_init__(json_chunk_stack_t chunkStack, json_internal_allocator_t alloc) {
   json_status_t result;
 
   chunkStack->startAddr  = json_alloc_dynamic(&result, sizeof(struct json_fixed_size_chunk), JSON_CHUNK_STACK_INITIAL_CAPACITY, alloc);
@@ -310,12 +309,12 @@ JSON_FORCE_INLINE static json_status_t      json_chunk_stack_init__(json_chunk_s
 
   return result;
 }
-JSON_FORCE_INLINE static void               json_chunk_stack_cleanup__(json_chunk_stack_t chunkStack, json_internal_allocator_t allocator) {
+JSON_forceinline static void               json_chunk_stack_cleanup__(json_chunk_stack_t chunkStack, json_internal_allocator_t allocator) {
   assert( chunkStack->startAddr == chunkStack->topAddr );
   const json_u32_t stackCount = chunkStack->endAddr - chunkStack->startAddr;
   json_free_dynamic(chunkStack->startAddr, sizeof(struct json_fixed_size_chunk), stackCount, allocator);
 }
-JSON_FORCE_INLINE static json_status_t      json_chunk_stack_push__(json_chunk_stack_t chunkStack, json_internal_allocator_t allocator) {
+JSON_forceinline static json_status_t      json_chunk_stack_push__(json_chunk_stack_t chunkStack, json_internal_allocator_t allocator) {
 
   const json_u64_t oldCapacity = chunkStack->endAddr - chunkStack->startAddr;
 
@@ -342,14 +341,14 @@ JSON_FORCE_INLINE static json_status_t      json_chunk_stack_push__(json_chunk_s
 exit:
   return result;
 }
-JSON_FORCE_INLINE static json_chunk_t       json_chunk_stack_pop__(json_chunk_stack_t chunkStack) {
+JSON_forceinline static json_chunk_t       json_chunk_stack_pop__(json_chunk_stack_t chunkStack) {
   assert( chunkStack );
   if ( chunkStack->topAddr == chunkStack->startAddr )
     return JSON_NULL_HANDLE;
   --chunkStack->topAddr;
   return chunkStack->topAddr;
 }
-JSON_FORCE_INLINE static json_chunk_t       json_chunk_stack_top__(json_chunk_stack_t chunkStack) {
+JSON_forceinline static json_chunk_t       json_chunk_stack_top__(json_chunk_stack_t chunkStack) {
   assert( chunkStack );
   if ( chunkStack->topAddr == chunkStack->startAddr )
     return JSON_NULL_HANDLE;
@@ -357,10 +356,7 @@ JSON_FORCE_INLINE static json_chunk_t       json_chunk_stack_top__(json_chunk_st
 }
 
 
-
-
-
-JSON_FORCE_INLINE static json_status_t      json_fixed_push_chunk__(json_fixed_size_allocator_t allocator) {
+JSON_forceinline static json_status_t      json_fixed_push_chunk__(json_fixed_size_allocator_t allocator) {
   struct json_fixed_size_chunk * currentChunk;
   json_status_t                  result;
   result = json_chunk_stack_push__(&allocator->chunkStack, allocator->allocator);
@@ -378,7 +374,7 @@ JSON_FORCE_INLINE static json_status_t      json_fixed_push_chunk__(json_fixed_s
 exit:
   return result;
 }
-JSON_FORCE_INLINE static json_chunk_t       json_find_dealloc_chunk__(void* addr, json_fixed_size_allocator_t allocator) {
+JSON_forceinline static json_chunk_t       json_find_dealloc_chunk__(void* addr, json_fixed_size_allocator_t allocator) {
   json_chunk_t lo, hi;
   const struct json_fixed_size_chunk * loBound, *hiBound;
   lo      = allocator->deallocChunk;
@@ -415,7 +411,7 @@ JSON_FORCE_INLINE static json_chunk_t       json_find_dealloc_chunk__(void* addr
   return NULL;
 }
 
-JSON_FORCE_INLINE static json_status_t      json_fixed_allocator_init_from_info__(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t index) {
+JSON_forceinline static json_status_t      json_fixed_allocator_init_from_info__(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t index) {
   assert(allocator);
   assert(fixed);
 

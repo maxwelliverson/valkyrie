@@ -254,6 +254,7 @@ set_target_properties(imgui_glfw PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_
 add_executable(graph_gui test/graph_gui.cpp)
 target_link_libraries(graph_gui PUBLIC valkyrie.status valkyrie.memory imgui imgui_vulkan imgui_glfw)
 add_executable(windowsapi_test test/windowsapi.cpp)
+add_executable(intrinsics_test test/intrin.cpp)
 
 add_library(JSON src/json/json.c
                  src/json/jsonmm.c
@@ -261,7 +262,7 @@ add_library(JSON src/json/json.c
                  src/json/jsonvalue.c
                  src/json/jsonctx.c
                  src/json/jsonbitmap.c
-                 src/json/jsonstring.c)
+                 src/json/jsonstring.c src/json/jsonparser.c)
 #set_target_properties(JSON PROPERTIES C_STANDARD 11)
 
 

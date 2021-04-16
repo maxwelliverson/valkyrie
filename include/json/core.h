@@ -55,22 +55,24 @@
 # endif
 #
 # if defined(__MINGW32__)
-#  define JSON_restrict
+#  define JSON_restricted
 #  define JSON_malloc __attribute__((malloc))
 # else
 #  if (_MSC_VER >= 1900) && !defined(__EDG__)
-#   define JSON_restrict __declspec(allocator) __declspec(restrict)
+#   define JSON_restricted __declspec(allocator) __declspec(restrict)
 #  else
-#   define JSON_restrict __declspec(restrict)
+#   define JSON_restricted __declspec(restrict)
 #  endif
 #
 #  define JSON_malloc
 # endif
 # pragma warning(disable:4127)   // suppress constant conditional warning (due to JSON_MEM_SECURE paths)
 # define JSON_noinline          __declspec(noinline)
+# define JSON_forceinline       __forceinline
 # define JSON_noalias           __declspec(noalias)
 # define JSON_thread_local      __declspec(thread)
 # define JSON_alignas(n)        __declspec(align(n))
+# define JSON_restrict          __restrict
 #
 # define JSON_cdecl __cdecl
 # define JSON_may_alias
@@ -82,17 +84,23 @@
 #
 #elif defined(__GNUC__)                 // includes clang and icc
 #
+# if defined(__cplusplus)
+# define JSON_restrict __restrict
+# else
+# define JSON_restrict restrict
+# endif
 # define JSON_cdecl                      // leads to warnings... __attribute__((cdecl))
-# define JSON_may_alias __attribute__((may_alias))
-# define JSON_api                __attribute__((visibility("default")))
-# define JSON_restrict
-# define JSON_malloc                __attribute__((malloc))
-# define JSON_noinline          __attribute__((noinline))
+# define JSON_may_alias    __attribute__((may_alias))
+# define JSON_api          __attribute__((visibility("default")))
+# define JSON_restricted
+# define JSON_malloc       __attribute__((malloc))
+# define JSON_noinline     __attribute__((noinline))
 # define JSON_noalias
-# define JSON_thread_local      __thread
-# define JSON_alignas(n)        __attribute__((aligned(n)))
+# define JSON_thread_local __thread
+# define JSON_alignas(n)   __attribute__((aligned(n)))
 # define JSON_assume(...)
-# define JSON_unreachable __builtin_unreachable()
+# define JSON_forceinline  __attribute__((always_inline))
+# define JSON_unreachable  __builtin_unreachable()
 #
 # if (defined(__clang_major__) && (__clang_major__ < 4)) || (__GNUC__ < 5)
 #  define JSON_alloc_size(...)
@@ -105,15 +113,17 @@
 #  define JSON_alloc_align(p)      __attribute__((alloc_align(p)))
 # endif
 #else
+# define JSON_restrict
 # define JSON_cdecl
 # define JSON_api
 # define JSON_may_alias
-# define JSON_restrict
+# define JSON_restricted
 # define JSON_malloc
 # define JSON_alloc_size(...)
 # define JSON_alloc_align(p)
 # define JSON_noinline
 # define JSON_noalias
+# define JSON_forceinline
 # define JSON_thread_local            __thread        // hope for the best :-)
 # define JSON_alignas(n)
 # define JSON_assume(...)
@@ -252,6 +262,27 @@ typedef struct json_document* json_document_t;
 typedef struct json_symbol*   json_symbol_t;
 
 typedef struct json_value*    json_value_t;
+
+
+
+
+
+typedef struct json_callbacks{
+  json_bool_t (* onNull)(void*);
+  json_bool_t (* onBool)(void*, json_bool_t b);
+  json_bool_t (* onInt)(void*, json_i64_t i);
+  json_bool_t (* onUInt)(void*, json_u64_t u);
+  json_bool_t (* onDouble)(void*, double d);
+  json_bool_t (* onRawNumber)(void*, const json_char_t* string, json_size_t length, json_bool_t copy);
+  json_bool_t (* onString)(void*, const json_char_t* string, json_size_t length, json_bool_t copy);
+  json_bool_t (* onObjectStart)(void*);
+  json_bool_t (* onKey)(void*, const json_char_t* string, json_size_t length, json_bool_t copy);
+  json_bool_t (* onObjectEnd)(void*, json_size_t memberCount);
+  json_bool_t (* onArrayStart)(void*);
+  json_bool_t (* onArrayEnd)(void*, json_size_t elementCount);
+
+  void*          pUserData;
+} json_callbacks_t;
 
 
 

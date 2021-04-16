@@ -20,16 +20,16 @@ typedef struct json_heap json_heap_t;
 // Standard malloc interface
 // ------------------------------------------------------
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_malloc(size_t size)               JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_calloc(size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_malloc(size_t size)               JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_calloc(size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
 JSON_nodiscard JSON_api               void* json_mem_realloc(void* p, size_t newsize)  JSON_noexcept JSON_alloc_size(2);
 JSON_api                              void* json_mem_expand(void* p, size_t newsize)   JSON_noexcept JSON_alloc_size(2);
 
 JSON_api                              void  json_mem_free(void* p)                     JSON_noexcept;
 
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_strdup(const char* s) JSON_noexcept JSON_malloc; 
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_strndup(const char* s, size_t n) JSON_noexcept JSON_malloc;
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_realpath(const char* fname, char* resolved_name) JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_strdup(const char* s) JSON_noexcept JSON_malloc; 
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_strndup(const char* s, size_t n) JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_realpath(const char* fname, char* resolved_name) JSON_noexcept JSON_malloc;
 
 // ------------------------------------------------------
 // Extended functionality
@@ -37,11 +37,11 @@ JSON_nodiscard JSON_api JSON_restrict char* json_mem_realpath(const char* fname,
 #define MI_SMALL_WSIZE_MAX  (128)
 #define MI_SMALL_SIZE_MAX   (MI_SMALL_WSIZE_MAX*sizeof(void*))
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_malloc_small(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_zalloc_small(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_zalloc(size_t size)       JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_malloc_small(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_zalloc_small(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_zalloc(size_t size)       JSON_noexcept JSON_malloc JSON_alloc_size(1);
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_mallocn(size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_mallocn(size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
 JSON_nodiscard JSON_api void* json_mem_reallocn(void* p, size_t count, size_t size)        JSON_noexcept JSON_alloc_size(2,3);
 JSON_nodiscard JSON_api void* json_mem_reallocf(void* p, size_t newsize)                   JSON_noexcept JSON_alloc_size(2);
 
@@ -84,12 +84,12 @@ JSON_api void json_mem_process_info(size_t* elapsed_msecs, size_t* user_msecs, s
 // allocation, but unfortunately this differs from `posix_memalign` and `aligned_alloc`.
 // -------------------------------------------------------------------------------------
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_malloc_aligned(size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1) JSON_alloc_align(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_malloc_aligned_at(size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_zalloc_aligned(size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1) JSON_alloc_align(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_zalloc_aligned_at(size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_calloc_aligned(size_t count, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1,2) JSON_alloc_align(3);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_calloc_aligned_at(size_t count, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_malloc_aligned(size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1) JSON_alloc_align(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_malloc_aligned_at(size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_zalloc_aligned(size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1) JSON_alloc_align(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_zalloc_aligned_at(size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_calloc_aligned(size_t count, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(1,2) JSON_alloc_align(3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_calloc_aligned_at(size_t count, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(1,2);
 JSON_nodiscard JSON_api               void* json_mem_realloc_aligned(void* p, size_t newsize, size_t alignment) JSON_noexcept JSON_alloc_size(2) JSON_alloc_align(3);
 JSON_nodiscard JSON_api               void* json_mem_realloc_aligned_at(void* p, size_t newsize, size_t alignment, size_t offset) JSON_noexcept JSON_alloc_size(2);
 
@@ -107,26 +107,26 @@ JSON_api json_heap_t* json_mem_heap_get_default(void);
 JSON_api json_heap_t* json_mem_heap_get_backing(void);
 JSON_api void       json_mem_heap_collect(json_heap_t* heap, json_bool_t force) JSON_noexcept;
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_malloc(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_zalloc(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_calloc(json_heap_t* heap, size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_mallocn(json_heap_t* heap, size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_malloc_small(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_malloc(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_zalloc(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_calloc(json_heap_t* heap, size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_mallocn(json_heap_t* heap, size_t count, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_malloc_small(json_heap_t* heap, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2);
 
 JSON_nodiscard JSON_api void* json_mem_heap_realloc(json_heap_t* heap, void* p, size_t newsize)              JSON_noexcept JSON_alloc_size(3);
 JSON_nodiscard JSON_api void* json_mem_heap_reallocn(json_heap_t* heap, void* p, size_t count, size_t size)  JSON_noexcept JSON_alloc_size(3,4);
 JSON_nodiscard JSON_api void* json_mem_heap_reallocf(json_heap_t* heap, void* p, size_t newsize)             JSON_noexcept JSON_alloc_size(3);
 
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_heap_strdup(json_heap_t* heap, const char* s)            JSON_noexcept JSON_malloc;
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_heap_strndup(json_heap_t* heap, const char* s, size_t n) JSON_noexcept JSON_malloc;
-JSON_nodiscard JSON_api JSON_restrict char* json_mem_heap_realpath(json_heap_t* heap, const char* fname, char* resolved_name) JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_heap_strdup(json_heap_t* heap, const char* s)            JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_heap_strndup(json_heap_t* heap, const char* s, size_t n) JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted char* json_mem_heap_realpath(json_heap_t* heap, const char* fname, char* resolved_name) JSON_noexcept JSON_malloc;
 
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_malloc_aligned(json_heap_t* heap, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(3);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_malloc_aligned_at(json_heap_t* heap, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_zalloc_aligned(json_heap_t* heap, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(3);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_zalloc_aligned_at(json_heap_t* heap, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_calloc_aligned(json_heap_t* heap, size_t count, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3) JSON_alloc_align(4);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_heap_calloc_aligned_at(json_heap_t* heap, size_t count, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_malloc_aligned(json_heap_t* heap, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_malloc_aligned_at(json_heap_t* heap, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_zalloc_aligned(json_heap_t* heap, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(3);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_zalloc_aligned_at(json_heap_t* heap, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_calloc_aligned(json_heap_t* heap, size_t count, size_t size, size_t alignment) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3) JSON_alloc_align(4);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_heap_calloc_aligned_at(json_heap_t* heap, size_t count, size_t size, size_t alignment, size_t offset) JSON_noexcept JSON_malloc JSON_alloc_size(2, 3);
 JSON_nodiscard JSON_api               void* json_mem_heap_realloc_aligned(json_heap_t* heap, void* p, size_t newsize, size_t alignment) JSON_noexcept JSON_alloc_size(3) JSON_alloc_align(4);
 JSON_nodiscard JSON_api               void* json_mem_heap_realloc_aligned_at(json_heap_t* heap, void* p, size_t newsize, size_t alignment, size_t offset) JSON_noexcept JSON_alloc_size(3);
 
@@ -264,17 +264,17 @@ JSON_nodiscard JSON_api size_t json_mem_malloc_size(const void* p)        JSON_n
 JSON_nodiscard JSON_api size_t json_mem_malloc_usable_size(const void *p) JSON_noexcept;
 
 JSON_api int json_mem_posix_memalign(void** p, size_t alignment, size_t size)   JSON_noexcept;
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_memalign(size_t alignment, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_valloc(size_t size)  JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_pvalloc(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
-JSON_nodiscard JSON_api JSON_restrict void* json_mem_aligned_alloc(size_t alignment, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_memalign(size_t alignment, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_valloc(size_t size)  JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_pvalloc(size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(1);
+JSON_nodiscard JSON_api JSON_restricted void* json_mem_aligned_alloc(size_t alignment, size_t size) JSON_noexcept JSON_malloc JSON_alloc_size(2) JSON_alloc_align(1);
 
 JSON_nodiscard JSON_api void* json_mem_reallocarray(void* p, size_t count, size_t size) JSON_noexcept JSON_alloc_size(2,3);
 JSON_nodiscard JSON_api void* json_mem_aligned_recalloc(void* p, size_t newcount, size_t size, size_t alignment) JSON_noexcept;
 JSON_nodiscard JSON_api void* json_mem_aligned_offset_recalloc(void* p, size_t newcount, size_t size, size_t alignment, size_t offset) JSON_noexcept;
 
-JSON_nodiscard JSON_api JSON_restrict unsigned short* json_mem_wcsdup(const unsigned short* s) JSON_noexcept JSON_malloc;
-JSON_nodiscard JSON_api JSON_restrict unsigned char*  json_mem_mbsdup(const unsigned char* s)  JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted unsigned short* json_mem_wcsdup(const unsigned short* s) JSON_noexcept JSON_malloc;
+JSON_nodiscard JSON_api JSON_restricted unsigned char*  json_mem_mbsdup(const unsigned char* s)  JSON_noexcept JSON_malloc;
 JSON_api int json_mem_dupenv_s(char** buf, size_t* size, const char* name)                      JSON_noexcept;
 JSON_api int json_mem_wdupenv_s(unsigned short** buf, size_t* size, const unsigned short* name) JSON_noexcept;
 
