@@ -138,6 +138,7 @@ JSON_forceinline static json_u32_t json_utf8_decode_next8__(json_u32_t          
   const __m256i     mbCharMaskV  = _mm256_cmpgt_epi32(charU32V, Low6BitMask);
   const __m256i     sixBitCharV  = _mm256_and_si256(charU32V, Low6BitMask);
   const __m256i     typeV        = _mm256_i32gather_epi32(utf8decode8_table, charU32V, 1);
+  const __m256i     nextTypeV    = _mm256_add_epi32(typeV, Offset256);
   const __m256i     acceptStateV = m256_accept_state(charU32V, typeV);
 
   const json_bool_t isAllAscii  = *(const json_u64_t*)pBytes;

@@ -146,6 +146,7 @@ add_object(valkyrie.status.system)
 
 add_object(valkyrie.win32_functions)
 
+add_object(valkyrie.utility.simdjson)
 add_object(valkyrie.utility.json)
 add_object(valkyrie.utility.random)
 add_object(valkyrie.utility.library)
@@ -262,7 +263,8 @@ add_library(JSON src/json/json.c
                  src/json/jsonvalue.c
                  src/json/jsonctx.c
                  src/json/jsonbitmap.c
-                 src/json/jsonstring.c src/json/jsonparser.c)
+                 src/json/jsonstring.c
+                 src/json/jsonparser.c)
 #set_target_properties(JSON PROPERTIES C_STANDARD 11)
 
 
