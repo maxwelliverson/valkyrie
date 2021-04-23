@@ -59,7 +59,7 @@ namespace valkyrie::GUI{
     void destroyRef(MonitorImpl* pImpl) noexcept {
       if (pImpl && !--pImpl->refCount) {
         if (!DestroyPhysicalMonitor(pImpl->physicalMonitorHandle))
-          panic(sys::win32::getLastError());
+          panic(sys::win32::get_last_error());
         delete pImpl;
       }
     }
@@ -78,7 +78,7 @@ namespace valkyrie::GUI{
     void destroyRef(WindowImpl* pImpl) noexcept {
       if (pImpl && !--pImpl->refCount) {
         if (!CloseWindow(pImpl->handle))
-          panic(sys::win32::getLastError());
+          panic(sys::win32::get_last_error());
         delete pImpl;
       }
     }

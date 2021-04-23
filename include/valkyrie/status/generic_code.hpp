@@ -12,6 +12,14 @@
 namespace valkyrie{
   
   enum class code : i32 {
+
+    BadOrdering                   = -71,
+
+    UnescapedCharacters           = -70,
+    MissingNullTerminator         = -69,
+    FailedParse                   = -68,
+
+
     BadCast                       = -67,
     ObjectNotInitialized          = -66,
     InvalidatedState              = -65,
@@ -52,9 +60,10 @@ namespace valkyrie{
     BadVersion                    = -35,
     Interrupted                   = -34,
     InvalidFormat                 = -33,
-    InferenceFailure              = -32,
-    InvalidConfiguration          = -31,
 
+    InvalidConfiguration          = -32,
+
+    ResourceIsEmpty               = -31,
     ResourceOutOfDate             = -30,
     ResourceAlreadyExists         = -29,
     ResourceTooLarge              = -28,
@@ -195,7 +204,7 @@ namespace valkyrie{
       case code::InvalidArgument:
       case code::InsufficientSize:
       case code::ArithmeticOverflow:
-      case code::InferenceFailure:
+      //case code::InferenceFailure:
       case code::InvalidConfiguration:
       case code::Deadlock:
       case code::Unknown:
@@ -237,7 +246,7 @@ namespace valkyrie{
   inline constexpr const generic_domain& generic_domain::get() noexcept {
     return detail::genericDomainInstance_;
   }
-  inline generic_status makeStatusCode(code code) noexcept {
+  inline generic_status make_status_code(code code) noexcept {
     return generic_status(std::in_place, code);
   }
 

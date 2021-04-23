@@ -192,7 +192,7 @@ int main(){
   auto registrationAtom = RegisterClass(&wndClass);
 
   if (!registrationAtom)
-    panic(valkyrie::sys::win32::getLastError());
+    panic(valkyrie::sys::win32::get_last_error());
 
 
   hwnd = CreateWindow(
@@ -809,7 +809,7 @@ int main(){
 
   while( (bRet = GetMessage( &msg, NULL, 0, 0 )) ) {
     if (bRet == -1) {
-      panic(win32::getLastError());
+      panic(win32::get_last_error());
       // handle the error and possibly exit
     } else {
       TranslateMessage(&msg);

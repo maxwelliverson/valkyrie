@@ -270,8 +270,8 @@ namespace valkyrie{
   using AgentStatusCode = status_code<AgentStatusCodeDomain>;
   using AgentException = status_code<AgentExceptionDomain>;
 
-  AgentStatusCode makeStatusCode(AgentCode code) noexcept;
-  AgentException  makeStatusCode(AgentExceptionPayload* pPayload) noexcept;
+  AgentStatusCode make_status_code(AgentCode code) noexcept;
+  AgentException  make_status_code(AgentExceptionPayload* pPayload) noexcept;
 
   template <typename T>
   using AgentResult = maybe<T, AgentStatusDomain>;
@@ -911,7 +911,7 @@ namespace valkyrie{
   };*/
 
   template <std::derived_from<AgentStatusDomain> Dom> requires(!std::same_as<Dom, AgentStatusDomain>)
-  inline AgentStatus makeStatusCode(const status_code<Dom>& derivedCode) noexcept {
+  inline AgentStatus make_status_code(const status_code<Dom>& derivedCode) noexcept {
     return AgentStatus(std::in_place, erasure_cast<u64>(derivedCode.value()));
   }
 }

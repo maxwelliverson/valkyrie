@@ -172,6 +172,7 @@ add_object(valkyrie.gui.dxgi)
 add_object(valkyrie.graphics.engine.engine)
 add_object(valkyrie.graphics.engine.option)
 add_object(valkyrie.graphics.engine.obj)
+add_object(valkyrie.graphics.engine.resource)
 
 add_object_library(valkyrie.status OBJECTS error system)
 add_object_library(valkyrie.memory.detail OBJECTS align debug_helpers free_list free_list_array small_free_list)

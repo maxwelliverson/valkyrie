@@ -16,7 +16,7 @@ using namespace valkyrie;
 
 namespace {
 
-#define abortWin32Error() panic(sys::win32::getLastError())
+#define abortWin32Error() panic(sys::win32::get_last_error())
 
   /*VK_noreturn void abortWindowsError(const char* pFunctionName, const char* pFileName, int LineNumber) noexcept {
     constexpr static size_t ErrorBufferSize = 4096;

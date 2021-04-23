@@ -335,7 +335,7 @@ namespace valkyrie{
                      member_type(status_type, traits::StatusEnum<E>),
                      if (requires{ typename probe<status_domain, E>::domain_type; typename probe<status_domain, E>::domain_type::status_type; })(typename probe<status_domain, E>::domain_type::status_type),
                      if (satisfies<E, status_domain>) (status_code<typename probe<status_domain, E>::domain_type>),
-                     if (requires(E e){ { makeStatusCode(e) } -> satisfies<Status::ValueType>; }) decltype(makeStatusCode(std::declval<E>()))
+                     if (requires(E e){ { make_status_code(e) } -> satisfies<Status::ValueType>; }) decltype(make_status_code(std::declval<E>()))
         );
 
         VK_trait(StatusInfo,

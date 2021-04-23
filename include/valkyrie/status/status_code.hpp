@@ -147,9 +147,9 @@ namespace valkyrie{
     }
     template <typename T, typename ...Args>
     VK_nodiscard bool strictly_equivalent(T&& Val, Args&& ...args) const noexcept requires(requires{
-      { makeStatusCode((T&&)Val, (Args&&)args...) } -> std::derived_from<status_code>;
+      { make_status_code((T&&)Val, (Args&&)args...) } -> std::derived_from<status_code>;
     }){
-      return this->strictly_equivalent(makeStatusCode(std::forward<T>(Val), std::forward<Args>(args)...));
+      return this->strictly_equivalent(make_status_code(std::forward<T>(Val), std::forward<Args>(args)...));
     }
     template <typename T>
     VK_nodiscard bool equivalent(const status_code<T>& Other) const noexcept{
@@ -159,9 +159,9 @@ namespace valkyrie{
     }
     template <typename T, typename ...Args>
     VK_nodiscard bool equivalent(T&& Val, Args&& ...args) const noexcept requires(requires{
-      { makeStatusCode((T&&)Val, (Args&&)args...) } -> std::derived_from<status_code>;
+      { make_status_code((T&&)Val, (Args&&)args...) } -> std::derived_from<status_code>;
     }){
-      return this->equivalent(makeStatusCode(std::forward<T>(Val), std::forward<Args>(args)...));
+      return this->equivalent(make_status_code(std::forward<T>(Val), std::forward<Args>(args)...));
     }
 
     VK_noreturn void throw_exception() const VK_throws {
@@ -309,9 +309,9 @@ namespace valkyrie{
 
 
     template <not_same_as_one_of<status_code, std::in_place_t> T, typename ...Args>
-    status_code(T&& val, Args&& ...args) noexcept(noexcept(makeStatusCode((T&&)val, (Args&&)args...)))
-        requires(requires{ { makeStatusCode(std::forward<T>(val), std::forward<Args>(args)...) } -> std::convertible_to<status_code>; })
-        : status_code(makeStatusCode(std::forward<T>(val), std::forward<Args>(args)...)){}
+    status_code(T&& val, Args&& ...args) noexcept(noexcept(make_status_code((T&&)val, (Args&&)args...)))
+        requires(requires{ { make_status_code(std::forward<T>(val), std::forward<Args>(args)...) } -> std::convertible_to<status_code>; })
+        : status_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){}
 
     /*template <StatusEnum Enum>
     requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
@@ -350,7 +350,7 @@ namespace valkyrie{
   };
 
   template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
-  status_code(Arg&& arg, Args&& ...args) noexcept  -> status_code<typename decltype(makeStatusCode((Arg&&)arg, (Args&&)args...))::domain_type>;
+  status_code(Arg&& arg, Args&& ...args) noexcept  -> status_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
 
   template <typename ErasedType>
   class status_code<erased<ErasedType>> : public detail::StatusCodeBase<erased<ErasedType>>{
@@ -395,9 +395,9 @@ namespace valkyrie{
 
 
     template <not_same_as_one_of<ThisType, std::in_place_t> T, typename ...Args>
-    status_code(T&& val, Args&& ...args) noexcept(noexcept(makeStatusCode((T&&)val, (Args&&)args...)))
-        requires(requires{ { makeStatusCode((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
-        : status_code(makeStatusCode(std::forward<T>(val), std::forward<Args>(args)...)){}
+    status_code(T&& val, Args&& ...args) noexcept(noexcept(make_status_code((T&&)val, (Args&&)args...)))
+        requires(requires{ { make_status_code((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
+        : status_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){}
 
     template <status_enum_type Enum>
     requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
@@ -445,9 +445,9 @@ namespace valkyrie{
 
 
     template <not_same_as_one_of<ThisType, std::in_place_t> T, typename ...Args>
-    error_code(T&& val, Args&& ...args) noexcept(noexcept(makeStatusCode((T&&)val, (Args&&)args...)))
-        requires(requires{ { makeStatusCode((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
-        : error_code(makeStatusCode(std::forward<T>(val), std::forward<Args>(args)...)){
+    error_code(T&& val, Args&& ...args) noexcept(noexcept(make_status_code((T&&)val, (Args&&)args...)))
+        requires(requires{ { make_status_code((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
+        : error_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){
       _checkIfSuccess();
     }
 
@@ -558,9 +558,9 @@ namespace valkyrie{
 
 
     template <not_same_as_one_of<ThisType, std::in_place_t> T, typename ...Args>
-    error_code(T&& val, Args&& ...args) noexcept(noexcept(makeStatusCode((T&&)val, (Args&&)args...)))
-    requires(requires{ { makeStatusCode((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
-        : error_code(makeStatusCode(std::forward<T>(val), std::forward<Args>(args)...)){
+    error_code(T&& val, Args&& ...args) noexcept(noexcept(make_status_code((T&&)val, (Args&&)args...)))
+    requires(requires{ { make_status_code((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
+        : error_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){
       _checkIfSuccess();
     }
 

@@ -23,7 +23,7 @@ namespace {
   inline constexpr decltype(auto) WindowClassName = "Valkyrie Class Window";
 
   inline void setLastResult(LPARAM val) noexcept {
-    reinterpret_cast<Internal::SurfaceImpl*>(((CREATESTRUCT*)val)->lpCreateParams)->lastResult = valkyrie::sys::win32::getLastError();
+    reinterpret_cast<Internal::SurfaceImpl*>(((CREATESTRUCT*)val)->lpCreateParams)->lastResult = valkyrie::sys::win32::get_last_error();
   }
 
   LRESULT valkyrieWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept{
@@ -105,7 +105,7 @@ public:
         .hwnd      = nativeWindow
     };
 
-    result = makeStatusCode(pInstance->instanceFunctions->createWin32Surface(pInstance->handle, &createInfo, allocator, &handle));
+    result = make_status_code(pInstance->instanceFunctions->createWin32Surface(pInstance->handle, &createInfo, allocator, &handle));
   }
 
   static Impl* create(Internal::InstanceImpl* pInstance, Extent2D<> extent) noexcept {

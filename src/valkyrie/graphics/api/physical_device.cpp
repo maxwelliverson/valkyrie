@@ -79,10 +79,10 @@ namespace valkyrie::graphics::api{
           for (; i < impl.queueFamilies.size(); ++i) {
             auto &family = impl.queueFamilies[i];
             u32 counterCount = 0;
-            VK_safe_call(makeStatusCode(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr)));
+            VK_safe_call(make_status_code(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr)));
             counters = VK_malloc(VkPerformanceCounterKHR, counterCount);
             descriptions = VK_malloc(VkPerformanceCounterDescriptionKHR, counterCount);
-            VK_safe_call(makeStatusCode(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions)));
+            VK_safe_call(make_status_code(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions)));
             for (u32 j = 0; i < counterCount; ++j)
               family.performanceCounters.emplace_back(counters[j], descriptions[j]);
             VK_free(counters);
@@ -102,18 +102,18 @@ namespace valkyrie::graphics::api{
           if (!impl.extensionsLoaded) {
             DynamicArray<VkExtensionProperties> deviceExtensions;
             u32 extSize;
-            VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, nullptr)));
+            VK_safe_call(make_status_code(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, nullptr)));
             deviceExtensions.resize(extSize);
-            VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, deviceExtensions.data())));
+            VK_safe_call(make_status_code(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, deviceExtensions.data())));
 
             impl.extensions.insert(deviceExtensions);
 
 
             for (auto &&layer : impl.pInstance->layers) {
               deviceExtensions.clear();
-              VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, nullptr)));
+              VK_safe_call(make_status_code(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, nullptr)));
               deviceExtensions.resize(extSize);
-              VK_safe_call(makeStatusCode(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, deviceExtensions.data())));
+              VK_safe_call(make_status_code(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, layer.name.data(), &extSize, deviceExtensions.data())));
               impl.extensions.insert(deviceExtensions);
             }
             impl.extensionsLoaded = true;

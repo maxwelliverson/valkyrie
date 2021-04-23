@@ -1,104 +1,9 @@
 //
-// Created by Maxwell on 2020-11-15.
+// Created by maxwe on 2021-04-23.
 //
 
-#ifndef VALKYRIE_FUNCTION_POINTERS_HPP
-#define VALKYRIE_FUNCTION_POINTERS_HPP
-
-#if VK_system_windows
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#define VK_USE_PLATFORM_WIN32_KHR
-#elif VK_system_linux
-#define VK_USE_PLATFORM_XCB_KHR
-#elif VK_system_macos
-#define VK_USE_PLATFORM_MACOS_MVK
-#define VK_USE_PLATFORM_METAL_EXT
-#endif
-
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan.h>
-
-#include <cassert>
-
-template <typename F>
-class VulkanFunction;
-
-template <typename Ret, typename ...Args>
-class VulkanFunction<Ret(VKAPI_PTR*)(Args...)>{
-  using F = Ret(*)(Args...);
-  const F functionPtr;
-public:
-  VulkanFunction(F pFunction) noexcept : functionPtr(pFunction){}
-  inline Ret operator()(Args... args) const noexcept {
-    /*if constexpr (std::is_same_v<Ret, void>) {
-      functionPtr(args...);
-    } else {
-      return functionPtr(args...);
-    }*/
-    return functionPtr(args...);
-  }
-
-  inline explicit operator F() const noexcept {
-    return functionPtr;
-  }
-
-  inline explicit operator bool() const noexcept {
-    return functionPtr;
-  }
-};
-
-class PolymorphicFunction{
-  PFN_vkVoidFunction pFunction;
-public:
-  PolymorphicFunction(PFN_vkVoidFunction pFunction) noexcept : pFunction(pFunction){}
-
-  template <typename Ret, typename ...Args>
-  inline explicit operator VulkanFunction<Ret(VKAPI_PTR*)(Args...)>() const noexcept {
-    return reinterpret_cast<Ret(VKAPI_PTR*)(Args...)>(pFunction);
-  }
-};
-
-class FreeFunctionLoader{
-  void* libraryHandle;
-  PFN_vkGetInstanceProcAddr getProcAddr;
-public:
-  FreeFunctionLoader(/*PFN_vkGetInstanceProcAddr getProcAddr*/);/* : getProcAddr(getProcAddr){}*/
-  FreeFunctionLoader(const FreeFunctionLoader&) = delete;
-  FreeFunctionLoader(FreeFunctionLoader&& other) noexcept;
-  ~FreeFunctionLoader();
-
-  PolymorphicFunction load(const char* pFunc) const noexcept {
-    return getProcAddr(nullptr, pFunc);
-  }
-
-  PFN_vkGetInstanceProcAddr getLoaderFunction() const noexcept {
-    return getProcAddr;
-  }
-};
-class InstanceFunctionLoader{
-  VkInstance instance_;
-  PFN_vkGetInstanceProcAddr getProcAddr;
-public:
-  InstanceFunctionLoader(VkInstance instance_, PFN_vkGetInstanceProcAddr getProcAddr) noexcept : instance_(instance_), getProcAddr(getProcAddr){}
-
-  PolymorphicFunction load(const char* pFunc) const noexcept {
-    return getProcAddr(instance_, pFunc);
-  }
-};
-class DeviceFunctionLoader{
-  VkDevice device_;
-  PFN_vkGetDeviceProcAddr getProcAddr;
-public:
-  DeviceFunctionLoader(VkDevice device_, PFN_vkGetDeviceProcAddr getProcAddr) noexcept : device_(device_), getProcAddr(getProcAddr){}
-
-  PolymorphicFunction load(const char* pFunc) const noexcept {
-    return getProcAddr(device_, pFunc);
-  }
-};
 
 
-#define VK_function(func_, field_name_) VulkanFunction<PFN_vk##func_> field_name_{loader.load("vk"#func_)}
 
 
 struct FreeFunctions{
@@ -746,5 +651,3 @@ struct DeviceFunctions{
         accelerationStructure(loader),
         presentation(loader){}
 };
-
-#endif//VALKYRIE_FUNCTION_POINTERS_HPP

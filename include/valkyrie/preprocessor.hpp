@@ -1029,6 +1029,7 @@
 #define PP_VK_impl_VAR_CONCAT PP_VK_impl_VAR_CONCAT_redirect
 #define VK_variadic_concat(...) PP_VK_impl_VAR_CONCAT(__VA_ARGS__)
 
+#define VK_forceinline VK_if(VK_compiler_msvc(__forceinline)VK_else(__attribute__((always_inline))))
 #define VK_fallthrough [[fallthrough]]
 #define VK_nodiscard [[nodiscard]]
 #define VK_noreturn [[noreturn]]
@@ -1180,7 +1181,7 @@
 #define VK_constexpr_error(Msg) VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(throw Vk::ConstantEvaluationException(Msg))VK_else((void)(Msg, 1 / 0)))
 
 
-#define VK_throws VK_if(VK_exceptions_enabled()VK_else(noexcept))
+#define VK_throws VK_if(VK_exceptions_enabled(noexcept(false)))
 
 #define VK_constant inline constexpr static
 #define VK_consteval_block if(std::is_constant_evaluated())

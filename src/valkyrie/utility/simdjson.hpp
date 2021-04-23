@@ -12788,13 +12788,13 @@ simdjson_warn_unused bool validate_utf8(const char *buf, size_t len) const noexc
  * <x86intrin.h>  (or <intrin.h>) before, so the headers
  * are fooled.
  */
-#include <bmiintrin.h>   // for _blsr_u64
-#include <lzcntintrin.h> // for  __lzcnt64
+//#include <bmiintrin.h>   // for _blsr_u64
+//#include <lzcntintrin.h> // for  __lzcnt64
 #include <immintrin.h>   // for most things (AVX2, AVX512, _popcnt64)
 #include <smmintrin.h>
 #include <tmmintrin.h>
-#include <avxintrin.h>
-#include <avx2intrin.h>
+//#include <avxintrin.h>
+//#include <avx2intrin.h>
 #include <wmmintrin.h>   // for  _mm_clmulepi64_si128
 // unfortunately, we may not get _blsr_u64, but, thankfully, clang
 // has it as a macro.
@@ -12943,7 +12943,7 @@ return __popcnt64(input_num);// Visual Studio wants two underscores
 }
 #else
 simdjson_really_inline long long int count_ones(uint64_t input_num) {
-return _popcnt64(input_num);
+return __popcnt64(input_num);
 }
 #endif
 
@@ -16875,7 +16875,7 @@ return __popcnt64(input_num);// Visual Studio wants two underscores
 }
 #else
 simdjson_really_inline long long int count_ones(uint64_t input_num) {
-return _popcnt64(input_num);
+return __popcnt64(input_num);
 }
 #endif
 

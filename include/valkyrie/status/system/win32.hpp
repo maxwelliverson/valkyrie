@@ -78,7 +78,7 @@ namespace valkyrie{
       using status = status_code<win32_status_domain>;
       using error = error_code<win32_status_domain>;
 
-      status getLastError() noexcept;
+      status get_last_error() noexcept;
     }
   }
   using system_status = sys::win32::status;

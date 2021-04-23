@@ -480,7 +480,7 @@ namespace valkyrie::GUI::Internal{
     using status = status_code<status_domain>;
     using Error  = error_code<status_domain>;
 
-    inline status makeStatusCode(RawResult result) noexcept {
+    inline status make_status_code(RawResult result) noexcept {
       return status{std::in_place, result};
     }
 
@@ -597,7 +597,7 @@ namespace valkyrie::GUI::Internal{
       const LUID& getLUID() const noexcept {
         return AdapterLUID;
       }
-      status getLastError() const noexcept {
+      status get_last_error() const noexcept {
         return lastResult;
       }
       Result<Output> getMonitor(u32 monitorID) const noexcept {

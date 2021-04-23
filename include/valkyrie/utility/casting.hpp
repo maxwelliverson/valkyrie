@@ -390,7 +390,7 @@ namespace valkyrie{
 
     template <typename Arg, typename ...Args>
     concept has_make_status_code = requires(Arg&& arg, Args&& ...args){
-      { makeStatusCode(std::forward<Arg>(arg), std::forward<Args>(args)...) } -> std::derived_from<status_code<void>>;
+      { make_status_code(std::forward<Arg>(arg), std::forward<Args>(args)...) } -> std::derived_from<status_code<void>>;
     };
   }
 

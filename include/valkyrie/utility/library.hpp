@@ -32,13 +32,17 @@ namespace valkyrie{
 
   public:
 
+    library(library&&) noexcept;
     ~library();
+
+
+
 
     static system_result<library> open(string_view libName) noexcept;
 
-
     polymorphic_function load(string_view functionName) noexcept;
 
+    void close() VK_throws;
   };
 }
 

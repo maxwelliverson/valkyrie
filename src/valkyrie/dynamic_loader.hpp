@@ -24,7 +24,7 @@ namespace valkyrie{
 
 
 
-  class DynamicLoader{
+  class dynamic_loader {
     HMODULE hLibrary;
     cstring libraryName;
 
@@ -43,17 +43,17 @@ namespace valkyrie{
 
 
   public:
-    explicit DynamicLoader(const char* libraryName) noexcept : hLibrary(LoadLibrary(libraryName)), libraryName(libraryName) {
+    explicit dynamic_loader(const char* libraryName) noexcept : hLibrary(LoadLibrary(libraryName)), libraryName(libraryName) {
       if (!hLibrary) [[unlikely]] {
-        auto lastError = sys::win32::getLastError();
+        auto lastError = sys::win32::get_last_error();
         std::basic_stringstream<utf8> errMsg;
         errMsg << "In Function: LoadLibrary(\"" << libraryName << "\")";
         panic(lastError, errMsg.str().c_str());
       }
     }
-    ~DynamicLoader(){
+    ~dynamic_loader(){
       if (!FreeLibrary(hLibrary)) [[unlikely]] {
-        auto lastError = sys::win32::getLastError();
+        auto lastError = sys::win32::get_last_error();
         std::basic_stringstream<utf8> errMsg;
         errMsg << "In Function: FreeLibrary(" << hLibrary << ")\n";
         errMsg << "Library Name: " << libraryName << "\n";
@@ -64,7 +64,7 @@ namespace valkyrie{
     PolymorphicFunction load(const char* functionName) const noexcept {
       auto result = GetProcAddress(hLibrary, functionName);
       if (!result) {
-        auto lastError = sys::win32::getLastError();
+        auto lastError = sys::win32::get_last_error();
         std::basic_stringstream<utf8> errMsg;
         errMsg << "In Function: GetProcAddress(" << hLibrary << ", \"" << functionName << "\")\n";
         errMsg << "Library Name: " << libraryName << "\n";

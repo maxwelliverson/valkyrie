@@ -52,8 +52,8 @@ namespace valkyrie{
     template <typename T, typename Dom>
     struct basic_result_storage : basic_result_constants<T, Dom>{
 
-      using constants = basic_result_constants<T, Dom>;
-      using value_type = typename constants::value_type;
+      using constants   = basic_result_constants<T, Dom>;
+      using value_type  = typename constants::value_type;
       using status_type = typename constants::status_type;
 
       union{
@@ -111,21 +111,29 @@ namespace valkyrie{
       }
 
 
-      constexpr ~basic_result_storage() requires(constants::is_trivially_destructible) = default;
+      //constexpr ~basic_result_storage() requires(constants::is_trivially_destructible) = default;
       constexpr ~basic_result_storage() {
-        if ( has_value_ )
+        if constexpr (!constants::is_trivially_destructible) {
+          if ( has_value_ ) {
+            if constexpr ( !std::is_trivially_destructible_v<value_type> )
+              value_.~value_type();
+          }
+          else if constexpr ( !std::is_trivially_destructible_v<status_type> )
+            status_.~status_type();
+        }
+        /*if ( has_value_ )
           value_.~value_type();
         else
-          status_.~status_type();
+          status_.~status_type();*/
       }
 
 
       template <typename ...Args> requires(std::constructible_from<value_type, Args...>)
-      constexpr explicit basic_result_storage(return_value_t, Args&& ...args)
+      constexpr /*explicit*/ basic_result_storage(return_value_t, Args&& ...args)
       noexcept(std::is_nothrow_constructible_v<value_type, Args...>)
           : value_(std::forward<Args>(args)...), has_value_(true){}
       template <typename ...Args> requires(std::constructible_from<status_type, Args...>)
-      constexpr explicit basic_result_storage(return_status_t, Args&& ...args)
+      constexpr /*explicit*/ basic_result_storage(return_status_t, Args&& ...args)
       noexcept(std::is_nothrow_constructible_v<status_type, Args...>)
           : status_(std::forward<Args>(args)...), has_value_(false){}
     };
@@ -197,12 +205,20 @@ namespace valkyrie{
       }
 
 
-      constexpr ~basic_result_storage() requires(constants::is_trivially_destructible) = default;
+      //constexpr ~basic_result_storage() requires(constants::is_trivially_destructible) = default;
       constexpr ~basic_result_storage() {
-        if ( has_value_ )
+        if constexpr (!constants::is_trivially_destructible) {
+          if ( has_value_ ) {
+            if constexpr ( !std::is_trivially_destructible_v<value_type> )
+              value_.~value_type();
+          }
+          else if constexpr ( !std::is_trivially_destructible_v<status_type> )
+            status_.~status_type();
+        }
+        /*if ( has_value_ )
           value_.~value_type();
         else
-          status_.~status_type();
+          status_.~status_type();*/
       }
 
 
@@ -225,12 +241,15 @@ namespace valkyrie{
         return std::nullopt;
       }
       static void             on_access(const status_code<void>& status) {
-        auto msg = status.message();
-        panic(generic_error(code::UnhandledError), msg.data());
+        status.throw_exception();
+        //auto msg = status.message();
+        //panic(generic_error(code::UnhandledError), msg.data());
       }
       static void             on_destruction(const status_code<void>& status) noexcept {
-        if ( status.severity() == severity::fatal)
-          panic(status);
+        if ( status.severity() == severity::fatal) {
+          status.throw_exception();
+          //panic(status);
+        }
       }
     };
   }
@@ -269,7 +288,7 @@ namespace valkyrie{
         : base_type(return_status, std::forward<Args>(args)...){}
 
 
-    ~basic_result(){
+    ~basic_result() {
       if (!has_value()) {
         policy::on_destruction(this->status_);
       }
@@ -323,9 +342,11 @@ namespace valkyrie{
   }
 
 
+
+
+
   template <typename T, typename Dom = erased<u64>>
   using result = basic_result<T, Dom, void>;
-
   template <typename T>
   using system_result = result<T, typename system_status::domain_type>;
 }

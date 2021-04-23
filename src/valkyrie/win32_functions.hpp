@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_SRC_WIN32_FUNCTIONS_HPP
 #define VALKYRIE_SRC_WIN32_FUNCTIONS_HPP
 
-#include "DynamicLoader.hpp"
+#include "dynamic_loader.hpp"
 
 #ifndef VALKYRIE_KERNEL_LIBRARY
 #define VALKYRIE_KERNEL_LIBRARY "KernelBase.dll"
@@ -23,7 +23,7 @@ namespace valkyrie{
 
   namespace {
     class DebugApi{
-      DynamicLoader debugHelpLib{VALKYRIE_DEBUG_HELP_LIBRARY};
+      dynamic_loader debugHelpLib{VALKYRIE_DEBUG_HELP_LIBRARY};
     public:
       /* Debug Help */
       VK_foreach(VK_bind_front(VK_load_function, debugHelpLib),
@@ -137,7 +137,7 @@ namespace valkyrie{
     };
 
     class WindowsKernelApi{
-      DynamicLoader kernelLib{VALKYRIE_KERNEL_LIBRARY};
+      dynamic_loader kernelLib{VALKYRIE_KERNEL_LIBRARY};
     public:
       VK_foreach(VK_bind_front(VK_load_function, kernelLib),
 

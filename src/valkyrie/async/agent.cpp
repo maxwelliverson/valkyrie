@@ -39,8 +39,8 @@ namespace {
     return from + ((~((size_t) bool(from & (align - 1)) - 1)) & ((from ^ (align - 1)) & (align - 1)));
   }
 
-  inline auto getLastError() noexcept {
-    return sys::win32::getLastError();
+  inline auto get_last_error() noexcept {
+    return sys::win32::get_last_error();
   }
 
   using SystemDomain = sys::win32_status_domain;
@@ -54,7 +54,7 @@ namespace {
   template<typename T>
   class Win32Result : public Win32Maybe<T> {
   public:
-    Win32Result() : Win32Maybe<T>(getLastError()) {}
+    Win32Result() : Win32Maybe<T>(get_last_error()) {}
     Win32Result(const T &value) : Win32Maybe<T>(value) {}
     Win32Result(T &&value) noexcept : Win32Maybe<T>(std::move(value)) {}
     Win32Result(const system_status &stat) : Win32Maybe<T>(stat) {}
@@ -85,7 +85,7 @@ namespace {
     VirtualPlaceholder(void *address, u64 size) noexcept : address_((valkyrie::byte *) address), size_(size) {}
     ~VirtualPlaceholder() {
       if (address_ && !kernelApi.VirtualFree(address_, 0, MEM_RELEASE))
-        panic(getLastError());
+        panic(get_last_error());
     }
 
     inline u64 size() const noexcept {
@@ -129,7 +129,7 @@ namespace {
     explicit MemoryFile(HANDLE handle) noexcept : fileHandle(handle) {}
     ~MemoryFile() {
       if (fileHandle && !kernelApi.CloseHandle(fileHandle))
-        panic(getLastError());
+        panic(get_last_error());
     }
 
     inline HANDLE release() noexcept {
@@ -182,7 +182,7 @@ namespace {
     inline system_status unmap() noexcept {
       if (address_) {
         if (!kernelApi.UnmapViewOfFile(address_))
-          return getLastError();
+          return get_last_error();
         address_ = nullptr;
         size_ = 0;
       }
@@ -269,10 +269,10 @@ namespace {
 
   inline system_status unmapView(void *pView) noexcept {
     /*if (!kernelApi.UnmapViewOfFile(pView))
-      return getLastError();
+      return get_last_error();
     return {};*/
     kernelApi.UnmapViewOfFile(pView);
-    return getLastError();
+    return get_last_error();
   }
 
 

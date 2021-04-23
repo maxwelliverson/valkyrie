@@ -18,7 +18,7 @@ int main() {
   std::cout << "VRAM: " << adapter.dedicatedVideoMemory() << std::endl;
   std::cout << "SysRAM: " << adapter.dedicatedSystemMemory() << std::endl;
   std::cout << "Shared: " << adapter.sharedSystemMemory() << std::endl;
-  std::cout << "Last Error: " << adapter.getLastError().message().c_str() << std::endl;
+  std::cout << "Last Error: " << adapter.get_last_error().message().c_str() << std::endl;
 
 
   auto output = *adapter.getMonitor(0);
@@ -30,5 +30,5 @@ int main() {
   std::cout << "FFLuminance: { min: " << ffLuminance.min << ", max: " << ffLuminance.max << " }\n";
 
   /*if (!LoadLibrary("SOMELIBRARYLMAO"))
-    panic(valkyrie::system::win32::getLastError());*/
+    panic(valkyrie::system::win32::get_last_error());*/
 }

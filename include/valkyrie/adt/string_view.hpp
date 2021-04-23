@@ -353,7 +353,10 @@ namespace valkyrie{
   }
 
   class string_view {
-    const utf8* pString = u8"";
+    union {
+      const utf8 *pString = u8"";
+      const char *pCString;
+    };
     u64 length_ = 0;
   public:
 
@@ -388,8 +391,8 @@ namespace valkyrie{
         : pString(str),
           length_(N - 1){}
     template <size_t N>
-    /*constexpr*/ string_view(const char(&str)[N]) noexcept
-        : pString(reinterpret_cast<const utf8(&)[N]>(str)),
+    constexpr string_view(const char(&str)[N]) noexcept
+        : pCString(str),
           length_(N - 1){}
 
 
@@ -403,8 +406,8 @@ namespace valkyrie{
     constexpr string_view(const utf8* pData) noexcept
         : pString(pData),
           length_(std::char_traits<utf8>::length(pData)){}
-    /*constexpr*/ explicit string_view(const char* pData) noexcept
-        : pString(reinterpret_cast<utf8_string>(pData)),
+    constexpr explicit string_view(const char* pData) noexcept
+        : pCString(pData),
           length_(std::char_traits<char>::length(pData)){}
 
     constexpr string_view(const utf8* pData, u64 stringLength) noexcept

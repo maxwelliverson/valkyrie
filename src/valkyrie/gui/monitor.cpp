@@ -442,7 +442,7 @@ namespace valkyrie::GUI{
 
             PHYSICAL_MONITOR physicalMonitor;
             if (!GetPhysicalMonitorsFromHMONITOR(newMonitor.handle, 1, &physicalMonitor))
-              panic(sys::win32::getLastError());
+              panic(sys::win32::get_last_error());
             
             newMonitor.physicalMonitorHandle = physicalMonitor.hPhysicalMonitor;
             newMonitor.name.assign(monitorDevice.DeviceString, std::strlen(monitorDevice.DeviceString));

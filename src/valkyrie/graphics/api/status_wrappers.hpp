@@ -382,13 +382,13 @@ namespace valkyrie::graphics{
   }*/
 
 
-  /*inline valkyrie::graphics::api::VulkanStatus makeStatusCode(VkResult result) noexcept {
+  /*inline valkyrie::graphics::api::VulkanStatus make_status_code(VkResult result) noexcept {
     return valkyrie::graphics::api::VulkanStatus(result);
   }
-  inline valkyrie::graphics::api::SpirVStatus makeStatusCode(spv_result_t result) noexcept {
+  inline valkyrie::graphics::api::SpirVStatus make_status_code(spv_result_t result) noexcept {
     return valkyrie::graphics::api::SpirVStatus(result);
   }
-  inline valkyrie::graphics::api::ShaderCStatus makeStatusCode(shaderc_compilation_status result) noexcept {
+  inline valkyrie::graphics::api::ShaderCStatus make_status_code(shaderc_compilation_status result) noexcept {
     return valkyrie::graphics::api::ShaderCStatus(result);
   }*/
 
@@ -407,13 +407,13 @@ namespace valkyrie::graphics{
 
 namespace {
 
-  inline valkyrie::graphics::VulkanStatus makeStatusCode(VkResult result) noexcept {
+  inline valkyrie::graphics::VulkanStatus make_status_code(VkResult result) noexcept {
     return valkyrie::graphics::VulkanStatus(std::in_place, result);
   }
-  /*inline valkyrie::graphics::api::SpirVStatus makeStatusCode(spv_result_t result) noexcept {
+  /*inline valkyrie::graphics::api::SpirVStatus make_status_code(spv_result_t result) noexcept {
     return valkyrie::graphics::api::SpirVStatus(result);
   }
-  inline valkyrie::graphics::api::ShaderCStatus makeStatusCode(shaderc_compilation_status result) noexcept {
+  inline valkyrie::graphics::api::ShaderCStatus make_status_code(shaderc_compilation_status result) noexcept {
     return valkyrie::graphics::api::ShaderCStatus(result);
   }*/
 
