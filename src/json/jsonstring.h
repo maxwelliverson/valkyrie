@@ -170,6 +170,8 @@ JSON_forceinline static json_u32_t json_utf8_decode_next8__(json_u32_t          
   // Round 2
 
 
+  m256_update_codepoints(codepointsV, stateV, charU32V);
+  m256_update_state(stateV);
 
 
 

@@ -2,6 +2,20 @@ cmake_minimum_required(VERSION 3.18)
 project(Valkyrie)
 
 
+set(DEFAULT_ALLOCATOR_OPTIONS new static virtual malloc heap)
+
+if(NOT DEFAULT_ALLOCATOR)
+    set(DEFAULT_ALLOCATOR new)
+endif()
+
+list(FIND DEFAULT_ALLOCATOR_OPTIONS ${DEFAULT_ALLOCATOR} DEFAULT_ALLOC_IS_VALID)
+
+if (DEFAULT_ALLOC_IS_VALID EQUAL -1)
+    message(ERROR "DEFAULT_ALLOCATOR: ${DEFAULT_ALLOCATOR}\nDEFAULT_ALLOCATOR must match one of the following values: {${DEFAULT_ALLOCATOR_OPTIONS}}")
+endif()
+
+add_compile_definitions(VALKYRIE_DEFAULT_ALLOCATOR=${DEFAULT_ALLOCATOR})
+
 
 find_package(Vulkan REQUIRED)
 find_package(CUDAToolkit REQUIRED)
@@ -164,6 +178,7 @@ add_object(valkyrie.graphics.api.loader)
 add_object(valkyrie.graphics.api.surface)
 add_object(valkyrie.graphics.api.swapchain)
 add_object(valkyrie.graphics.api.display)
+add_object(valkyrie.graphics.api.api)
 
 add_object(valkyrie.gui.window)
 add_object(valkyrie.gui.monitor)

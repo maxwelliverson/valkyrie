@@ -3,6 +3,7 @@
 //
 
 #include "jsonvalue.h"
+#include "internal.h"
 
 #include <assert.h>
 #include <string.h>

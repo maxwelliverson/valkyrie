@@ -35,7 +35,9 @@ namespace valkyrie::graphics::api{
     PFN(EnumerateInstanceLayerProperties);
     PFN(EnumerateInstanceVersion);
 
-    free_api() : GetInstanceProcAddr(vulkan_lib.load("vkGetInstanceProcAddr")){}
+    free_api()
+        : GetInstanceProcAddr(vulkan_lib.load("vkGetInstanceProcAddr")),
+          CreateInstance(){}
   };
   struct instance_api{
 

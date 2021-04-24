@@ -21,10 +21,9 @@ namespace valkyrie{
   /// A memory block.
   /// It is defined by its starting address and size.
   /// \ingroup core
-  struct memory_block
-  {
-    void*       memory; ///< The address of the memory block (might be \c nullptr).
-    u64 size;   ///< The size of the memory block (might be \c 0).
+  struct memory_block {
+    void* memory; ///< The address of the memory block (might be \c nullptr).
+    u64   size;   ///< The size of the memory block (might be \c 0).
 
     /// \effects Creates an invalid memory block with starting address \c nullptr and size \c 0.
     memory_block() noexcept : memory_block(nullptr, u64(0)) {}
@@ -393,9 +392,9 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
 
 
 extern template class memory_arena<static_block_allocator, true>;
-        extern template class memory_arena<static_block_allocator, false>;
-        extern template class memory_arena<virtual_block_allocator, true>;
-        extern template class memory_arena<virtual_block_allocator, false>;
+extern template class memory_arena<static_block_allocator, false>;
+extern template class memory_arena<virtual_block_allocator, true>;
+extern template class memory_arena<virtual_block_allocator, false>;
 
 
 /// A \concept{concept_blockallocator,BlockAllocator} that uses a given \concept{concept_rawallocator,RawAllocator} for allocating the blocks.

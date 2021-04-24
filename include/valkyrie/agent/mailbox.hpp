@@ -5,57 +5,81 @@
 #ifndef VALKYRIE_AGENT_MAILBOX_HPP
 #define VALKYRIE_AGENT_MAILBOX_HPP
 
-#include <valkyrie/async/atomic.hpp>
+
 #include <valkyrie/traits.hpp>
+#include <valkyrie/async/atomic.hpp>
+#include <valkyrie/status/result.hpp>
 
 namespace valkyrie{
-  
+
+  inline constexpr static u32 NoLimit = static_cast<u32>(-1);
+
+
   template <
-      size_t MaxWriterCount = static_cast<size_t>(-1),
-      size_t MaxReaderCount = static_cast<size_t>(-1)>
-  class Channel{
+      u32 MaxWriterCount = NoLimit,
+      u32 MaxReaderCount = NoLimit>
+  class mailbox;
+
+  template <
+      u32 MaxWriterCount = NoLimit,
+      u32 MaxReaderCount = NoLimit>
+  class basic_mailbox;
+
+  namespace impl{
+    class mailbox_base{
+    protected:
+
+      mailbox_base() noexcept : pMsgQueue(nullptr), queueLength(0){}
+      mailbox_base(u32 length, system_status& status) noexcept;
+      mailbox_base(const mailbox_base&) = delete;
+      mailbox_base(mailbox_base&& ) noexcept;
+
+
+      ~mailbox_base();
+
+
+      void* pMsgQueue;
+      u32   queueLength;
+    };
+  }
+  
+  template <u32 MaxWriterCount, u32 MaxReaderCount>
+  class mailbox{
   protected:
     inline constexpr static bool SingleWriter = MaxWriterCount == 1;
     inline constexpr static bool SingleReader = MaxReaderCount == 1;
     inline constexpr static bool PointToPoint = SingleWriter && SingleReader;
 
 
-    explicit Channel() noexcept : pMessageQueue(nullptr), queueSize(0){}
-    //explicit Channel(AgentConcurrency concurrency, Status& status) noexcept;
-    //explicit Channel(u32 queueSize, AgentConcurrency concurrency, Status& status) noexcept;
+    explicit mailbox() noexcept : pMessageQueue(nullptr), queueSize(0){}
+    //explicit mailbox(AgentConcurrency concurrency, Status& status) noexcept;
+    //explicit mailbox(u32 queueSize, AgentConcurrency concurrency, Status& status) noexcept;
 
   public:
 
-    Channel(const Channel&) = delete;
-    Channel(Channel&&) noexcept;
-    Channel& operator=(const Channel&) = delete;
-    Channel& operator=(Channel&&) noexcept;
-    ~Channel();
+    mailbox(const mailbox&) = delete;
+    mailbox(mailbox&&) noexcept;
+    mailbox& operator=(const mailbox&) = delete;
+    mailbox& operator=(mailbox&&) noexcept;
+    ~mailbox();
 
-
-
-    inline
-    
-    
-    
 
   private:
 
-    void* pMessageQueue;
-    u32   queueSize;
+    void*       pMessageQueue;
+    u32         queueSize;
 
 
     atomic<u32> nextReadOffset = 0;
     atomic<u32> nextWriteOffset = 0;
     atomic<u32> syncMarker = 0;
-    
   };
 
 
-  using PrivateChannel    = Channel<1, 1>;
-  using BroadcastChannel  = Channel<1>;
-  using CollectionChannel = Channel<static_cast<size_t>(-1), 1>;
-  using DispatchChannel   = Channel<>;
+  using private_mailbox    = mailbox<1, 1>;
+  using broadcast_mailbox  = mailbox<1>;
+  using collection_mailbox = mailbox<static_cast<size_t>(-1), 1>;
+  using dispatch_mailbox   = mailbox<>;
 
 }
 

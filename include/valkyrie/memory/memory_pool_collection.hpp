@@ -50,11 +50,8 @@ namespace valkyrie{
   /// This allocator is ideal for \concept{concept_node,node} allocations in any order but with a predefined set of sizes,
   /// not only one size like \ref memory_pool.
   /// \ingroup allocator
-  template <class PoolType, class BucketDistribution,
-      class BlockOrRawAllocator = default_allocator>
-  class memory_pool_collection
-      : detail::default_leak_checker<detail::memory_pool_collection_leak_handler>
-      {
+  template <class PoolType, class BucketDistribution, class BlockOrRawAllocator = default_allocator>
+  class memory_pool_collection : detail::default_leak_checker<detail::memory_pool_collection_leak_handler> {
           using free_list_array =
           detail::free_list_array<typename PoolType::type, typename BucketDistribution::type>;
           using leak_checker =
@@ -382,12 +379,12 @@ namespace valkyrie{
 
 
   extern template class memory_pool_collection<node_pool, identity_buckets>;
-        extern template class memory_pool_collection<array_pool, identity_buckets>;
-        extern template class memory_pool_collection<small_node_pool, identity_buckets>;
+  extern template class memory_pool_collection<array_pool, identity_buckets>;
+  extern template class memory_pool_collection<small_node_pool, identity_buckets>;
 
-        extern template class memory_pool_collection<node_pool, log2_buckets>;
-        extern template class memory_pool_collection<array_pool, log2_buckets>;
-        extern template class memory_pool_collection<small_node_pool, log2_buckets>;
+  extern template class memory_pool_collection<node_pool, log2_buckets>;
+  extern template class memory_pool_collection<array_pool, log2_buckets>;
+  extern template class memory_pool_collection<small_node_pool, log2_buckets>;
 
 
   /// An alias for \ref memory_pool_collection using the \ref identity_buckets policy
@@ -531,30 +528,20 @@ namespace valkyrie{
 
 
   extern template class allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
-        extern template class allocator_traits<
-            memory_pool_collection<array_pool, identity_buckets>>;
-        extern template class allocator_traits<
-            memory_pool_collection<small_node_pool, identity_buckets>>;
+  extern template class allocator_traits<memory_pool_collection<array_pool, identity_buckets>>;
+  extern template class allocator_traits<memory_pool_collection<small_node_pool, identity_buckets>>;
 
-        extern template class allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
-        extern template class allocator_traits<memory_pool_collection<array_pool, log2_buckets>>;
-        extern template class allocator_traits<
-            memory_pool_collection<small_node_pool, log2_buckets>>;
+  extern template class allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
+  extern template class allocator_traits<memory_pool_collection<array_pool, log2_buckets>>;
+  extern template class allocator_traits<memory_pool_collection<small_node_pool, log2_buckets>>;
 
-        extern template class composable_allocator_traits<
-            memory_pool_collection<node_pool, identity_buckets>>;
-        extern template class composable_allocator_traits<
-            memory_pool_collection<array_pool, identity_buckets>>;
-        extern template class composable_allocator_traits<
-            memory_pool_collection<small_node_pool, identity_buckets>>;
+  extern template class composable_allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
+  extern template class composable_allocator_traits<memory_pool_collection<array_pool, identity_buckets>>;
+  extern template class composable_allocator_traits<memory_pool_collection<small_node_pool, identity_buckets>>;
 
-        extern template class composable_allocator_traits<
-            memory_pool_collection<node_pool, log2_buckets>>;
-        extern template class composable_allocator_traits<
-            memory_pool_collection<array_pool, log2_buckets>>;
-        extern template class composable_allocator_traits<
-            memory_pool_collection<small_node_pool, log2_buckets>>;
-
+  extern template class composable_allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
+  extern template class composable_allocator_traits<memory_pool_collection<array_pool, log2_buckets>>;
+  extern template class composable_allocator_traits<memory_pool_collection<small_node_pool, log2_buckets>>;
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_POOL_COLLECTION_HPP

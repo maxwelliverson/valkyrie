@@ -11,7 +11,7 @@
 #include <intrin.h>
 #include <stdint.h>
 
-#pragma intrinsic(__lzcnt, __lzcnt64/*, __ll_lshift, __ll_rshift, __ull_rshift*/)
+#pragma intrinsic(__lzcnt, __lzcnt64,  __ull_rshift/*, __ll_lshift, __ll_rshift,*/)
 
 /*struct json_hetero_slist_entry__{
   json_i32_t  nextOffset;
@@ -223,6 +223,7 @@ inline static json_u64_t         json_bit_ceil__(json_u64_t value) {
 
   if (!(value & (value - 1)))
     return value;
+
   return __ull_rshift(U64_HIGHEST_BIT, (json_i32_t)(__lzcnt64(value) - 1));
 }
 JSON_forceinline static json_u64_t         json_pow2_factor__(json_u64_t value) {

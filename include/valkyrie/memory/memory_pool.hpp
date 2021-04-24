@@ -258,8 +258,8 @@ namespace valkyrie{
 
 
   extern template class memory_pool<node_pool>;
-        extern template class memory_pool<array_pool>;
-        extern template class memory_pool<small_node_pool>;
+  extern template class memory_pool<array_pool>;
+  extern template class memory_pool<small_node_pool>;
 
 
   template <class Type, class Alloc>
@@ -407,12 +407,12 @@ namespace valkyrie{
 
 
   extern template class allocator_traits<memory_pool<node_pool>>;
-        extern template class allocator_traits<memory_pool<array_pool>>;
-        extern template class allocator_traits<memory_pool<small_node_pool>>;
+  extern template class allocator_traits<memory_pool<array_pool>>;
+  extern template class allocator_traits<memory_pool<small_node_pool>>;
 
-        extern template class composable_allocator_traits<memory_pool<node_pool>>;
-        extern template class composable_allocator_traits<memory_pool<array_pool>>;
-        extern template class composable_allocator_traits<memory_pool<small_node_pool>>;
+  extern template class composable_allocator_traits<memory_pool<node_pool>>;
+  extern template class composable_allocator_traits<memory_pool<array_pool>>;
+  extern template class composable_allocator_traits<memory_pool<small_node_pool>>;
 
 }
 

@@ -358,7 +358,7 @@ namespace valkyrie{
 
 
   extern template class memory_stack<>;
-        extern template class memory_stack_raii_unwind<memory_stack<>>;
+  extern template class memory_stack_raii_unwind<memory_stack<>>;
 
 
   /// Specialization of the \ref allocator_traits for \ref memory_stack classes.
@@ -466,7 +466,7 @@ namespace valkyrie{
 
 
   extern template class allocator_traits<memory_stack<>>;
-        extern template class composable_allocator_traits<memory_stack<>>;
+  extern template class composable_allocator_traits<memory_stack<>>;
 
 }
 

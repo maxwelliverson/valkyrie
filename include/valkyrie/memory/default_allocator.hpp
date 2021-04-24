@@ -12,7 +12,7 @@
 #include "malloc_allocator.hpp"
 
 namespace valkyrie{
-  using default_allocator = malloc_allocator;
+  using default_allocator = VK_concat(VALKYRIE_DEFAULT_ALLOCATOR, _allocator);
 }
 
 #endif//VALKYRIE_MEMORY_DEFAULT_ALLOCATOR_HPP

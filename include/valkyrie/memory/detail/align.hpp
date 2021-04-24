@@ -17,7 +17,7 @@ namespace valkyrie::detail{
 
 // returns the offset needed to align ptr for given alignment
 // alignment must be valid
-inline u64 align_offset(std::uintptr_t address, u64 alignment) noexcept
+inline u64 align_offset(u64 address, u64 alignment) noexcept
 {
 VK_assert(is_valid_alignment(alignment));
 auto misaligned = address & (alignment - 1);
@@ -25,7 +25,7 @@ return misaligned != 0 ? (alignment - misaligned) : 0;
 }
 inline u64 align_offset(void* ptr, u64 alignment) noexcept
 {
-return align_offset(reinterpret_cast<std::uintptr_t>(ptr), alignment);
+return align_offset(reinterpret_cast<u64>(ptr), alignment);
 }
 
 // whether or not the pointer is aligned for given alignment
