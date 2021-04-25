@@ -462,7 +462,7 @@ valkyrie::AgentMailbox&                        valkyrie::AgentMailbox::operator=
                                                valkyrie::AgentMailbox::~AgentMailbox() {
   //MappedMemory mem{pMessageQueue, queueSize}; // memory is automatically unmapped/freed in MappedMemory destructor
     system_status results[2]{ unmapView(pMessageQueue), unmapView((byte*)pMessageQueue + queueSize) };
-    if (results[0].failure() || results[1].failure()) [[unlikely]] {
+    if (results[0].failure() || results[1].failure()) VK_unlikely {
       std::basic_stringstream<utf8> errMsg;
       errMsg << "\n\n\tIn Function: valkyrie::AgentMailbox::~AgentMailbox()";
       errMsg << "\n\tUnmapViewOfFile(pMessageQueue) => " << results[0].message().c_str();

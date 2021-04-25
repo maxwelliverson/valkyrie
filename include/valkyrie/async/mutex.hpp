@@ -8,6 +8,7 @@
 
 #include "semaphore.hpp"
 #include "atomic.hpp"
+#include <valkyrie/utility/time.hpp>
 
 
 // Mutex implementations that are faster and smaller than the
@@ -138,57 +139,15 @@ namespace valkyrie{
     };
   }
 
-  class timeout{
-
-    using duration_t = std::chrono::high_resolution_clock::duration;
-
-  public:
-    template <typename Rep, typename Period>
-    explicit timeout(const std::chrono::duration<Rep, Period>& dur) noexcept
-        : timeout_(std::chrono::duration_cast<duration_t>(dur)){}
-
-    duration_t duration() const noexcept {
-      return timeout_;
-    }
-
-  private:
-    duration_t timeout_;
-  };
-  class deadline{
-
-    using time_point_t = typename std::chrono::high_resolution_clock::time_point;
-
-  public:
 
 
 
-    template <typename Clk, typename Dur>
-    explicit deadline(const std::chrono::time_point<Clk, Dur>& tm) noexcept
-        : deadline_(std::chrono::time_point_cast<time_point_t>(tm)){}
-
-
-    time_point_t time_point() const noexcept {
-      return deadline_;
-    }
-
-  private:
-    time_point_t deadline_;
-  };
-
-  template <typename Rep, typename Per>
-  inline static timeout try_for(const std::chrono::duration<Rep, Per>& dur) noexcept {
-    return timeout(dur);
-  }
-  template <typename Clk, typename Dur>
-  inline static deadline try_until(const std::chrono::time_point<Clk, Dur>& tm) noexcept {
-    return deadline(tm);
-  }
   
   inline constexpr static impl::read_access_t    read_access{};
   inline constexpr static impl::write_access_t   write_access{};
   inline constexpr static impl::upgrade_access_t upgrade_access{};
 
-  inline constexpr static impl::non_blocking_t do_not_block{};
+  inline constexpr static impl::non_blocking_t   do_not_block{};
   
   template <typename Mtx, template <typename> typename Access = impl::mutex_write_access>
   class lock{
@@ -460,6 +419,34 @@ namespace valkyrie{
     }
   };
 
+  class noop_mutex{
+  public:
+
+    constexpr noop_mutex() = default;
+    noop_mutex(const noop_mutex&) = delete;
+
+    noop_mutex& operator=(const noop_mutex&) = delete;
+
+
+    VK_forceinline void     read_lock()         noexcept { }
+    VK_forceinline bool try_read_lock()            noexcept { return true; }
+    VK_forceinline bool try_read_lock(timeout)     noexcept { return true; }
+    VK_forceinline bool try_read_lock(deadline)    noexcept { return true; }
+
+    VK_forceinline void     upgrade_lock()         noexcept { }
+    VK_forceinline bool try_upgrade_lock()         noexcept { return true; }
+    VK_forceinline bool try_upgrade_lock(timeout)  noexcept { return true; }
+    VK_forceinline bool try_upgrade_lock(deadline) noexcept { return true; }
+
+    VK_forceinline void     write_lock()           noexcept { }
+    VK_forceinline bool try_write_lock()           noexcept { return true; }
+    VK_forceinline bool try_write_lock(timeout)    noexcept { return true; }
+    VK_forceinline bool try_write_lock(deadline)   noexcept { return true; }
+
+
+    VK_forceinline void  read_unlock() noexcept { }
+    VK_forceinline void write_unlock() noexcept { }
+  };
 }
 
 #endif//VALKYRIE_ASYNC_MUTEX_HPP

@@ -6,7 +6,6 @@
 #define VALKYRIE_UTILITY_LIBRARY_HPP
 
 #include <valkyrie/adt/string.hpp>
-#include <valkyrie/adt/string.hpp>
 #include <valkyrie/status/result.hpp>
 
 namespace valkyrie{
@@ -15,6 +14,8 @@ namespace valkyrie{
     void*  handle;
     string name;
 
+
+  protected:
     explicit library(string_view libName, system_status& opResult);
 
     struct polymorphic_function{
@@ -33,14 +34,12 @@ namespace valkyrie{
   public:
 
     library(library&&) noexcept;
-    ~library();
-
-
+    virtual ~library();
 
 
     static system_result<library> open(string_view libName) noexcept;
 
-    polymorphic_function load(string_view functionName) noexcept;
+    virtual polymorphic_function load(string_view functionName) noexcept;
 
     void close() VK_throws;
   };

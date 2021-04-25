@@ -21,11 +21,16 @@ find_package(Vulkan REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 message(STATUS "Vulkan Include Directory: ${Vulkan_INCLUDE_DIRS}")
 include_directories(include ${Vulkan_INCLUDE_DIRS})
-if(MSVC)
+if((MSVC) AND (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang))
     add_compile_options(/Zc:preprocessor)
 endif()
 
 if(VALKYRIE_ENABLE_ASAN)
+    set($ENV{ASAN_OPTIONS} windows_hook_rtl_allocators=true atexit=true print_stats=true)
+    add_compile_options(/fsanitize=address)
+endif()
+
+#[[if(VALKYRIE_ENABLE_ASAN)
     set($ENV{ASAN_OPTIONS} windows_hook_rtl_allocators=true)
     if (CMAKE_SYSTEM_NAME MATCHES Windows)
       set(ASAN_RELEASE_COMPILE_OPTIONS /Zi)
@@ -54,7 +59,7 @@ if(VALKYRIE_ENABLE_ASAN)
     link_libraries(${ASAN_LIBRARY})
     add_compile_options(${ASAN_COMPILE_OPTIONS})
     set($ENV{ASAN_OPTIONS} atexit=true print_stats=true)
-endif()
+endif()]]
 
 
 
@@ -96,7 +101,7 @@ function(add_object_library name_)
     cmake_parse_arguments(OBJECT_LIB "${optionalArgs}" "${singleValueArgs}" "${multiValueArgs}" ${ARGN})
     list(TRANSFORM OBJECT_LIB_OBJECTS PREPEND ${name_}.)
     list(TRANSFORM OBJECT_LIB_OBJECTS REPLACE ".+" "$<TARGET_OBJECTS:\\0>")
-    add_library(${name_} ${OBJECT_LIB_OBJECTS})
+    add_library(${name_} STATIC ${OBJECT_LIB_OBJECTS})
 endfunction()
 
 
@@ -271,6 +276,7 @@ set_target_properties(imgui_glfw PROPERTIES IMPORTED_LOCATION "${CUSTOM_LIBRARY_
 add_executable(graph_gui test/graph_gui.cpp)
 target_link_libraries(graph_gui PUBLIC valkyrie.status valkyrie.memory imgui imgui_vulkan imgui_glfw)
 add_executable(windowsapi_test test/windowsapi.cpp)
+target_link_libraries(windowsapi_test PUBLIC valkyrie.status)
 add_executable(intrinsics_test test/intrin.cpp)
 
 add_library(JSON src/json/json.c

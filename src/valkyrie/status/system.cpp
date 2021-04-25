@@ -413,7 +413,7 @@ bool valkyrie::sys::win32_status_domain::do_equivalent(const status_code<void>& 
   return translateWin32CodeToGeneric(static_cast<const status_type&>(A).value()) == B.generic();
 }
 
-valkyrie::sys::win32::status valkyrie::sys::win32::getLastError() noexcept {
+valkyrie::sys::win32::status valkyrie::sys::win32::get_last_error() noexcept {
   return status{ GetLastError() };
 }
 

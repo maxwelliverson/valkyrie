@@ -4,13 +4,13 @@
 
 
 
-#include <cstdint>
+/*#include <cstdint>
 #include <atomic>
 #include <type_traits>
 #include <cassert>
-#include <tuple>
+#include <tuple>*/
 
-#ifndef LFP_ALLOW_BLOCKING
+/*#ifndef LFP_ALLOW_BLOCKING
 static_assert(ATOMIC_POINTER_LOCK_FREE == 2,
               "Atomic pointer is not lock-free.");
 #endif
@@ -236,14 +236,28 @@ namespace lfpAlloc {
   template <std::size_t NumPools>
   thread_local typename detail::Pools<NumPools>::type
       PoolDispatcher<NumPools>::pools_;
-}
+}*/
 
-/*
+
+
+
 #include <iostream>
+
+#include <valkyrie/status/generic_code.hpp>
+
 
 #include <windows.h>
 #include <memoryapi.h>
 
 int main(){
+
+  LARGE_INTEGER freq;
+  if (!QueryPerformanceFrequency(&freq))
+    panic(valkyrie::sys::win32::get_last_error());
+
+  std::cout << "PerfCounterFrequency => " << freq.QuadPart << std::endl;
   std::cout << "Large Page Size: " << GetLargePageMinimum() << std::endl;
-}*/
+  std::cout << "Hello World" << std::endl;
+
+  return 0;
+}

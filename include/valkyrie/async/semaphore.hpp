@@ -8,6 +8,7 @@
 #include "atomic.hpp"
 #include <valkyrie/preprocessor.hpp>
 #include <valkyrie/primitives.hpp>
+#include <valkyrie/utility/time.hpp>
 
 #if __has_include(<semaphore>)
 #include <semaphore>
@@ -135,6 +136,37 @@ namespace valkyrie{
   using semaphore = counting_semaphore<>;
   using binary_semaphore = std::binary_semaphore;
 #endif
+
+
+  class noop_semaphore{
+  public:
+
+    explicit constexpr noop_semaphore(i64) noexcept { }
+
+    noop_semaphore(const noop_semaphore&) = delete;
+    noop_semaphore& operator=(const noop_semaphore&) = delete;
+
+
+    inline constexpr static i64(max)() noexcept {
+      return std::numeric_limits<i64>::max();
+    }
+
+
+    void acquire() noexcept { }
+    void release(i64 update = 1) noexcept { }
+
+    bool try_acquire() noexcept { return true; }
+    VK_nodiscard bool try_acquire(timeout) noexcept { return true; }
+    VK_nodiscard bool try_acquire(deadline) noexcept { return true; }
+
+    template <typename T, typename U>
+    VK_nodiscard bool try_acquire_for(std::chrono::duration<T, U>) noexcept { return true; }
+    template <typename T, typename U>
+    VK_nodiscard bool try_acquire_until(std::chrono::time_point<T, U>) noexcept { return true; }
+  };
+
+
+
 }
 
 #endif//VALKYRIE_ASYNC_SEMAPHORE_HPP

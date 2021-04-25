@@ -44,7 +44,7 @@ namespace valkyrie{
 
   public:
     explicit dynamic_loader(const char* libraryName) noexcept : hLibrary(LoadLibrary(libraryName)), libraryName(libraryName) {
-      if (!hLibrary) [[unlikely]] {
+      if (!hLibrary) VK_unlikely {
         auto lastError = sys::win32::get_last_error();
         std::basic_stringstream<utf8> errMsg;
         errMsg << "In Function: LoadLibrary(\"" << libraryName << "\")";
@@ -52,7 +52,7 @@ namespace valkyrie{
       }
     }
     ~dynamic_loader(){
-      if (!FreeLibrary(hLibrary)) [[unlikely]] {
+      if (!FreeLibrary(hLibrary)) VK_unlikely {
         auto lastError = sys::win32::get_last_error();
         std::basic_stringstream<utf8> errMsg;
         errMsg << "In Function: FreeLibrary(" << hLibrary << ")\n";

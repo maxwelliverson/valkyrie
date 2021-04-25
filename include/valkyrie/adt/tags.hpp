@@ -58,6 +58,8 @@ namespace valkyrie{
     template <typename ...Args>
     inline constexpr static bool nothrow_constructible_with    = std::conjunction_v<std::is_nothrow_default_constructible<Tag>, std::is_nothrow_constructible<T, Args...>>;
 
+
+  protected:
     inline T&          get_value() & noexcept {
       return *this;
     }

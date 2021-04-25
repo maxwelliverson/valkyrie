@@ -1010,11 +1010,11 @@
 #define PP_VK_impl_PARAM PP_VK_impl_PARAM_redirect
 #define PP_VK_impl_PARAM_redirect(arg) PP_VK_impl_PARAM_##arg
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__clang__)
 #define PP_VK_impl_PARAM_in _In_
 #define PP_VK_impl_PARAM_out _Out_
 #define PP_VK_impl_PARAM_inout _Inout_
-#define PP_VK_impl_PARAM_nonnull _Nonnull_
+#define PP_VK_impl_PARAM_nonnull _Notnull_
 #define PP_VK_impl_PARAM_nullable _Maybenull_
 #define PP_VK_impl_PARAM_in_string
 #else
@@ -1189,13 +1189,12 @@
 
 
 
-#define VK_pragma(...) VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(__pragma(__VA_ARGS__))VK_else_if(VK_compiler_clang(_Pragma(("clang " VK_stringify(__VA_ARGS__))))VK_else(_Pragma("GCC " VK_stringify(__VA_ARGS__)))));
+#define VK_pragma(...) VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(__pragma(__VA_ARGS__))VK_else_if(VK_compiler_clang(_Pragma(VK_stringify(clang __VA_ARGS__)))VK_else(_Pragma(VK_stringify(GCC __VA_ARGS__)))));
 #define VK_msvc_pragma(...) VK_if(VK_compiler_msvc(__pragma(__VA_ARGS__)))
-#define VK_diagnostic_push VK_if(VK_compiler_msvc(__pragma(warning(push)))VK_else_if(VK_compiler_clang(_Pragma("clang diagnostic push"))VK_else(_Pragma("GCC diagnostic push"))));
+#define VK_diagnostic_push VK_if(VK_compiler_msvc(__pragma(warning(push));)) VK_if(VK_compiler_clang(_Pragma("clang diagnostic push");)VK_else_if(VK_compiler_gcc(_Pragma("GCC diagnostic push");)))
 #define VK_msvc_warning(...) VK_if(VK_compiler_msvc(__pragma(warning(__VA_ARGS__));))
-#define VK_diagnostic_pop VK_if(VK_compiler_msvc(__pragma(warning(pop)))VK_else_if(VK_compiler_clang(_Pragma("clang diagnostic pop"))VK_else(_Pragma("GCC diagnostic pop"))));
-
-
+#define VK_clang_ignore_warning(warning) VK_if(VK_compiler_clang(_Pragma(VK_stringify(clang diagnostic ignored VK_stringify(-W##warning)));))
+#define VK_diagnostic_pop VK_if(VK_compiler_msvc(__pragma(warning(pop));)) VK_if(VK_compiler_clang(_Pragma("clang diagnostic pop");)VK_else_if(VK_compiler_gcc(_Pragma("GCC diagnostic pop");)))
 
 
 #define VK_compiler_print(Msg) VK_pragma(VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(message(Msg))VK_else(message Msg)))
@@ -1210,11 +1209,22 @@
 #define VK_assert_msg(Expr, Msg) (void)(VK_assert_bool(Expr, Msg))
 #define VK_assert(Expr) VK_assert_msg(Expr, #Expr)
 #define VK_assume(Expr) VK_if(VK_compiler_msvc(__assume(Expr))VK_else_if(VK_compiler_clang(__builtin_assume(Expr))))
-#define VK_axiom(...) { bool __value_of_axiom(__VA_ARGS__); (void)(VK_assert_bool(__value_of_axiom, #__VA_ARGS__)); VK_assume(__value_of_axiom); }
+#define VK_axiom(...) { const bool __value_of_axiom = __VA_ARGS__; (void)(VK_assert_bool(__value_of_axiom, #__VA_ARGS__)); VK_assume(__value_of_axiom); }
 #define VK_no_default default: VK_unreachable
 
 
-#define VK_constexpr_assert_msg(Expr, Msg) VK_consteval_block{ VK_diagnostic_push VK_msvc_warning(disable:4297) if(!(VK_unwrap(Expr))) VK_constexpr_error(Msg); VK_diagnostic_pop } else { VK_assert_msg(VK_unwrap(Expr), Msg); } (void)0
+#define VK_constexpr_assert_msg(Expr, Msg) \
+  do { VK_consteval_block{ \
+      VK_diagnostic_push \
+      VK_msvc_warning(disable:4297)        \
+      VK_clang_ignore_warning(unused-value) \
+        if(!(VK_unwrap(Expr))) \
+          VK_constexpr_error(Msg); \
+      VK_diagnostic_pop \
+    } else { \
+      VK_assert_msg(VK_unwrap(Expr), Msg); \
+    }                                                               \
+  }while(false)
 #define VK_constexpr_assert(...) VK_constexpr_assert_msg((__VA_ARGS__), #__VA_ARGS__)
 
 #if VK_compiler_msvc

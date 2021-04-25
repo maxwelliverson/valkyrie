@@ -9,6 +9,11 @@
 #include <valkyrie/utility/ordering.hpp>
 #include <valkyrie/utility/casting.hpp>
 
+
+VK_diagnostic_push
+VK_clang_ignore_warning(unknown-attributes)
+
+
 namespace valkyrie{
 
   template <typename Ptr>
@@ -35,13 +40,13 @@ namespace valkyrie{
     };
     template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) noexcept>
     struct get_function_ptr<MemFn, meta::overload<1>>{
-      static Ret value(Class* p, Args... args) noexcept {
+      static Ret value(Class* VK_param(nonnull) p, Args... args) noexcept {
         return (p->*MemFn)(std::forward<Args>(args)...);
       }
     };
     template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) const noexcept>
     struct get_function_ptr<MemFn, meta::overload<1>>{
-      static Ret value(const Class* p, Args... args) noexcept {
+      static Ret value(const Class* VK_param(nonnull) p, Args... args) noexcept {
         return (p->*MemFn)(std::forward<Args>(args)...);
       }
     };
@@ -52,13 +57,13 @@ namespace valkyrie{
     };
     template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...)>
     struct get_function_ptr<MemFn, meta::overload<0>>{
-      static Ret value(Class* p, Args... args) {
+      static Ret value(Class* VK_param(nonnull) p, Args... args) {
         return (p->*MemFn)(std::forward<Args>(args)...);
       }
     };
     template <typename Ret, typename Class, typename ...Args, Ret(Class::* MemFn)(Args...) const>
     struct get_function_ptr<MemFn, meta::overload<0>>{
-      static Ret value(const Class* p, Args... args) {
+      static Ret value(const Class* VK_param(nonnull) p, Args... args) {
         return (p->*MemFn)(std::forward<Args>(args)...);
       }
     };
@@ -120,11 +125,11 @@ namespace valkyrie{
     using function_ptr = Fn*;
 
     template <typename Derived, typename Ptr>
-    concept has_on_acquire = requires(function_ptr<Ptr(Derived*, param_t<Ptr>) noexcept>& fn){
+    concept has_on_acquire = requires(function_ptr<Ptr(Derived* VK_param(nonnull), param_t<Ptr>) noexcept>& fn){
       fn = get_function_ptr<&Derived::on_acquire>::value;
     };
     template <typename Derived>
-    concept has_on_release = requires(function_ptr<void(Derived*) noexcept>& fn){
+    concept has_on_release = requires(function_ptr<void(Derived* VK_param(nonnull)) noexcept>& fn){
       fn = get_function_ptr<&Derived::on_release>::value;
     };
 
@@ -182,8 +187,8 @@ namespace valkyrie{
 
       using ptr_param_t = param_t<Ptr>;
 
-      using PFN_on_acquire = Ptr(*)(Derived*, ptr_param_t) /*noexcept*/;
-      using PFN_on_release = void(*)(Derived*) /*noexcept*/;
+      using PFN_on_acquire = Ptr(*)(Derived* VK_param(nonnull), ptr_param_t) /*noexcept*/;
+      using PFN_on_release = void(*)(Derived* VK_param(nonnull)) /*noexcept*/;
 
       /*template <auto pfn_on_release>
       consteval bool is_trivial_release() {
@@ -663,7 +668,7 @@ namespace valkyrie{
     borrowed_ptr(const borrowed_ptr<U> other) noexcept : base(other.get()){ }
 
 
-    operator T*() const noexcept {
+    operator T* VK_param(nullable) () const noexcept {
       return this->get();
     }
   };
@@ -772,5 +777,7 @@ struct std::pointer_traits<valkyrie::borrowed_ptr<T>>{
 
 
 };*/
+
+VK_diagnostic_pop
 
 #endif//VALKYRIE_ADT_PTR_HPP

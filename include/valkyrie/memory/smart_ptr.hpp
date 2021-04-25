@@ -15,67 +15,6 @@
 
 namespace valkyrie{
 
-  namespace detail
-  {
-    template <typename T, class RawAllocator, typename... Args>
-    auto allocate_unique(allocator_reference<RawAllocator> alloc, Args&&... args)
-    -> std::unique_ptr<T, allocator_deleter<T, RawAllocator>>
-    {
-      using raw_ptr = std::unique_ptr<T, allocator_deallocator<T, RawAllocator>>;
-
-      auto memory = alloc.allocate_node(sizeof(T), alignof(T));
-      // raw_ptr deallocates memory in case of constructor exception
-      raw_ptr result(static_cast<T*>(memory), {alloc});
-      // call constructor
-      ::new (memory) T(detail::forward<Args>(args)...);
-      // pass ownership to return value using a deleter that calls destructor
-      return {result.release(), {alloc}};
-    }
-
-    template <typename T, typename... Args>
-    void construct(std::true_type, T* cur, T* end, Args&&... args)
-    {
-      for (; cur != end; ++cur)
-        ::new (static_cast<void*>(cur)) T(detail::forward<Args>(args)...);
-    }
-
-    template <typename T, typename... Args>
-    void construct(std::false_type, T* begin, T* end, Args&&... args)
-    {
-#if FOONATHAN_HAS_EXCEPTION_SUPPORT
-      auto cur = begin;
-                try
-                {
-                    for (; cur != end; ++cur)
-                        ::new (static_cast<void*>(cur)) T(detail::forward<Args>(args)...);
-                }
-                catch (...)
-                {
-                    for (auto el = begin; el != cur; ++el)
-                        el->~T();
-                    throw;
-                }
-#else
-      construct(std::true_type{}, begin, end, detail::forward<Args>(args)...);
-#endif
-    }
-
-    template <typename T, class RawAllocator>
-    auto allocate_array_unique(std::size_t size, allocator_reference<RawAllocator> alloc)
-    -> std::unique_ptr<T[], allocator_deleter<T[], RawAllocator>>
-    {
-      using raw_ptr = std::unique_ptr<T[], allocator_deallocator<T[], RawAllocator>>;
-
-      auto memory = alloc.allocate_array(size, sizeof(T), alignof(T));
-      // raw_ptr deallocates memory in case of constructor exception
-      raw_ptr result(static_cast<T*>(memory), {alloc, size});
-      construct(std::integral_constant<bool, noexcept_OP(T())>{}, result.get(),
-                result.get() + size);
-      // pass ownership to return value using a deleter that calls destructor
-      return {result.release(), {alloc, size}};
-    }
-  } // namespace detail
-
   /// A \c std::unique_ptr that deletes using a \concept{concept_rawallocator,RawAllocator}.
   ///
   /// It is an alias template using \ref allocator_deleter as \c Deleter class.
@@ -93,6 +32,68 @@ namespace valkyrie{
   template <class BaseType, class RawAllocator>
   using unique_base_ptr = std::unique_ptr<BaseType, allocator_polymorphic_deleter<BaseType, RawAllocator>>;
 
+
+  using std::shared_ptr;
+
+  namespace detail {
+    template <typename T, class RawAllocator, typename... Args>
+    unique_ptr<T, RawAllocator> allocate_unique(allocator_reference<RawAllocator> alloc, Args&&... args) {
+      using raw_ptr = std::unique_ptr<T, allocator_deallocator<T, RawAllocator>>;
+
+      auto memory = alloc.allocate_node(sizeof(T), alignof(T));
+      // raw_ptr deallocates memory in case of constructor exception
+      raw_ptr result(static_cast<T*>(memory), {alloc});
+      // call constructor
+      ::new (memory) T(detail::forward<Args>(args)...);
+      // pass ownership to return value using a deleter that calls destructor
+      return {result.release(), {alloc}};
+    }
+
+    template <typename T, typename... Args>
+    void construct(T* cur, T* end, Args&&... args) noexcept requires(std::is_nothrow_default_constructible_v<T>) {
+      for (; cur != end; ++cur)
+        ::new (static_cast<void*>(cur)) T(detail::forward<Args>(args)...);
+    }
+
+    template <typename T, typename... Args>
+    void construct(T* begin, T* end, Args&&... args)
+    {
+#if VK_exceptions_enabled
+      auto cur = begin;
+                try
+                {
+                    for (; cur != end; ++cur)
+                        ::new (static_cast<void*>(cur)) T(detail::forward<Args>(args)...);
+                }
+                catch (...)
+                {
+                    for (auto el = begin; el != cur; ++el)
+                        el->~T();
+                    throw;
+                }
+#else
+      for (; cur != end; ++cur)
+        ::new (static_cast<void*>(cur)) T(detail::forward<Args>(args)...);
+#endif
+    }
+
+    template <typename T, class RawAllocator>
+    unique_ptr<T[], RawAllocator>
+    allocate_array_unique(u64 size, allocator_reference<RawAllocator> alloc)
+    {
+      using raw_ptr = std::unique_ptr<T[], allocator_deallocator<T[], RawAllocator>>;
+
+      auto memory = alloc.allocate_array(size, sizeof(T), alignof(T));
+      // raw_ptr deallocates memory in case of constructor exception
+      raw_ptr result(static_cast<T*>(memory), {alloc, size});
+      construct(result.get(), result.get() + size);
+      // pass ownership to return value using a deleter that calls destructor
+      return {result.release(), {alloc, size}};
+    }
+  } // namespace detail
+
+
+
   /// Creates a \c std::unique_ptr using a \concept{concept_rawallocator,RawAllocator} for the allocation.
   /// \effects Allocates memory for the given type using the allocator
   /// and creates a new object inside it passing the given arguments to its constructor.
@@ -101,13 +102,11 @@ namespace valkyrie{
   /// the caller has to ensure that the object lives as long as the smart pointer.
   /// \ingroup adapter
   template <typename T, class RawAllocator, typename... Args>
-  auto allocate_unique(RawAllocator&& alloc, Args&&... args) -> FOONATHAN_REQUIRES_RET(
-  !std::is_array<T>::value,
-  std::unique_ptr<T, allocator_deleter<T, typename std::decay<RawAllocator>::type>>)
-{
-  return detail::allocate_unique<T>(make_allocator_reference(
-      detail::forward<RawAllocator>(alloc)),
-      detail::forward<Args>(args)...);
+  unique_ptr<T, std::decay_t<RawAllocator>> allocate_unique(RawAllocator&& alloc, Args&&... args)
+  requires(!std::is_array_v<T>) {
+  return detail::allocate_unique<T>(
+        make_allocator_reference(detail::forward<RawAllocator>(alloc)),
+        detail::forward<Args>(args)...);
 }
 
 /// Creates a \c std::unique_ptr using a type-erased \concept{concept_rawallocator,RawAllocator} for the allocation.
@@ -119,10 +118,8 @@ namespace valkyrie{
 /// the caller has to ensure that the object lives as long as the smart pointer.
 /// \ingroup adapter
 template <typename T, class RawAllocator, typename... Args>
-auto allocate_unique(any_allocator, RawAllocator&& alloc, Args&&... args)
--> FOONATHAN_REQUIRES_RET(!std::is_array<T>::value,
-std::unique_ptr<T, allocator_deleter<T, any_allocator>>)
-{
+unique_ptr<T, any_allocator> allocate_unique(any_allocator, RawAllocator&& alloc, Args&&... args)
+    requires(!std::is_array_v<T>)  {
 return detail::allocate_unique<T, any_allocator>(make_allocator_reference(
     detail::forward<RawAllocator>(
     alloc)),
@@ -136,14 +133,9 @@ return detail::allocate_unique<T, any_allocator>(make_allocator_reference(
 /// the caller has to ensure that the object lives as long as the smart pointer.
 /// \ingroup adapter
 template <typename T, class RawAllocator>
-auto allocate_unique(RawAllocator&& alloc, std::size_t size) -> FOONATHAN_REQUIRES_RET(
-    std::is_array<T>::value,
-    std::unique_ptr<T, allocator_deleter<T, typename std::decay<RawAllocator>::type>>)
-{
-return detail::allocate_array_unique<
-    typename std::remove_extent<T>::type>(size,
-    make_allocator_reference(
-    detail::forward<RawAllocator>(alloc)));
+unique_ptr<T, std::decay_t<RawAllocator>> allocate_unique(RawAllocator&& alloc, u64 size)
+requires(std::is_array_v<T>){
+  return detail::allocate_array_unique<std::remove_extent_t<T>>(size, make_allocator_reference(detail::forward<RawAllocator>(alloc)));
 }
 
 /// Creates a \c std::unique_ptr owning an array using a type-erased \concept{concept_rawallocator,RawAllocator} for the allocation.
@@ -154,13 +146,11 @@ return detail::allocate_array_unique<
 /// the caller has to ensure that the object lives as long as the smart pointer.
 /// \ingroup adapter
 template <typename T, class RawAllocator>
-auto allocate_unique(any_allocator, RawAllocator&& alloc, std::size_t size)
--> FOONATHAN_REQUIRES_RET(std::is_array<T>::value,
-    std::unique_ptr<T, allocator_deleter<T, any_allocator>>)
+unique_ptr<T, any_allocator> allocate_unique(any_allocator, RawAllocator&& alloc, u64 size)
+requires(std::is_array_v<T>)
 {
-return detail::allocate_array_unique<typename std::remove_extent<T>::type,
-    any_allocator>(size,
-    make_allocator_reference(
+return detail::allocate_array_unique<std::remove_extent_t<T>,
+    any_allocator>(size, make_allocator_reference(
     detail::forward<RawAllocator>(
     alloc)));
 }
@@ -173,7 +163,7 @@ return detail::allocate_array_unique<typename std::remove_extent<T>::type,
 /// the caller has to ensure that the object lives as long as the smart pointer.
 /// \ingroup adapter
 template <typename T, class RawAllocator, typename... Args>
-std::shared_ptr<T> allocate_shared(RawAllocator&& alloc, Args&&... args)
+shared_ptr<T> allocate_shared(RawAllocator&& alloc, Args&&... args)
 {
   return std::allocate_shared<T>(make_std_allocator<T>(
       detail::forward<RawAllocator>(alloc)),
@@ -182,12 +172,15 @@ std::shared_ptr<T> allocate_shared(RawAllocator&& alloc, Args&&... args)
 
 
 
-  template <typename T>
+  /*template <typename T>
   class handle;
   template <typename T>
   class unique_ptr;
   template <typename T>
-  class shared_ptr;
+  class shared_ptr;*/
+
+
+
 }
 
 #endif//VALKYRIE_MEMORY_SMART_PTR_HPP

@@ -180,8 +180,7 @@ namespace valkyrie {
   /// Otherwise the same behavior.
   /// \ingroup adapter
   template<typename Type, class RawAllocator>
-  class allocator_deleter<Type[], RawAllocator>
-      : allocator_reference<RawAllocator> {
+  class allocator_deleter<Type[], RawAllocator> : allocator_reference<RawAllocator> {
     static_assert(!std::is_abstract<Type>::value, "must not create polymorphic arrays");
 
   public:

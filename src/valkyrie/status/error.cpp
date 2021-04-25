@@ -3,6 +3,8 @@
 //
 
 #include <valkyrie/status/generic_code.hpp>
+#include <valkyrie/adt/string.hpp>
+#include <valkyrie/status/assert.hpp>
 
 VK_msvc_warning(push)
 VK_msvc_warning(disable:5104)
@@ -46,7 +48,7 @@ namespace {
   }*/
 
   std::ostream& operator<<(std::ostream& OS, string_view string){
-    return OS.write(string.c_str(), string.byteLength());
+    return OS.write(string.c_str(), string.size());
   }
   std::ostream& operator<<(std::ostream& OS, const string_ref& string){
     return OS.write(string.c_str(), string.size());
@@ -77,22 +79,21 @@ void valkyrie::printStackTraceToStdErr() {
   std::cerr << boost::stacktrace::basic_stacktrace(2, 32) << std::endl;
 }
 
-namespace valkyrie::detail{
-  VK_noreturn void badInvariant(utf8_string pMessage, utf8_string pFunction, utf8_string pFilename, int lineNum) noexcept {
+#if VK_debug_build
+VK_noreturn void valkyrie::detail::_bad_invariant(utf8_string pMessage, utf8_string pFunction, utf8_string pFilename, int lineNum) VK_throws {
 
-    std::basic_stringstream<utf8> outMsg;
+  std::stringstream outMsg;
 
 
-    //std::cerr << "\n\n\n!!! BAD INVARIANT !!!";
-    outMsg << u8"\n\tInvariant: \"" << pMessage;
-    outMsg << u8"\"\n\tCalling Function: " << pFunction;
-    outMsg << u8"\n\tSource Location: " << pFilename << u8":" << lineNum << u8"\n";
-    panic(generic_error(code::BadInvariant), outMsg.str().c_str());
-    //std::cerr << "Stacktrace: \n\n" << boost::stacktrace::basic_stacktrace(4, 100) << std::endl;
-    //abort();
-  }
+  //std::cerr << "\n\n\n!!! BAD INVARIANT !!!";
+  outMsg << "\n\tInvariant: \"" << (cstring)pMessage;
+  outMsg << "\"\n\tCalling Function: " << (cstring)pFunction;
+  outMsg << "\n\tSource Location: " << (cstring)pFilename << ":" << lineNum << "\n";
+  panic(generic_error(code::BadInvariant), (utf8_string)outMsg.str().c_str());
+  //std::cerr << "Stacktrace: \n\n" << boost::stacktrace::basic_stacktrace(4, 100) << std::endl;
+  //abort();
 }
-
+#endif
 
 VK_noreturn void valkyrie::panic(const utf8 *pMessage) noexcept {
   std::cerr << "\n\nPANIC!\n\tMessage: " << (const char*)pMessage << std::endl;
@@ -116,7 +117,7 @@ void status_domain::do_throw_exception(const status_code<void> &code) const {
   std::stringstream msg;
   auto stacktrace = boost::stacktrace::basic_stacktrace(3, 32);
   msg << code << "\n\n" << stacktrace << std::endl;
-  throw std::runtime_error(msg.str());
+  VK_if(VK_exceptions_enabled(throw std::runtime_error(msg.str()))VK_else(panic(code, (utf8_string)msg.str().c_str())));
 }
 
 
@@ -126,7 +127,8 @@ string_ref generic_domain::name() const noexcept {
 string_ref generic_domain::do_message(const status_code<void>& status) const noexcept {
   return VK_string("generic_domain::do_message not yet implemented...");
   switch (static_cast<const generic_status&>(status).value()) {
-
+  default:
+    return "UNIMPLEMENTED GENERIC MESSAGES";
   }
 }
 code generic_domain::do_generic_code(const status_code<void>& status) const noexcept {

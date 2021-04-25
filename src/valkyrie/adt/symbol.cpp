@@ -92,7 +92,7 @@ unsigned symbol_registry_impl::lookup_bucket_for(string_view Name) {
   while (true) {
     detail::symbol_registry_entry_base *BucketItem = TheTable[BucketNo];
     // If we found an empty bucket, this key isn't in the table yet, return it.
-    if (!BucketItem) [[likely]] {
+    if (!BucketItem) VK_likely {
       // If we found a tombstone, we want to reuse the tombstone instead of an
       // empty bucket.  This reduces probing.
       if (FirstTombstone != -1) {
@@ -108,7 +108,7 @@ unsigned symbol_registry_impl::lookup_bucket_for(string_view Name) {
       // Skip over tombstones.  However, remember the first one we see.
       if (FirstTombstone == -1)
         FirstTombstone = BucketNo;
-    } else if (HashTable[BucketNo] == FullHashValue) [[likely]] {
+    } else if (HashTable[BucketNo] == FullHashValue) VK_likely {
       // If the full hash value matches, check deeply for a match.  The common
       // case here is that we are only looking at the buckets (for item info
       // being non-null and for the full hash value) not at the items.  This
@@ -147,12 +147,12 @@ int symbol_registry_impl::find_key(string_view Key) const {
   while (true) {
     detail::symbol_registry_entry_base *BucketItem = TheTable[BucketNo];
     // If we found an empty bucket, this key isn't in the table yet, return.
-    if (!BucketItem) [[likely]]
+    if (!BucketItem) VK_likely
       return -1;
 
     if (BucketItem == get_tombstone_val()) {
       // Ignore tombstones.
-    } else if (HashTable[BucketNo] == FullHashValue) [[likely]] {
+    } else if (HashTable[BucketNo] == FullHashValue) VK_likely {
       // If the full hash value matches, check deeply for a match.  The common
       // case here is that we are only looking at the buckets (for item info
       // being non-null and for the full hash value) not at the items.  This
@@ -210,10 +210,10 @@ unsigned symbol_registry_impl::rehash_table(unsigned BucketNo) {
   // If the hash table is now more than 3/4 full, or if fewer than 1/8 of
   // the buckets are empty (meaning that many are filled with tombstones),
   // grow/rehash the table.
-  if (NumItems * 4 > NumBuckets * 3) [[unlikely]] {
+  if (NumItems * 4 > NumBuckets * 3) VK_unlikely {
     NewSize = NumBuckets * 2;
   } else if (NumBuckets - (NumItems + NumTombstones) <=
-                           NumBuckets / 8) [[unlikely]] {
+                           NumBuckets / 8) VK_unlikely {
     NewSize = NumBuckets;
   } else {
     return BucketNo;

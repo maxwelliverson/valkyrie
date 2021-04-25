@@ -249,9 +249,6 @@ namespace valkyrie{
   inline generic_status make_status_code(code code) noexcept {
     return generic_status(std::in_place, code);
   }
-
-
-
 }
 
 /*

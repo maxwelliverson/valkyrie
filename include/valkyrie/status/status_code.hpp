@@ -416,7 +416,7 @@ namespace valkyrie{
   class error_code : public status_code<Dom>{
 
     using Base = status_code<Dom>;
-    using Base::success;
+    //using Base::success;
 
     using ThisType = error_code;
 
@@ -582,9 +582,8 @@ namespace valkyrie{
 
   template <typename Dom>
   inline void error_code<Dom>::_checkIfSuccess() const {
-    if(Base::success())
-      assertPanic("An error_code object was created from a non-failure status code. "
-                  "Consider using status_code instead.");
+    VK_invariant_msg(this->failure(), "An error_code object was created from a non-failure status code. "
+                                      "Consider using status_code instead.");
   }
 
 

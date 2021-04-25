@@ -53,7 +53,7 @@ namespace valkyrie{
         case 'F':
           return byte(C - '7');
         default:
-          VK_constexpr_assert(C == '0' && "Invalid character found during UUID parsing.");
+          VK_constexpr_assert_msg(C == '0', "Invalid character found during UUID parsing.");
           VK_runtime_block VK_unreachable;
       }
     }
@@ -82,7 +82,7 @@ namespace valkyrie{
         VK_UUID_BYTE_CASE(e);
         VK_UUID_BYTE_CASE(f);
         default:
-          VK_constexpr_assert(Byte == '0' && "Invalid character found during UUID parsing.");
+          VK_constexpr_assert_msg(Byte == '0', "Invalid character found during UUID parsing.");
           VK_runtime_block VK_unreachable;
       }
 

@@ -46,10 +46,10 @@
         .queueFamilyIndex = this->index
       };
       result = vkCreateCommandPool(device, &createInfo, alloc, &transientPool);
-      if (result == VK_SUCCESS) [[likely]] {
+      if (result == VK_SUCCESS) VK_likely {
         createInfo.flags = 0;
         result = vkCreateCommandPool(device, &createInfo, alloc, &pool);
-        if (result != VK_SUCCESS) [[unlikely]] {
+        if (result != VK_SUCCESS) VK_unlikely {
           vkDestroyCommandPool(device, transientPool, alloc);
           transientPool = nullptr;
           pool = nullptr;

@@ -31,7 +31,7 @@ namespace valkyrie{
   public:
     [[nodiscard]] u32 bytes() const noexcept {
       auto firstByte = (uint8_t)byte[0];
-      if (!(firstByte & 0x80u)) [[likely]] return 1;
+      if (!(firstByte & 0x80u)) VK_likely return 1;
       if (!(firstByte & 0x20u)) return 2;
       if (!(firstByte & 0x10u)) return 3;
       return 4;
@@ -60,7 +60,7 @@ namespace valkyrie{
       auto byte0Result = ((uint8_t)A.byte[0]) <=> ((uint8_t)B.byte[0]);
       if (byte0Result != std::strong_ordering::equal) return byte0Result;
       auto bytes = A.bytes();
-      if (bytes == 1) [[likely]] return std::strong_ordering::equal;
+      if (bytes == 1) VK_likely return std::strong_ordering::equal;
       if (auto byte1Result = (uint8_t)A.byte[1] <=> (uint8_t)B.byte[1];
           bytes == 2 || byte1Result != std::strong_ordering::equal) return byte1Result;
       if (auto byte2Result = (uint8_t)A.byte[2] <=> (uint8_t)B.byte[2];
@@ -72,7 +72,7 @@ namespace valkyrie{
   namespace detail{
 
     inline constexpr u32 offsetToNextCharacter(utf8 Char) noexcept{
-      if (!(Char & 0x80u)) [[likely]] return 1;
+      if (!(Char & 0x80u)) VK_likely return 1;
       if (!(Char & 0x20u)) return 2;
       if (!(Char & 0x10u)) return 3;
       return 4;

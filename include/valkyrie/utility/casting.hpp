@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_UTILITY_CASTING_HPP
 #define VALKYRIE_UTILITY_CASTING_HPP
 
-//#include <valkyrie/status/assert.hpp>
+#include <valkyrie/status/assert.hpp>
 #include <valkyrie/traits.hpp>
 
 #include <memory>
@@ -216,7 +216,7 @@ namespace valkyrie{
 
   template <typename To, typename From>
   VK_nodiscard inline bool isA(const From& from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return casting::detail::isa_impl_wrap<To, const From, casting::simple_type_t<const From>>::call(from);
   }
   template <typename To, typename From>
@@ -228,22 +228,22 @@ namespace valkyrie{
 
   template <typename To, casting::wrapped_type From>
   VK_nodiscard inline decltype(auto) cast(const From& from) noexcept {
-    INVARIANT(isA<To>(from));
+    VK_invariant(isA<To>(from));
     return casting::doConversion<To>(from);
   }
   template <typename To, typename From>
   VK_nodiscard inline decltype(auto) cast(From& from) noexcept {
-    INVARIANT(isA<To>(from));
+    VK_invariant(isA<To>(from));
     return casting::doConversion<To>(from);
   }
   template <typename To, typename From>
   VK_nodiscard inline decltype(auto) cast(From* from) noexcept {
-    INVARIANT(isA<To>(from));
+    VK_invariant(isA<To>(from));
     return casting::doConversion<To>(from);
   }
   template <typename To, typename From, typename Deleter>
   VK_nodiscard inline decltype(auto) cast(std::unique_ptr<From, Deleter>&& from) noexcept {
-    INVARIANT(isA<To>(from));
+    VK_invariant(isA<To>(from));
     using ret_type = casting::cast_return_t<To, std::unique_ptr<From, Deleter>>;
     return ret_type(cast<To>(from.release()), from.get_deleter());
     //return casting::doConversion<To>(std::move(from));
@@ -277,22 +277,22 @@ namespace valkyrie{
 
   template <typename To, casting::wrapped_type From>
   VK_nodiscard inline decltype(auto) dyn_cast(const From& from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return isA<To>(from) ? cast<To>(from) : nullptr;
   }
   template <typename To, typename From>
   VK_nodiscard inline decltype(auto) dyn_cast(From& from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return isA<To>(from) ? cast<To>(from) : nullptr;
   }
   template <typename To, typename From>
   VK_nodiscard inline decltype(auto) dyn_cast(From* from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return isA<To>(from) ? cast<To>(from) : nullptr;
   }
   /*template <typename To, typename From, typename Deleter>
   inline decltype(auto) dyn_cast(std::unique_ptr<From, Deleter>&& from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return isA<To>(from) ? cast<To>(std::move(from)) : nullptr;
   }*/
 
@@ -316,7 +316,7 @@ namespace valkyrie{
 
   template <typename To, typename From, typename Deleter>
   VK_nodiscard inline auto unique_dyn_cast(std::unique_ptr<From, Deleter>& from) noexcept {
-    INVARIANT(not isNull(from));
+    VK_invariant(not isNull(from));
     return isA<To>(from) ? cast<To>(std::move(from)) : nullptr;
   }
   template <typename To, typename From, typename Deleter>

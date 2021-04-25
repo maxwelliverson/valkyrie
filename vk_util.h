@@ -828,7 +828,7 @@ namespace Vk{
     [[nodiscard]] inline constexpr _detail::IntervalLocation relativeLocation(const Interval& Other) const noexcept{
       auto Lower = this->min <=> Other.min;
       auto Upper = this->max <=> Other.max;
-      if (Lower == Upper) [[likely]] {
+      if (Lower == Upper) VK_likely {
         if (Lower == std::partial_ordering::less)
           return this->max < Other.min ? _detail::EntirelyLessThan : _detail::IntersectionLessThan;
         if (Lower == std::partial_ordering::greater)
@@ -856,7 +856,7 @@ namespace Vk{
           return _detail::IntersectionGreaterThan;
         return _detail::EntirelyContains;
       }
-      [[unlikely]]
+      VK_unlikely
       if (Comp(Other.min, this->min) || Comp(this->max, Other.max))
         return _detail::ContainedWithin;
       return _detail::Equals;
@@ -865,7 +865,7 @@ namespace Vk{
     [[nodiscard]] inline constexpr _detail::IntervalLocation relativeLocation(const Interval& Other, Compare&& Comp) const noexcept{
       auto Lower = Comp(this->min, Other.min);
       auto Upper = Comp(this->max, Other.max);
-      if (Lower == Upper) [[likely]] {
+      if (Lower == Upper) VK_likely {
         if (Lower == std::partial_ordering::less)
           return (Comp(this->max, Other.min) == std::partial_ordering::less) ? _detail::EntirelyLessThan : _detail::IntersectionLessThan;
         if (Lower == std::partial_ordering::greater)
