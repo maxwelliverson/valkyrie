@@ -7,7 +7,6 @@
 
 #include "meta.hpp"
 #include "utility/uuid.hpp"
-#include "status/severity.hpp"
 
 #include <bit>
 #include <ranges>
@@ -35,6 +34,9 @@ namespace valkyrie{
   class generic_domain;
   template <typename E>
   class status_enum_domain;
+
+  enum class dynamic_t : u32;
+  enum class severity : i32;
 
   inline namespace concepts{
     template <typename T, typename U>
@@ -918,6 +920,13 @@ namespace valkyrie{
                                requires(Args&& ...args){
                                  { T{ std::forward<Args>(args)... } };
                                };
+
+
+    template <typename Ext, typename Ind = size_t>
+    concept extent_type = same_as<Ext, dynamic_t> || std::convertible_to<Ind, Ext>;
+    template <typename Ext, typename Ind = size_t>
+    concept strict_extent_type = same_as_one_of<Ext, dynamic_t, Ind> && extent_type<Ext, Ind>;
+
   }
   
   template <container_type T>

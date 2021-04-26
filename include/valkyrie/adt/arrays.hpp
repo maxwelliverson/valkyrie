@@ -34,9 +34,9 @@ namespace valkyrie{
     };
 
 
-    template <typename IndexType, /*detail::ExtentLike<IndexType>*/typename Ext>
+    template <typename IndexType, /*detail::extent_type<IndexType>*/typename Ext>
     inline constexpr static auto normalizeExtent(Ext extent) noexcept {
-      if constexpr (exact_same_as<Ext, DynamicExtentType>)
+      if constexpr (exact_same_as<Ext, dynamic_t>)
         return extent;
       else
         return static_cast<IndexType>(extent);
@@ -67,14 +67,14 @@ namespace valkyrie{
 
 
 
-      template <typename IndexType, /*detail::StrictExtent<IndexType> */auto ...Ext>
+      template <typename IndexType, /*detail::strict_extent_type<IndexType> */auto ...Ext>
       struct ExtentStorage;
       template <typename IndexType>
       struct ExtentStorage<IndexType>{
         constexpr ExtentStorage() noexcept = default;
         constexpr ExtentStorage(CopyConstructTag, const ExtentStorage&) noexcept{}
       };
-      template <typename IndexType, IndexType Head, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
+      template <typename IndexType, IndexType Head, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
       struct ExtentStorage<IndexType, Head, Tail...> : public ExtentStorage<IndexType, Tail...>{
 
         constexpr ExtentStorage() noexcept = default;
@@ -83,12 +83,12 @@ namespace valkyrie{
 
 
 
-        template </*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
+        template </*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, Head, OtherTail...>& Other) noexcept
             //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()){}
-        template </*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
-        inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, dynamicExtent, OtherTail...>& Other) noexcept
+        template </*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
+        inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, dynamic, OtherTail...>& Other) noexcept
             //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()){
           VK_constexpr_assert(Other.extent() == Head);
@@ -105,14 +105,14 @@ namespace valkyrie{
           return *this;
         }
       };
-      template <typename IndexType, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
-      struct ExtentStorage<IndexType, dynamicExtent, Tail...> : public ExtentStorage<IndexType, Tail...>{
+      template <typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
+      struct ExtentStorage<IndexType, dynamic, Tail...> : public ExtentStorage<IndexType, Tail...>{
 
         constexpr ExtentStorage() noexcept = default;
         constexpr ExtentStorage(const ExtentStorage&) noexcept = default;
         constexpr ExtentStorage(ExtentStorage&&) noexcept = default;
 
-        template </*detail::StrictExtent<IndexType>*/ auto OtherHead, /*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
+        template </*detail::strict_extent_type<IndexType>*/ auto OtherHead, /*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
         inline constexpr ExtentStorage(CopyConstructTag, const ExtentStorage<IndexType, OtherHead, OtherTail...>& Other) noexcept
             requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<IndexType, Tail...>(copyConstruct, Other.base()),
@@ -136,7 +136,7 @@ namespace valkyrie{
         constexpr ExtentStorage() noexcept = default;
         constexpr ExtentStorage(CopyConstructTag, const ExtentStorage&) noexcept{}
       };
-      template <typename IndexType, IndexType Head, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
+      template <typename IndexType, IndexType Head, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
       struct ExtentStorage<Stride<IndexType>, Head, Tail...> : public ExtentStorage<Stride<IndexType>, Tail...>{
 
         constexpr ExtentStorage() noexcept = default;
@@ -145,12 +145,12 @@ namespace valkyrie{
 
 
 
-        template </*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
+        template </*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
         inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, Head, OtherTail...>& Other) noexcept
         //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()){}
-        template </*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
-        inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, dynamicExtent, OtherTail...>& Other) noexcept
+        template </*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
+        inline constexpr explicit ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, dynamic, OtherTail...>& Other) noexcept
         //requires(ConstructibleFrom<ExtentStorage<IndexType, Tail...>, CopyConstructTag, const ExtentStorage<IndexType, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()){
           VK_constexpr_assert(Other.extent() == Head);
@@ -167,14 +167,14 @@ namespace valkyrie{
           return *this;
         }
       };
-      template <typename IndexType, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
-      struct ExtentStorage<Stride<IndexType>, dynamicExtent, Tail...> : public ExtentStorage<Stride<IndexType>, Tail...>{
+      template <typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
+      struct ExtentStorage<Stride<IndexType>, dynamic, Tail...> : public ExtentStorage<Stride<IndexType>, Tail...>{
 
         constexpr ExtentStorage() noexcept = default;
         constexpr ExtentStorage(const ExtentStorage&) noexcept = default;
         constexpr ExtentStorage(ExtentStorage&&) noexcept = default;
 
-        template </*detail::StrictExtent<IndexType>*/ auto OtherHead, /*detail::StrictExtent<IndexType>*/ auto ...OtherTail>
+        template </*detail::strict_extent_type<IndexType>*/ auto OtherHead, /*detail::strict_extent_type<IndexType>*/ auto ...OtherTail>
         inline constexpr ExtentStorage(CopyConstructTag, const ExtentStorage<Stride<IndexType>, OtherHead, OtherTail...>& Other) noexcept
         requires(ConstructibleFrom<ExtentStorage<Stride<IndexType>, Tail...>, const ExtentStorage<Stride<IndexType>, OtherTail...>&>)
             : ExtentStorage<Stride<IndexType>, Tail...>(copyConstruct, Other.base()),
@@ -195,7 +195,7 @@ namespace valkyrie{
 
 
 
-      template <size_t pos, typename IndexType, /*detail::StrictExtent<IndexType>*/ auto Head, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
+      template <size_t pos, typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto Head, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
       inline constexpr decltype(auto) index(const ExtentStorage<IndexType, Head, Tail...>& Storage_) noexcept {
         if constexpr (!pos)
           return Storage_.extent();
@@ -209,15 +209,15 @@ namespace valkyrie{
         VK_unreachable;
         //return {};
       }
-      template <typename IndexType, /*detail::StrictExtent<IndexType>*/ auto Head, /*detail::StrictExtent<IndexType>*/ auto ...Tail>
+      template <typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto Head, /*detail::strict_extent_type<IndexType>*/ auto ...Tail>
       inline constexpr decltype(auto) index(size_t pos, const ExtentStorage<IndexType, Head, Tail...>& Storage_) noexcept {
         if (!pos) return Storage_.extent();
         return index(pos - 1, Storage_.base());
       }
 
-      template </*detail::StrictExtent*/ auto Head, /*detail::StrictExtent*/ auto ...Tail>
+      template </*detail::strict_extent_type*/ auto Head, /*detail::strict_extent_type*/ auto ...Tail>
       inline constexpr bool isStaticExtent(size_t pos) noexcept {
-        if (!pos) return !std::same_as<decltype(Head), DynamicExtentType>;
+        if (!pos) return !std::same_as<decltype(Head), dynamic_t>;
         if constexpr (sizeof...(Tail) > 0)
           return isStaticExtent<Tail...>(pos - 1);
         else {
@@ -233,12 +233,12 @@ namespace valkyrie{
         return true;
       }
 
-      template <typename IndexType, /*detail::StrictExtent<IndexType>*/ auto ...ExtA, /*detail::StrictExtent<IndexType>*/ auto ...ExtB>
+      template <typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto ...ExtA, /*detail::strict_extent_type<IndexType>*/ auto ...ExtB>
       requires(sizeof...(ExtA) == sizeof...(ExtB))
       inline constexpr bool isEqual(const ExtentStorage<IndexType, ExtA...>& A, const ExtentStorage<IndexType, ExtB...>& B) noexcept {
         return A.extent() == B.extent() && isEqual(A.base(), B.base());
       }
-      template <typename IndexType, /*detail::StrictExtent<IndexType>*/ auto ...ExtA, /*detail::StrictExtent<IndexType>*/ auto ...ExtB>
+      template <typename IndexType, /*detail::strict_extent_type<IndexType>*/ auto ...ExtA, /*detail::strict_extent_type<IndexType>*/ auto ...ExtB>
       inline constexpr bool isEqual(const ExtentStorage<IndexType, ExtA...>& A, const ExtentStorage<IndexType, ExtB...>& B) noexcept{
         return false;
       }
@@ -247,7 +247,7 @@ namespace valkyrie{
     template <typename IndexType, auto ...Ext>
     class BasicExtents;
 
-    template <typename IndexType, detail::ExtentLike<IndexType> auto ...Ext>
+    template <typename IndexType, detail::extent_type<IndexType> auto ...Ext>
     class BasicExtents<IndexType, Ext...> : detail::ExtentStorage<IndexType, normalizeExtent<IndexType>(Ext)...>{
       using Storage_ = detail::ExtentStorage<IndexType, normalizeExtent<IndexType>(Ext)...>;
       using param_type = param_t<IndexType>;
@@ -263,7 +263,7 @@ namespace valkyrie{
 
 
       VK_nodiscard static constexpr size_t rank() noexcept { return sizeof...(Ext); }
-      VK_nodiscard static constexpr size_t rankDynamic() noexcept { return (size_t(exact_same_as<decltype(Ext), DynamicExtentType>) + ...); }
+      VK_nodiscard static constexpr size_t rankDynamic() noexcept { return (size_t(exact_same_as<decltype(Ext), dynamic_t>) + ...); }
       VK_nodiscard static constexpr bool isStaticExtent(size_t pos) noexcept {
         return detail::isStaticExtent<Ext...>(pos);
       }
@@ -279,7 +279,7 @@ namespace valkyrie{
         return detail::index(pos, *this);
       }
 
-      template</*detail::ExtentLike<IndexType>*/ auto ...OtherExtents>
+      template</*detail::extent_type<IndexType>*/ auto ...OtherExtents>
       constexpr BasicExtents(const BasicExtents<IndexType, OtherExtents...>& Other) noexcept
       requires(!std::same_as<BasicExtents, BasicExtents<IndexType, OtherExtents...>> &&
           ConstructibleFrom<Storage_, const typename BasicExtents<IndexType, OtherExtents...>::Storage_&>)
@@ -292,7 +292,7 @@ namespace valkyrie{
       constexpr explicit BasicExtents(span<index_type, rankDynamic()> indices) noexcept
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
-      template</*detail::ExtentLike<IndexType>*/ auto ...OtherExtents>
+      template</*detail::extent_type<IndexType>*/ auto ...OtherExtents>
       requires(ConstructibleFrom<BasicExtents, const BasicExtents<IndexType, OtherExtents...>&>)
       constexpr BasicExtents& operator=(const BasicExtents<IndexType, OtherExtents...>& Other) noexcept{
         this->~Extents();
@@ -300,7 +300,7 @@ namespace valkyrie{
         return *this;
       }
 
-      template <typename Ind, /*detail::ExtentLike<Ind>*/ auto ...ExtA, /*detail::ExtentLike<Ind>*/ auto ...ExtB>
+      template <typename Ind, /*detail::extent_type<Ind>*/ auto ...ExtA, /*detail::extent_type<Ind>*/ auto ...ExtB>
       friend constexpr bool operator==(const BasicExtents<Ind, ExtA...>&, const BasicExtents<Ind, ExtB...>&) noexcept;
 
     private:
@@ -309,7 +309,7 @@ namespace valkyrie{
           : Storage_{indices[I]...}{}
     };
 
-    template <typename IndexType, detail::ExtentLike<IndexType> auto ...Ext>
+    template <typename IndexType, detail::extent_type<IndexType> auto ...Ext>
     class BasicExtents<Stride<IndexType>, Ext...> : detail::ExtentStorage<Stride<IndexType>, normalizeExtent<IndexType>(Ext)...>{
       using Storage_ = detail::ExtentStorage<Stride<IndexType>, normalizeExtent<IndexType>(Ext)...>;
       using param_type = param_t<IndexType>;
@@ -325,7 +325,7 @@ namespace valkyrie{
 
 
       VK_nodiscard static constexpr size_t rank() noexcept { return sizeof...(Ext); }
-      VK_nodiscard static constexpr size_t rankDynamic() noexcept { return (size_t(exact_same_as<decltype(Ext), DynamicExtentType>) + ...); }
+      VK_nodiscard static constexpr size_t rankDynamic() noexcept { return (size_t(exact_same_as<decltype(Ext), dynamic_t>) + ...); }
       VK_nodiscard static constexpr bool isStaticStride(size_t pos) noexcept {
         return detail::isStaticExtent<Ext...>(pos);
       }
@@ -341,7 +341,7 @@ namespace valkyrie{
         return detail::index(pos, *this);
       }
 
-      template</*detail::ExtentLike<IndexType> */auto ...OtherExtents>
+      template</*detail::extent_type<IndexType> */auto ...OtherExtents>
       constexpr BasicExtents(const BasicExtents<Stride<IndexType>, OtherExtents...>& Other) noexcept
       requires(!std::same_as<BasicExtents, BasicExtents<Stride<IndexType>, OtherExtents...>> &&
                ConstructibleFrom<Storage_, const typename BasicExtents<Stride<IndexType>, OtherExtents...>::Storage_&>)
@@ -354,7 +354,7 @@ namespace valkyrie{
       constexpr explicit BasicExtents(span<index_type, rankDynamic()> indices) noexcept
           : BasicExtents(indices, std::make_index_sequence<rankDynamic()>{}){}
 
-      template</*detail::ExtentLike<IndexType>*/ auto ...OtherExtents>
+      template</*detail::extent_type<IndexType>*/ auto ...OtherExtents>
       requires(ConstructibleFrom<BasicExtents, const BasicExtents<Stride<IndexType>, OtherExtents...>&>)
       constexpr BasicExtents& operator=(const BasicExtents<Stride<IndexType>, OtherExtents...>& Other) noexcept{
         this->~Extents();
@@ -362,7 +362,7 @@ namespace valkyrie{
         return *this;
       }
 
-      template <typename Ind, /*detail::ExtentLike<Ind>*/ auto ...ExtA, /*detail::ExtentLike<Ind> */auto ...ExtB>
+      template <typename Ind, /*detail::extent_type<Ind>*/ auto ...ExtA, /*detail::extent_type<Ind> */auto ...ExtB>
       friend constexpr bool operator==(const BasicExtents<Stride<Ind>, ExtA...>&, const BasicExtents<Stride<Ind>, ExtB...>&) noexcept;
 
     private:
@@ -379,16 +379,16 @@ namespace valkyrie{
 
 
 
-    template <typename Ind, /*detail::ExtentLike<Ind> */auto ...ExtA, /*detail::ExtentLike<Ind>*/ auto ...ExtB>
+    template <typename Ind, /*detail::extent_type<Ind> */auto ...ExtA, /*detail::extent_type<Ind>*/ auto ...ExtB>
     constexpr bool operator==(const BasicExtents<Ind, ExtA...>& A, const BasicExtents<Ind, ExtB...>& B) noexcept {
       return detail::isEqual(A, B);
     }
-    template <typename Ind, /*detail::ExtentLike<Ind>*/ auto ...ExtA, /*detail::ExtentLike<Ind> */auto ...ExtB>
+    template <typename Ind, /*detail::extent_type<Ind>*/ auto ...ExtA, /*detail::extent_type<Ind> */auto ...ExtB>
     constexpr bool operator==(const BasicExtents<Stride<Ind>, ExtA...>& A, const BasicExtents<Stride<Ind>, ExtB...>& B) noexcept {
       return detail::isEqual(A, B);
     }
 
-    template <detail::ExtentLike auto ...Ext>
+    template <detail::extent_type auto ...Ext>
     using Extents = BasicExtents<i64, Ext...>;
     template <auto ...Ext>
     using Strides = BasicStrides<i64, Ext...>;
@@ -736,7 +736,7 @@ namespace valkyrie{
       struct IsStatic;
       template <typename T, auto ...Ext>
       struct IsStatic<BasicExtents<T, Ext...>>{
-        inline constexpr static bool value = !(same_as<decltype(Ext), DynamicExtentType> || ...);
+        inline constexpr static bool value = !(same_as<decltype(Ext), dynamic_t> || ...);
       };
 
 
@@ -821,11 +821,11 @@ namespace valkyrie{
       [[nodiscard]] static constexpr index_type staticExtent(size_t r) noexcept { return extents_type::staticExtent(r); }
 
       template <typename ...Index> requires(sizeof...(Index) == rankDynamic())
-      VK_gpu_inline explicit constexpr BasicArrayView(pointer ptr, Index&&... dynamicExtents) noexcept
-          : storage(std::forward<Index>(dynamicExtents)...), ptr_{ptr}{}
+      VK_gpu_inline explicit constexpr BasicArrayView(pointer ptr, Index&&... is_dynamics) noexcept
+          : storage(std::forward<Index>(is_dynamics)...), ptr_{ptr}{}
       template <typename Index>
-      VK_gpu_inline explicit constexpr BasicArrayView(param_t<pointer> ptr, span<Index, rankDynamic()> dynamicExtents) noexcept
-          : storage(dynamicExtents), ptr_{ptr}{}
+      VK_gpu_inline explicit constexpr BasicArrayView(param_t<pointer> ptr, span<Index, rankDynamic()> is_dynamics) noexcept
+          : storage(is_dynamics), ptr_{ptr}{}
       VK_gpu_inline constexpr BasicArrayView(pointer ptr, const mapping_type& mapping) noexcept
           : storage(mapping), ptr_{ptr}{}
       VK_gpu_inline constexpr BasicArrayView(pointer ptr, const mapping_type & mapping, const accessor_type & accessor) noexcept
@@ -1089,11 +1089,11 @@ namespace valkyrie{
 
 
       template <typename ...Index> requires(sizeof...(Index) == rankDynamic())
-      VK_gpu_inline explicit constexpr BasicArray(Index&&... dynamicExtents) noexcept
-          : view_storage(std::forward<Index>(dynamicExtents)...), storage_{this->uniqueSize()}{}
+      VK_gpu_inline explicit constexpr BasicArray(Index&&... is_dynamics) noexcept
+          : view_storage(std::forward<Index>(is_dynamics)...), storage_{this->uniqueSize()}{}
       template <typename Index>
-      VK_gpu_inline explicit constexpr BasicArray(span<Index, rankDynamic()> dynamicExtents) noexcept
-          : view_storage(dynamicExtents), storage_{this->uniqueSize()}{}
+      VK_gpu_inline explicit constexpr BasicArray(span<Index, rankDynamic()> is_dynamics) noexcept
+          : view_storage(is_dynamics), storage_{this->uniqueSize()}{}
       VK_gpu_inline constexpr BasicArray(const mapping_type& mapping) noexcept
           : view_storage(mapping), storage_{this->uniqueSize()}{}
       VK_gpu_inline constexpr BasicArray(const mapping_type & mapping, const accessor_type & accessor) noexcept
@@ -1175,7 +1175,7 @@ namespace valkyrie{
         inline constexpr static auto last() noexcept { return Last; }
       };
       template <auto First>
-      struct SliceInfo<First, dynamicExtent, dynamicExtent>{
+      struct SliceInfo<First, dynamic, dynamic>{
         inline constexpr        auto extent() const noexcept {
           return last_ - First;
         }
@@ -1188,7 +1188,7 @@ namespace valkyrie{
         std::remove_const_t<decltype(First)> last_;
       };
       template <>
-      struct SliceInfo<dynamicExtent, dynamicExtent, dynamicExtent>{
+      struct SliceInfo<dynamic, dynamic, dynamic>{
         inline constexpr auto extent() const noexcept {
           return last_ - first_;
         }
@@ -1202,7 +1202,7 @@ namespace valkyrie{
         size_t last_;
       };
       template <auto Ext>
-      struct SliceInfo<dynamicExtent, dynamicExtent, Ext>{
+      struct SliceInfo<dynamic, dynamic, Ext>{
         inline constexpr auto extent() const noexcept {
           return Ext;
         }
@@ -1247,7 +1247,7 @@ namespace valkyrie{
       struct SliceType<interval<T, Opts...>>{
         template <typename U>
         inline constexpr static auto staticExtent(U oldExtent) noexcept{
-          return dynamicExtent;
+          return dynamic;
         }
 
         template <typename U>
@@ -1281,7 +1281,7 @@ namespace valkyrie{
         constexpr SliceType(interval<T, LowerBound<minVal>, UpperBound<maxVal>>){}
       };
       template <>
-      struct SliceType<DynamicExtentType>{
+      struct SliceType<dynamic_t>{
         template <typename U>
         inline constexpr static auto staticExtent(U oldExtent) noexcept {
           return oldExtent;
@@ -1292,14 +1292,14 @@ namespace valkyrie{
           return oldExtent;
         }
 
-        constexpr SliceType(DynamicExtentType){}
+        constexpr SliceType(dynamic_t){}
       };
 
       template <typename T>
       SliceType(T val) -> SliceType<T>;
       template <typename T>
       SliceType(T from, T to) -> SliceType<interval<T>>;
-      SliceType(DynamicExtentType) -> SliceType<DynamicExtentType>;
+      SliceType(dynamic_t) -> SliceType<dynamic_t>;
       template <auto min, auto max>
       SliceType(meta::ValueWrapper<min>, meta::ValueWrapper<max>) -> SliceType<interval<decltype(min), LowerBound<min>, UpperBound<max>>>;
 
@@ -1329,7 +1329,7 @@ namespace valkyrie{
 
         template <size_t N, typename Slice>
         VK_inline constexpr static void fillDynamicExtents(const BasicExtents<I, E...>& ext, static_vector<I, dynamicRank>& dynExt, const Slice& slice) noexcept {
-          if constexpr(same_as<decltype(Slice::staticExtent(std::get<N>(std::tuple{E...}))), DynamicExtentType>){
+          if constexpr(same_as<decltype(Slice::staticExtent(std::get<N>(std::tuple{E...}))), dynamic_t>){
             if constexpr(BasicExtents<I, E...>::isStaticExtent(N)){
               dynExt.push_back(slice.extent(staticExtent<N>));
             } else {
@@ -1379,9 +1379,9 @@ namespace valkyrie{
 
 
 
-  template <typename T, detail::ExtentLike auto ...Extents>
+  template <typename T, detail::extent_type auto ...Extents>
   using Array = Arrays::BasicArray<T, Arrays::Extents<Extents...>>;
-  template <typename T, detail::ExtentLike auto ...Extents>
+  template <typename T, detail::extent_type auto ...Extents>
   using ArrayView = Arrays::BasicArrayView<T, Arrays::Extents<Extents...>>;
 
 

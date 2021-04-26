@@ -34,20 +34,17 @@ namespace valkyrie::detail{
 
     //~lowlevel_allocator() = default;
 
-    lowlevel_allocator& operator=(lowlevel_allocator&&) noexcept
-    {
+    lowlevel_allocator& operator=(lowlevel_allocator&&) noexcept {
       return *this;
     }
 
-    void* allocate_node(u64 size, u64 alignment)
+    void* allocate_node(u64 size, u64 alignment) noexcept
     {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
       auto memory = Functor::allocate(actual_size, alignment);
-      //if (!memory)
-        //FOONATHAN_THROW(out_of_memory(Functor::info(), actual_size));
 
-      if ( memory ) {
+      if ( memory ) VK_likely {
         this->on_allocate(actual_size);
 
         return debug_fill_new(memory, size, max_alignment);
@@ -57,9 +54,7 @@ namespace valkyrie::detail{
 
     }
 
-    void deallocate_node(void* node, u64 size,
-                         u64 alignment) noexcept
-    {
+    void deallocate_node(void* node, u64 size, u64 alignment) noexcept {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
       auto memory = debug_fill_free(node, size, max_alignment);
@@ -68,8 +63,7 @@ namespace valkyrie::detail{
       this->on_deallocate(actual_size);
     }
 
-    u64 max_node_size() const noexcept
-    {
+    u64 max_node_size() const noexcept {
       return Functor::max_node_size();
     }
   };

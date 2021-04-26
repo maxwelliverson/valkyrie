@@ -25,7 +25,7 @@ namespace valkyrie{
       return traits::StatusEnum<E>::info[self::cast(status).value()];
       //return enum_traits<E>::status_info[self::cast(status).value()];
     }
-    inline static array_ref<const code, dynamicExtent, sizeof(code)> codeMappings(const status_code<void>& status) noexcept {
+    inline static array_ref<const code, dynamic, sizeof(code)> codeMappings(const status_code<void>& status) noexcept {
       return info(status).generic;
     }
 

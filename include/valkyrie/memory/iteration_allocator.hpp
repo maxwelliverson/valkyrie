@@ -292,7 +292,7 @@ namespace valkyrie{
 
 
   extern template class allocator_traits<iteration_allocator<2>>;
-        extern template class composable_allocator_traits<iteration_allocator<2>>;
+  extern template class composable_allocator_traits<iteration_allocator<2>>;
 
 }
 

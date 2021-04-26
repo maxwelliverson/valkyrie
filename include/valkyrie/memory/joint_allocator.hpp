@@ -347,7 +347,7 @@ class joint_ptr : allocator_reference<RawAllocator>
                                      alignof(element_type));
 
       element_type* ptr = nullptr;
-#if FOONATHAN_HAS_EXCEPTION_SUPPORT
+#if VK_exceptions_enabled
       try
                 {
                     ptr = ::new (mem)
@@ -535,7 +535,7 @@ public:
 private:
   allocator_info info() const noexcept
   {
-    return allocator_info(FOONATHAN_MEMORY_LOG_PREFIX "::joint_allocator", this);
+    return allocator_info("valkyrie::joint_allocator", this);
   }
 
   detail::joint_stack* stack_;
@@ -906,7 +906,7 @@ private:
 
   allocator_info info() const noexcept
   {
-    return {FOONATHAN_MEMORY_LOG_PREFIX "::joint_array", this};
+    return { "valkyrie::joint_array", this };
   }
 
   value_type* ptr_;

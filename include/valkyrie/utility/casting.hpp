@@ -446,7 +446,7 @@ namespace valkyrie{
 
   //TODO: Refactor...
   template <std::integral To, std::integral From>
-  inline To narrow_cast(From from) noexcept {
+  inline static To narrow_cast(From from) noexcept {
     if constexpr ( std::signed_integral<From> ) {
       if constexpr ( std::unsigned_integral<To> ) {
         VK_assert( from >= 0 );

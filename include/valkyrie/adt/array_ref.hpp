@@ -5,15 +5,17 @@
 #ifndef VALKYRIE_ADT_ARRAY_REF_HPP
 #define VALKYRIE_ADT_ARRAY_REF_HPP
 
+#include <valkyrie/constants.hpp>
 #include <valkyrie/traits.hpp>
 #include <valkyrie/utility/casting.hpp>
+#include <valkyrie/adt/tags.hpp>
 
 namespace valkyrie{
-  inline constexpr static enum class DynamicExtentType{} dynamicExtent{};
-  inline constexpr static DynamicExtentType _{};
 
 
-  template <typename T, auto Extent_ = dynamicExtent, auto Stride_ = dynamicExtent>
+
+
+  template <typename T, auto Extent_ = dynamic, auto Stride_ = dynamic>
   class array_ref;
 
   namespace detail{
@@ -34,7 +36,7 @@ namespace valkyrie{
       }
     };
     template <>
-    class ArrayRefExtentStorage<dynamicExtent>{
+    class ArrayRefExtentStorage<dynamic>{
       u32 Extent_ = 0;
     public:
       constexpr ArrayRefExtentStorage() = default;
@@ -65,7 +67,7 @@ namespace valkyrie{
       }
     };
     template <>
-    class ArrayRefStrideStorage<dynamicExtent>{
+    class ArrayRefStrideStorage<dynamic>{
       u32 Stride_;
     public:
       constexpr ArrayRefStrideStorage() = default;
@@ -222,10 +224,7 @@ namespace valkyrie{
     };
 
 
-    template <typename Ext, typename Ind = size_t>
-    concept StrictExtent = same_as<Ext, DynamicExtentType> || same_as<Ind, Ext>;
-    template <typename Ext, typename Ind = size_t>
-    concept ExtentLike = same_as<Ext, DynamicExtentType> || std::convertible_to<Ind, Ext>;
+
 
 
 
@@ -246,36 +245,36 @@ namespace valkyrie{
     friend class array_ref;
 
     template <typename U, auto UStr_>
-    using PseudoType = std::conditional_t<same_as<decltype(UStr_), DynamicExtentType>, U, U[UStr_]>;
+    using PseudoType = std::conditional_t<same_as<decltype(UStr_), dynamic_t>, U, U[UStr_]>;
 
-    template <typename U, auto UExt_ = dynamicExtent>
+    template <typename U, auto UExt_ = dynamic>
     VK_constant bool LayoutCompatible = []{
-      if constexpr (Self::isDynamic() || same_as<DynamicExtentType, decltype(UExt_)>) {
-        if constexpr (same_as<DynamicExtentType, decltype(Stride_)>)
+      if constexpr (Self::isDynamic() || same_as<dynamic_t, decltype(UExt_)>) {
+        if constexpr (same_as<dynamic_t, decltype(Stride_)>)
           return true;
         else
           return Stride_ == sizeof(U);
       } else {
-        if constexpr (same_as<DynamicExtentType, decltype(Stride_)>)
+        if constexpr (same_as<dynamic_t, decltype(Stride_)>)
           return UExt_ == Extent_;
         else
           return Stride_ == sizeof(U) && UExt_ == Extent_;
       }
     }();
     template <auto UExt_>
-    VK_constant bool ExtentNarrowing  = !Self::isDynamic() && same_as<decltype(UExt_), DynamicExtentType>;
+    VK_constant bool ExtentNarrowing  = !Self::isDynamic() && same_as<decltype(UExt_), dynamic_t>;
     template <auto UStr_>
-    VK_constant bool StrideNarrowing  = !Self::dynamicStride() && same_as<decltype(UStr_), DynamicExtentType>;
+    VK_constant bool StrideNarrowing  = !Self::dynamicStride() && same_as<decltype(UStr_), dynamic_t>;
     template <auto UExt_>
     VK_constant bool ExtentCompatible = []{
-      if constexpr (Self::isDynamic() || same_as<decltype(UExt_), DynamicExtentType>)
+      if constexpr (Self::isDynamic() || same_as<decltype(UExt_), dynamic_t>)
         return true;
       else
         return Extent_ == UExt_;
     }();
     template <auto UStr_>
     VK_constant bool StrideCompatible = []{
-      if constexpr (Self::dynamicStride() || same_as<decltype(UStr_), DynamicExtentType>)
+      if constexpr (Self::dynamicStride() || same_as<decltype(UStr_), dynamic_t>)
         return true;
       else
         return Stride_ == UStr_;
@@ -447,7 +446,7 @@ namespace valkyrie{
       return this->stride() == sizeof(T);
     }
     inline constexpr static bool isAlwaysContiguous() noexcept {
-      if constexpr (same_as<DynamicExtentType, decltype(Stride_)>)
+      if constexpr (same_as<dynamic_t, decltype(Stride_)>)
         return false;
       else
         return Stride_ == sizeof(T);
@@ -459,9 +458,9 @@ namespace valkyrie{
   template <static_memory_span_type Arr>
   array_ref(Arr&&) -> array_ref<typename array_traits<Arr>::element_type, array_traits<Arr>::size, sizeof(typename array_traits<Arr>::element_type)>;
   template <dynamic_memory_span_type Arr>
-  array_ref(Arr&&) -> array_ref<typename array_traits<Arr>::element_type, dynamicExtent, sizeof(typename array_traits<Arr>::element_type)>;
+  array_ref(Arr&&) -> array_ref<typename array_traits<Arr>::element_type, dynamic, sizeof(typename array_traits<Arr>::element_type)>;
   template <typename T>
-  array_ref(T*, u64) -> array_ref<T, dynamicExtent, sizeof(T)>;
+  array_ref(T*, u64) -> array_ref<T, dynamic, sizeof(T)>;
 
 
   /*template <auto MemPtr, typename Arr>
@@ -479,7 +478,7 @@ namespace valkyrie{
 
 
 
-  template <typename T, auto Ext_ = dynamicExtent>
+  template <typename T, auto Ext_ = dynamic>
   using span = array_ref<T, Ext_, sizeof(T)>;
 }
 

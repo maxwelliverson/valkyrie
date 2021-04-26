@@ -6,7 +6,9 @@
 #define VALKYRIE_AGENT_MESSAGE_HPP
 
 #include <valkyrie/traits.hpp>
+#include <valkyrie/async/atomic.hpp>
 
+#include "detail/agent_concepts.hpp"
 
 namespace valkyrie{
 
@@ -18,30 +20,48 @@ namespace valkyrie{
   }
 
 
-  enum class agent_id     : u32;
-  enum class message_type : u64;
+  enum class agent_id      : u64;
+  enum class message_type  : u64;
+  enum class message_state : u32 {
+    invalid,
+    writing,
+    enqueued,
+    reading,
+    vestigial,
+  };
 
-  inline constexpr static u32 NoLimit = static_cast<u32>(-1);
 
-  template <
-      u32 MaxWriterCount = NoLimit,
-      u32 MaxReaderCount = 1,
-      bool IsCoherent    = static_cast<bool>(MaxReaderCount - 1)>
+  namespace impl{
+    struct message_info{
+      u32           nextOffset = 0;
+      message_state state      = message_state::invalid;
+    };
+  }
+
+
+
+
+  template <mailbox_descriptor Desc>
   class basic_mailbox;
 
 
   class alignas(16) message{
-    message_type messageType;
-    agent_id     senderId;
-    u32          nextMsgOffset;
 
-    template <u32, u32, bool>
+  public:
+    impl::message_info info;
+    message_type       messageType;
+    agent_id           senderId;
+
+
+    template <mailbox_descriptor>
     friend class basic_mailbox;
     template <bool, bool, bool>
     friend class impl::mailbox_ops;
 
   protected:
-    message(u32 nextOffset) noexcept : nextMsgOffset(nextOffset){}
+    message(message_type msgType, agent_id agentId) noexcept
+        : messageType(msgType), senderId(agentId){}
+
   public:
 
 
