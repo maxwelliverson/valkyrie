@@ -6,7 +6,7 @@
 #define VALKYRIE_VULKAN_OPTIONS_HPP
 
 #include <valkyrie/adt/Arrays.hpp>
-#include <valkyrie/status/Maybe.hpp>
+#include <valkyrie/status/result.hpp>
 #include <valkyrie/adt/string.hpp>
 #include <valkyrie/adt/string_view.hpp>
 

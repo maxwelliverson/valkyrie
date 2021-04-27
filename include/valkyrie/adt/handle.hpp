@@ -221,7 +221,7 @@ namespace valkyrie{
           handle(this->ownership.acquire(handle)){
       if constexpr (!Nullability::IsNullable) {
         if (this->nullability.isNull(this->handle))
-          panic(generic_error(code::FailedAssertion), VK_string("NonNullable Handle was initialized with a null handle"));
+          panic(generic_error(code::failed_assertion), VK_string("NonNullable Handle was initialized with a null handle"));
       }
     }
 

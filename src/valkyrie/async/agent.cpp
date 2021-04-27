@@ -434,7 +434,7 @@ valkyrie::AgentMailbox::AgentMailbox(const u32 queueSize, const AgentConcurrency
   MappedMemory mainBuffer, overflowBuffer;
   if (auto result = allocateCircularBuffer(queueSize)) {
     std::tie(mainBuffer, overflowBuffer) = result.take();
-    status = code::Success;
+    status = code::success;
   } else
     status = result.status();
   overflowBuffer.release();

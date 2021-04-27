@@ -73,7 +73,7 @@ namespace {
 
 class api::surface::Impl : public Internal::SurfaceImpl{
 public:
-  Impl(Internal::InstanceImpl* pInstance, Extent2D<> extent, VulkanStatus& result){
+  Impl(Internal::InstanceImpl* pInstance, Extent2D<> extent, vulkan_status& result){
     pInstance = pInstance;
     allocator = &pInstance->allocationCallbacks;
     refCount  = 1;
@@ -109,7 +109,7 @@ public:
   }
 
   static Impl* create(Internal::InstanceImpl* pInstance, Extent2D<> extent) noexcept {
-    VulkanStatus status;
+    vulkan_status status;
     auto* result = new Impl(pInstance, extent, status);
     if (status.failure())
       panic(status);

@@ -7,7 +7,8 @@
 
 #include <valkyrie/utility/casting.hpp>
 #include <valkyrie/adt/string_view.hpp>
-#include <valkyrie/async/atomic.hpp>
+#include "status_domain.hpp"
+//#include <valkyrie/async/atomic.hpp>
 
 namespace valkyrie{
 
@@ -15,97 +16,22 @@ namespace valkyrie{
 
   template <typename>
   class erased;
-  template <typename>
-  class status_code;
-  template <typename>
-  class error_code;
-  class status_domain;
+
 
   class generic_domain;
   template <typename E>
   class status_enum_domain;
 
-  template <typename T, typename Base = status_domain>
-  class unique_status_domain;
-
   enum class code : i32;
   enum class severity : i32;
 
-  VK_noreturn void assertPanic(string_view msg) noexcept;
+
   VK_noreturn void panic(const utf8* pMessage) noexcept;
   VK_noreturn void panic(const status_code<void>& statusCode) noexcept;
   VK_noreturn void panic(const status_code<void>& statusCode, const utf8* pMessage) noexcept;
 
-  inline severity get_default_severity(code code) noexcept;
 
 
-
-
-
-
-
-
-
-
-
-  // Implementation
-
-
-
-  class status_domain{
-    template <typename>
-    friend class status_code;
-
-    u64 guid_;
-
-  protected:
-
-    constexpr status_domain(const uuid& class_id) noexcept : guid_(toInteger(class_id)){}
-
-
-    virtual bool do_failure(const status_code<void>& status) const noexcept = 0;
-    virtual bool do_equivalent(const status_code<void>& statusA, const status_code<void>& statusB) const noexcept = 0;
-    virtual code do_generic_code(const status_code<void>& status) const noexcept = 0;
-    virtual string_ref do_message(const status_code<void>& status) const noexcept = 0;
-
-    virtual severity do_severity(const status_code<void>& status) const noexcept { return get_default_severity(this->do_generic_code(status)); }
-    virtual void do_erased_copy(status_code<void>& To, const status_code<void>& From, size_t Bytes) const noexcept { std::memcpy(&To, &From, Bytes); }
-    virtual void do_erased_destroy(status_code<void>& code, size_t Bytes) const noexcept { }
-
-    VK_noreturn virtual void do_throw_exception(const status_code<void>& code) const VK_throws;
-
-  public:
-
-    using string_ref = string_ref;
-
-    virtual string_ref name() const noexcept = 0;
-    constexpr u64 id() const noexcept {
-      return guid_;
-    }
-
-    VK_nodiscard friend bool operator==(const status_domain& A, const status_domain& B) noexcept{
-      //return A.name() == B.name();
-      return A.id() == B.id();
-      //return A.guid() == B.guid();
-    }
-    VK_nodiscard friend std::strong_ordering operator<=>(const status_domain& A, const status_domain& B) noexcept {
-      return A.id() <=> B.id();
-    }
-  };
-
-
-
-  /*template <typename T, typename Base>
-  class unique_status_domain : public Base{
-  public:
-
-    using domain_type = T;
-
-    using Base::Base;
-
-
-    const uuid& id() const noexcept override { return class_traits<T>::id; }
-  };*/
 
 
   template <>
@@ -185,6 +111,7 @@ namespace valkyrie{
       return A.equivalent(std::forward<T>(Val));
     }*/
   };
+
 
   namespace detail{
     template <typename Dom>
@@ -270,6 +197,11 @@ namespace valkyrie{
     concept ConstantDomain = requires{ { T::get() } -> std::convertible_to<const status_domain&>; };
   }
 
+
+
+
+  // Status Code
+
   template <typename Dom>
   class status_code : public detail::StatusCodeBase<Dom>{
     template <typename> friend class status_code;
@@ -348,10 +280,6 @@ namespace valkyrie{
 
     VK_nodiscard string_ref message() const noexcept { return this->Domain ? string_ref(this->Domain->do_message(*this)) : string_ref("(empty)"); }
   };
-
-  template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
-  status_code(Arg&& arg, Args&& ...args) noexcept  -> status_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
-
   template <typename ErasedType>
   class status_code<erased<ErasedType>> : public detail::StatusCodeBase<erased<ErasedType>>{
     using Base = detail::StatusCodeBase<erased<ErasedType>>;
@@ -409,8 +337,13 @@ namespace valkyrie{
   };
 
 
+  template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
+  status_code(Arg&& arg, Args&& ...args) noexcept  -> status_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
   template <status_enum_type E>
   status_code(E) -> status_code<typename enum_traits<E>::status_domain>;
+
+
+  // Error Code
 
   template <typename Dom>
   class error_code : public status_code<Dom>{
@@ -420,7 +353,10 @@ namespace valkyrie{
 
     using ThisType = error_code;
 
-    inline void _checkIfSuccess() const;
+    inline void _checkIfSuccess() const {
+      VK_invariant_msg(this->failure(), "An error_code object was created from a non-failure status code. "
+                                        "Consider using status_code instead.");
+    }
 
   public:
     using typename Base::value_type;
@@ -503,8 +439,8 @@ namespace valkyrie{
     using ThisType = error_code;
 
     inline void _checkIfSuccess() const {
-      if(Base::success())
-        std::terminate(); //TODO: Replace with custom termination functions...
+      VK_invariant_msg(this->failure(), "An error_code object was created from a non-failure status code. "
+                                        "Consider using status_code instead.");
     }
 
   public:
@@ -576,17 +512,18 @@ namespace valkyrie{
     VK_nodiscard const value_type& value() const & noexcept { return this->Value; }
   };
 
+  template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
+  error_code(Arg&& arg, Args&& ...args) noexcept -> error_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
+  template <status_enum_type E>
+  error_code(E) -> error_code<typename enum_traits<E>::status_domain>;
+
+
+
+
+
 
   using error         = error_code<erased<u64>>;
   using status        = status_code<erased<u64>>;
-
-  template <typename Dom>
-  inline void error_code<Dom>::_checkIfSuccess() const {
-    VK_invariant_msg(this->failure(), "An error_code object was created from a non-failure status code. "
-                                      "Consider using status_code instead.");
-  }
-
-
 
   /*template <typename ToDomain, typename FromDomain> requires(std::derived_from<ToDomain, FromDomain>)
   inline static status_code<ToDomain> domain_cast(const status_code<FromDomain>& from) noexcept {

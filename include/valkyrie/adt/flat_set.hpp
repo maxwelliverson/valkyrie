@@ -7,7 +7,7 @@
 
 #include "small_vector.hpp"
 
-#include <valkyrie/status/maybe.hpp>
+#include <valkyrie/status/result.hpp>
 #include <valkyrie/memory/default_allocator.hpp>
 
 

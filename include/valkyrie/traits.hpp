@@ -759,12 +759,12 @@ namespace valkyrie{
             probe<Numeric::IsExact, N>,
             probe<Numeric::Bits, N>{};
 
-      template <typename A>
+      /*template <typename A>
       struct AgentInfo
           : probe<Agent::BaseType, A>,
             probe<Agent::RootBaseType, A>,
             probe<Agent::MessageType, A>,
-            probe<Agent::StatusType, A>{};
+            probe<Agent::StatusType, A>{};*/
     }
   }
   
@@ -909,12 +909,12 @@ namespace valkyrie{
     };*/
 
     template <typename T>
-    concept AgentLike = requires{
+    concept AgentLike = true;/*requires{
       typename traits::detail::AgentInfo<T>::base_type;
       typename traits::detail::AgentInfo<T>::root_base_type;
       typename traits::detail::AgentInfo<T>::message_type;
       typename traits::detail::AgentInfo<T>::status_type;
-    };
+    };*/
     template <typename T, typename ...Args>
     concept ConstructibleFrom = std::constructible_from<T, Args...> ||
                                requires(Args&& ...args){
@@ -949,8 +949,8 @@ namespace valkyrie{
   using numeric_traits   = traits::detail::NumericInfo<N>;
   template <Domain D>
   using domain_traits    = traits::detail::DomainInfo<D>;
-  template <AgentLike A>
-  using agent_traits     = traits::detail::AgentInfo<A>;
+  /*template <AgentLike A>
+  using agent_traits     = traits::detail::AgentInfo<A>;*/
 
 
   template <typename T>

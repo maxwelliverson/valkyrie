@@ -6,6 +6,7 @@
 #define VALKYRIE_MEMORY_ERROR_HPP
 
 #include <valkyrie/primitives.hpp>
+#include <valkyrie/status/status_code.hpp>
 
 #include <stdexcept>
 
@@ -13,8 +14,7 @@ namespace valkyrie{
   /// Contains information about an allocator.
   /// It can be used for logging in the various handler functions.
   /// \ingroup core
-  struct allocator_info
-  {
+  struct allocator_info {
     /// The name of the allocator.
     /// It is a NTBS whose lifetime is not managed by this object,
     /// it must be stored elsewhere or be a string literal.
@@ -49,6 +49,168 @@ namespace valkyrie{
     }
     /// @}
   };
+
+
+  namespace impl{
+
+    enum class memory_code{
+      success             = 0x00,
+      out_of_memory       = 0x01,
+      out_of_fixed_memory = 0x03,
+      bad_allocation_size = 0x04,
+      bad_node_size       = 0x0C,
+      bad_array_size      = 0x14,
+      bad_alignment       = 0x24
+    };
+
+    struct memory_info{
+      memory_code kind;
+    };
+    struct out_of_memory_info : memory_info{
+      allocator_info info;
+      u64            amount;
+    };
+    struct bad_allocation_size_info : memory_info{
+      allocator_info info;
+      u64            requested;
+      u64            supported;
+    };
+
+    VK_constant u64 mem_info_size  = std::max(sizeof(out_of_memory_info), sizeof(bad_allocation_size_info));
+    VK_constant u64 mem_info_align = std::max(alignof(out_of_memory_info), alignof(bad_allocation_size_info));
+
+    struct alignas(mem_info_align) memory_info_proxy : memory_info{
+      byte padding[mem_info_size - sizeof(memory_info)];
+    };
+
+    static_assert(sizeof(memory_info_proxy) == sizeof(bad_allocation_size_info));
+    static_assert(alignof(memory_info_proxy) == alignof(bad_allocation_size_info));
+  }
+
+
+
+
+  
+
+
+  /**
+   * TODO: Implement!!!
+   *
+   * */
+  class alloc_status_domain : public status_domain{
+    static thread_local impl::memory_info_proxy current_value_;
+
+    inline static const status_code<alloc_status_domain>& cast(const status_code<void>& status) noexcept {
+      return static_cast<const status_code<alloc_status_domain>&>(status);
+    }
+
+
+  public:
+
+    struct value_type{
+      impl::memory_info* ptr;
+    };
+
+    VK_nodiscard string_ref name() const noexcept override{
+      return VK_raw_string(Memory Management);
+    }
+
+    VK_nodiscard string_ref do_message(const status_code<void> &status) const noexcept override{
+      auto&& s = cast(status);
+
+      if (auto* ptr = s.value().ptr) {
+        switch (ptr->kind) {
+          case impl::memory_code::success:
+          case impl::memory_code::out_of_memory:
+          case impl::memory_code::bad_alignment:
+          case impl::memory_code::bad_allocation_size:
+          case impl::memory_code::bad_array_size:
+          case impl::memory_code::bad_node_size:
+          case impl::memory_code::out_of_fixed_memory:
+
+          VK_no_default;
+        }
+      }
+
+      return "success";
+    }
+    VK_nodiscard code do_generic_code(const status_code<void> &status) const noexcept override{
+      auto&& s = cast(status);
+
+      if (auto* ptr = s.value().ptr) {
+        switch (ptr->kind) {
+          case impl::memory_code::success:
+          case impl::memory_code::out_of_memory:
+          case impl::memory_code::bad_alignment:
+          case impl::memory_code::bad_allocation_size:
+          case impl::memory_code::bad_array_size:
+          case impl::memory_code::bad_node_size:
+          case impl::memory_code::out_of_fixed_memory:
+
+          VK_no_default;
+        }
+      }
+    }
+    VK_nodiscard severity do_severity(const status_code<void> &status) const noexcept override {
+      auto&& s = cast(status);
+
+      if (auto* ptr = s.value().ptr) {
+        switch (ptr->kind) {
+          case impl::memory_code::success:
+          case impl::memory_code::out_of_memory:
+          case impl::memory_code::bad_alignment:
+          case impl::memory_code::bad_allocation_size:
+          case impl::memory_code::bad_array_size:
+          case impl::memory_code::bad_node_size:
+          case impl::memory_code::out_of_fixed_memory:
+
+          VK_no_default;
+        }
+      }
+    }
+    VK_nodiscard bool do_failure(const status_code<void> &status) const noexcept override {
+      auto&& s = cast(status);
+
+      if (auto* ptr = s.value().ptr) {
+        switch (ptr->kind) {
+          case impl::memory_code::success:
+          case impl::memory_code::out_of_memory:
+          case impl::memory_code::bad_alignment:
+          case impl::memory_code::bad_allocation_size:
+          case impl::memory_code::bad_array_size:
+          case impl::memory_code::bad_node_size:
+          case impl::memory_code::out_of_fixed_memory:
+
+          VK_no_default;
+        }
+      }
+    }
+    VK_nodiscard bool do_equivalent(const status_code<void> &statusA,
+                                    const status_code<void> &statusB) const noexcept override{
+
+    }
+    VK_noreturn void do_throw_exception(const status_code<void> &code) const noexcept(false) override {
+
+    }
+    void do_erased_copy(status_code<void> &To, const status_code<void> &From, size_t Bytes) const noexcept override{
+
+    }
+    void do_erased_destroy(status_code<void> &code, size_t Bytes) const noexcept override{
+
+    }
+  };
+
+  using alloc_status = status_code<alloc_status_domain>;
+  using alloc_error  = error_code<alloc_status_domain>;
+
+
+
+
+
+
+
+
+
 
   /// The exception class thrown when a low level allocator runs out of memory.
   /// It is derived from \c std::bad_alloc.
@@ -138,8 +300,7 @@ namespace valkyrie{
   /// \note A user should only \c catch for \c bad_allocation_size, not the derived classes.
   /// \note Most checks will only be done if \ref FOONATHAN_MEMORY_CHECK_ALLOCATION_SIZE is \c true.
   /// \ingroup core
-  class bad_allocation_size : public std::bad_alloc
-  {
+  class bad_allocation_size : public std::bad_alloc {
   public:
     /// The type of the handler called in the constructor of \ref bad_allocation_size.
     /// When a bad allocation size is detected and the exception object created,
@@ -202,8 +363,7 @@ namespace valkyrie{
   /// i.e. it is bigger than \c max_node_size().
   /// It is derived from \ref bad_allocation_size but does not override the handler.
   /// \ingroup core
-  class bad_node_size : public bad_allocation_size
-  {
+  class bad_node_size : public bad_allocation_size {
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
     bad_node_size(const allocator_info& info, u64 passed, u64 supported)
@@ -220,8 +380,7 @@ namespace valkyrie{
   /// i.e. it is bigger than \c max_array_size().
   /// It is derived from \ref bad_allocation_size but does not override the handler.
   /// \ingroup core
-  class bad_array_size : public bad_allocation_size
-  {
+  class bad_array_size : public bad_allocation_size {
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
     bad_array_size(const allocator_info& info, u64 passed, u64 supported)
@@ -238,8 +397,7 @@ namespace valkyrie{
   /// i.e. it is bigger than \c max_alignment().
   /// It is derived from \ref bad_allocation_size but does not override the handler.
   /// \ingroup core
-  class bad_alignment : public bad_allocation_size
-  {
+  class bad_alignment : public bad_allocation_size {
   public:
     /// \effects Just forwards to \ref bad_allocation_size.
     /// \c passed is <tt>count * size</tt>, \c supported the size in bytes.
@@ -253,12 +411,16 @@ namespace valkyrie{
     const char* what() const noexcept override;
   };
 
+
+
+
+
   namespace detail
   {
     template <class Ex, typename Func>
     void check_allocation_size(u64 passed, Func f, const allocator_info& info)
     {
-#if FOONATHAN_MEMORY_CHECK_ALLOCATION_SIZE
+#if VALKYRIE_CHECK_ALLOCATION_SIZE
       auto supported = f();
                 if (passed > supported)
                     FOONATHAN_THROW(Ex(info, passed, supported));

@@ -53,22 +53,22 @@ class api::command_pool::Impl{
 
 
 public:
-  Impl(status& resultStatus){
+  Impl(valkyrie::status& resultStatus){
 
-    maybe<AgentMailbox> result{code::ObjectNotInitialized};
+    valkyrie::result<AgentMailbox> ret{code::object_not_initialized};
 
-    if ((result = AgentMailbox::create(AgentConcurrency::MultiProducer)))
-      urgentMailbox = std::move(result.value());
+    if ((ret = AgentMailbox::create(AgentConcurrency::MultiProducer)))
+      urgentMailbox = std::move(ret.value());
     else
       goto returnError;
 
-    if ((result = AgentMailbox::create(AgentConcurrency::MultiProducer)))
-      defaultMailbox = std::move(result.value());
+    if ((ret = AgentMailbox::create(AgentConcurrency::MultiProducer)))
+      defaultMailbox = std::move(ret.value());
     else
       goto returnError;
 
-    if ((result = AgentMailbox::create(AgentConcurrency::MultiProducer)))
-      lazyMailbox = std::move(result.value());
+    if ((ret = AgentMailbox::create(AgentConcurrency::MultiProducer)))
+      lazyMailbox = std::move(ret.value());
     else
       goto returnError;
 
@@ -76,7 +76,7 @@ public:
     return;
 
     returnError:
-      resultStatus = result.status();
+      resultStatus = ret.status();
   }
 
 

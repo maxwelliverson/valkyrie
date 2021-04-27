@@ -26,7 +26,7 @@
 #define VK_safe_call(...) if ((result = __VA_ARGS__)) VK_throw()
 
 
-#define VK_try VulkanStatus result; do
+#define VK_try vulkan_status result; do
 #define VK_catch while(false); VK_catch_label: if (result.value())
 #define VK_handle(Val_) if (result.value() == (Val_))
 #define VK_throw(...) VK_if(VK_not(VK_pack_is_empty(__VA_ARGS__))((result = __VA_ARGS__;))) goto VK_catch_label
@@ -70,7 +70,7 @@ namespace valkyrie::graphics::api{
         for (u32 i = 0; i < queueFamilySize; ++i)
           impl.queueFamilies.emplace_back(queueFamiliesTmp[i].queueFamilyProperties, checkpointPropertiesTmp[i]);
       }
-      VulkanStatus lazyLoadPerformanceCounters(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadPerformanceCounters(PhysicalDeviceImpl &impl) noexcept {
         VkPerformanceCounterKHR *counters;
         VkPerformanceCounterDescriptionKHR *descriptions;
         i32 i = 0;
@@ -97,7 +97,7 @@ namespace valkyrie::graphics::api{
         }
         VK_return;
       }
-      VulkanStatus lazyLoadExtensions(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadExtensions(PhysicalDeviceImpl &impl) noexcept {
         VK_try {
           if (!impl.extensionsLoaded) {
             DynamicArray<VkExtensionProperties> deviceExtensions;
@@ -133,7 +133,7 @@ namespace valkyrie::graphics::api{
           impl.propertiesLoaded = true;
         }
       }
-      VulkanStatus lazyLoadQueueFamilies(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadQueueFamilies(PhysicalDeviceImpl &impl) noexcept {
         VK_try {
           if (!impl.queueFamiliesLoaded) {
             VK_safe_call(lazyLoadExtensions(impl));
@@ -149,7 +149,7 @@ namespace valkyrie::graphics::api{
         }
         VK_rethrow;
       }
-      VulkanStatus eagerLoad(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status eagerLoad(PhysicalDeviceImpl &impl) noexcept {
         VK_try {
           VK_safe_call(lazyLoadExtensions(impl));
           lazyLoadFeatures(impl);
@@ -685,7 +685,7 @@ class PhysicalDevice::Impl{
     for (u32 i = 0; i < queueFamilySize; ++i)
       queueFamilies.emplace(i, queueFamiliesTmp[i].queueFamilyProperties, checkpointPropertiesTmp[i]);
   }
-  VulkanStatus lazyLoadPerformanceCounters() noexcept {
+  vulkan_status lazyLoadPerformanceCounters() noexcept {
     VkPerformanceCounterKHR* counters;
     VkPerformanceCounterDescriptionKHR* descriptions;
     i32 i = 0;
@@ -713,7 +713,7 @@ class PhysicalDevice::Impl{
     VK_return;
   }
 
-  VulkanStatus lazyLoadExtensions() noexcept {
+  vulkan_status lazyLoadExtensions() noexcept {
     VK_try {
       if (!extensionsLoaded) {
         DynamicArray<VkExtensionProperties> deviceExtensions;
@@ -751,7 +751,7 @@ class PhysicalDevice::Impl{
     }
 
   }
-  VulkanStatus lazyLoadQueueFamilies() noexcept {
+  vulkan_status lazyLoadQueueFamilies() noexcept {
     VK_try{
       if (!queueFamiliesLoaded) {
         VK_safe_call(lazyLoadExtensions());
@@ -767,7 +767,7 @@ class PhysicalDevice::Impl{
     }
     VK_rethrow;
   }
-  VulkanStatus eagerLoad() noexcept {
+  vulkan_status eagerLoad() noexcept {
     VK_try {
       VK_safe_call(lazyLoadExtensions());
                    lazyLoadFeatures();

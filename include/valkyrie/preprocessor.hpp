@@ -1204,7 +1204,7 @@
 #include <cassert>
 
 
-#define VK_unreachable VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(__assume(0))VK_else(__builtin_unreachable()))
+#define VK_unreachable VK_if(VK_and(VK_compiler_msvc, VK_not(VK_compiler_clang))(__assume(0))VK_else(__builtin_unreachable())); VK_assert_msg(false, "Attempted to execute unreachable code at " VK_filename ":" VK_stringify(VK_line_number))
 #define VK_assert_bool(Expr, Msg) VK_if(VK_not(VK_debug_build)(true)VK_else_if(VK_compiler_msvc(((bool)(VK_unwrap_inner(Expr)) || ((_wassert(L"" Msg, L"" VK_filename, unsigned(VK_line_number))), false)))VK_else((static_cast<bool>(Expr) ? (void)0 : __assert_fail(Msg, VK_filename, VK_line_number, VK_function_name)))))
 #define VK_assert_msg(Expr, Msg) (void)(VK_assert_bool(Expr, Msg))
 #define VK_assert(Expr) VK_assert_msg(Expr, #Expr)

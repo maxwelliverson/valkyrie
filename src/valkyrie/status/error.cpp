@@ -9,8 +9,6 @@
 VK_msvc_warning(push)
 VK_msvc_warning(disable:5104)
 VK_msvc_warning(disable:5105)
-#include <valkyrie/status/stacktrace.hpp>
-
 #include <boost/stacktrace.hpp>
 #include <iostream>
 #include <sstream>
@@ -75,10 +73,6 @@ namespace {
   }
 }
 
-void valkyrie::printStackTraceToStdErr() {
-  std::cerr << boost::stacktrace::basic_stacktrace(2, 32) << std::endl;
-}
-
 #if VK_debug_build
 VK_noreturn void valkyrie::detail::_bad_invariant(utf8_string pMessage, utf8_string pFunction, utf8_string pFilename, int lineNum) VK_throws {
 
@@ -89,7 +83,7 @@ VK_noreturn void valkyrie::detail::_bad_invariant(utf8_string pMessage, utf8_str
   outMsg << "\n\tInvariant: \"" << (cstring)pMessage;
   outMsg << "\"\n\tCalling Function: " << (cstring)pFunction;
   outMsg << "\n\tSource Location: " << (cstring)pFilename << ":" << lineNum << "\n";
-  panic(generic_error(code::BadInvariant), (utf8_string)outMsg.str().c_str());
+  panic(generic_error(code::bad_invariant), (utf8_string)outMsg.str().c_str());
   //std::cerr << "Stacktrace: \n\n" << boost::stacktrace::basic_stacktrace(4, 100) << std::endl;
   //abort();
 }
@@ -139,7 +133,7 @@ bool generic_domain::do_equivalent(const status_code<void> & status, const statu
   return static_cast<const generic_status&>(status).value() == other.generic();
 }
 bool generic_domain::do_failure(const status_code<void>& status) const noexcept {
-  return static_cast<const generic_status&>(status).value() < code::Success;
+  return static_cast<const generic_status&>(status).value() < code::success;
 }
 
 VK_noreturn void generic_domain::do_throw_exception(const status_code<void> &code) const {

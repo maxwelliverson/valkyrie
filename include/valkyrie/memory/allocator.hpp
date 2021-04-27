@@ -6,7 +6,7 @@
 #define VALKYRIE_MEMORY_ALLOCATOR_HPP
 
 #include <valkyrie/config.hpp>
-#include <valkyrie/status/maybe.hpp>
+#include <valkyrie/status/result.hpp>
 #include <valkyrie/memory/address.hpp>
 
 #include <unistd.h>

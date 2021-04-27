@@ -367,7 +367,7 @@ namespace valkyrie::GUI::Internal{
 
         switch(static_cast<const status_type&>(status).value()) {
           case S_OK:
-            return C::Success;
+            return C::success;
           case DXGI_ERROR_ACCESS_DENIED:
             return C::PermissionDenied;
           case DXGI_ERROR_ACCESS_LOST:
@@ -395,7 +395,7 @@ namespace valkyrie::GUI::Internal{
           case DXGI_ERROR_NONEXCLUSIVE:
             return C::ResourceNotOwned;
           case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
-            return C::Busy;
+            return C::busy;
           case DXGI_ERROR_NOT_FOUND:
             return C::ResourceNotFound;
           case DXGI_ERROR_REMOTE_CLIENT_DISCONNECTED:
@@ -485,7 +485,7 @@ namespace valkyrie::GUI::Internal{
     }
 
     template <typename T>
-    using Result = maybe<T, status_domain>;
+    using Result = result<T, status_domain>;
 
     class Output{
 

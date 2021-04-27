@@ -97,7 +97,7 @@ public:
     enabledLayers.insert(sv);
   }
 
-  VulkanStatus init(){
+  vulkan_status init(){
 
     VkResult result;
 

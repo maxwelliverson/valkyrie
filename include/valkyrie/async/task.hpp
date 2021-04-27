@@ -39,7 +39,7 @@ namespace valkyrie{
     static void                       setTaskDesc_(void* handle, autonomous_task* pTask) noexcept;
 
 
-    status               threadStatus = code::NotReady;
+    status               threadStatus = code::not_ready;
     std::atomic_uint32_t refCount;
 
     virtual status           begin() = 0;

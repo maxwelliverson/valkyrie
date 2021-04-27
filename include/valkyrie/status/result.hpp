@@ -243,7 +243,7 @@ namespace valkyrie{
       static void             on_access(const status_code<void>& status) {
         status.throw_exception();
         //auto msg = status.message();
-        //panic(generic_error(code::UnhandledError), msg.data());
+        //panic(generic_error(code::unhandled_error), msg.data());
       }
       static void             on_destruction(const status_code<void>& status) noexcept {
         if ( status.severity() == severity::fatal) {

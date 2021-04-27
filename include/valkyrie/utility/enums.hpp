@@ -458,7 +458,7 @@ namespace valkyrie{
 
         (B, severity = severity::Debug, message = "Bob"),
 
-        (C, message = "Charlie", generic = { code::Done, code::InsufficientSize })
+        (C, message = "Charlie", generic = { code::done, code::insufficient_size })
     );
   };*/
 }

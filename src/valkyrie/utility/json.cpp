@@ -102,7 +102,7 @@ severity json::json_status_domain::do_severity(const status_code<void> &status) 
 valkyrie::code json::json_status_domain::do_generic_code(const status_code<void> &status) const noexcept {
   using vc = valkyrie::code;
   constexpr static vc code_table[]{
-      vc::Success,
+      vc::success,
       vc::ResourceTooLarge,
       vc::OutOfMemory,
       vc::InvalidatedState,
@@ -126,7 +126,7 @@ valkyrie::code json::json_status_domain::do_generic_code(const status_code<void>
       vc::InvalidFormat,
       vc::InvalidFormat,
       vc::Unknown,
-      vc::Busy,
+      vc::busy,
       vc::BadOrdering,
       vc::InsufficientSize
   };

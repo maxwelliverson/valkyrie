@@ -6,7 +6,7 @@
 #define VALKYRIE_MEMORY_ADDRESS_HPP
 
 #include <valkyrie/utility/shapes.hpp>
-#include <valkyrie/status/maybe.hpp>
+#include <valkyrie/status/result.hpp>
 #include <valkyrie/utility/bitflag.hpp>
 
 namespace valkyrie{
@@ -332,7 +332,7 @@ namespace valkyrie{
     inline constexpr static bool ConstantAddressSpace = detail::ConstantAddressSpace<typename Base_::address_space_type>;
 
     template <typename T>
-    using maybe = Maybe<T, typename Base_::status_type::domain_type>;
+    using result = Maybe<T, typename Base_::status_type::domain_type>;
 
   public:
     using address_space_type = typename Base_::address_space_type;
@@ -380,7 +380,7 @@ namespace valkyrie{
 
 
     template <typename Other>
-    maybe<difference_type> distance(const MemoryAddress<Other>& other) const noexcept {
+    result<difference_type> distance(const MemoryAddress<Other>& other) const noexcept {
       status_type result;
       difference_type value;
       this->pAddressSpace->doGetDifference(result, std::addressof(value), *this, other);
@@ -428,28 +428,28 @@ namespace valkyrie{
       VK_assert(dst.addressSpace() == *this);
       if (src.addressSpace() == *this) {
         std::memcpy(static_cast<address_type &>(dst).value(), static_cast<const address_type&>(src).value(), *static_cast<const size_type*>(extent));
-        static_cast<status_type&>(result) = code::Success;
+        static_cast<status_type&>(result) = code::success;
       }
       //|| src.canBeReadFrom()
       else {
-        static_cast<status_type&>(result) = code::InvalidArgument;
+        static_cast<status_type&>(result) = code::invalid_argument;
       }
     }
     void doMemMove(status_ref result, address_ref dst, const_address_ref src, const_extent_ref extent) const noexcept override {
       VK_assert(dst.addressSpace() == *this);
       if (src.addressSpace() == *this) {
         std::memmove(static_cast<address_type &>(dst).value(), static_cast<const address_type&>(src).value(), *static_cast<const size_type*>(extent));
-        static_cast<status_type&>(result) = code::Success;
+        static_cast<status_type&>(result) = code::success;
       }
         //|| src.canBeReadFrom()
       else {
-        static_cast<status_type&>(result) = code::InvalidArgument;
+        static_cast<status_type&>(result) = code::invalid_argument;
       }
     }
     void doMemSet(status_ref result, address_ref dst, byte value, const_extent_ref extent) const noexcept override {
       VK_assert(dst.addressSpace() == *this);
       std::memset(static_cast<address_type &>(dst).value(), std::to_integer<int>(value), *static_cast<const size_type*>(extent));
-      static_cast<status_type&>(result) = code::Success;
+      static_cast<status_type&>(result) = code::success;
     }
 
     u64 doGetPointerBits(const_address_ref addr) const noexcept override{
@@ -462,21 +462,21 @@ namespace valkyrie{
         *static_cast<difference_type*>(diff) =
             (const byte*)static_cast<const address_type&>(addressB).value() -
             (const byte*)static_cast<const address_type&>(addressA).value();
-        static_cast<status_type&>(result) = code::Success;
+        static_cast<status_type&>(result) = code::success;
       }
       else if (addressB.flags().test(Memory::DeviceLocal | Memory::Mapped)){
         *static_cast<difference_type*>(diff) = addressB.rawBits() - this->doGetPointerBits(addressA);
-        static_cast<status_type&>(result) = code::Success;
+        static_cast<status_type&>(result) = code::success;
       }
       else
-        static_cast<status_type&>(result) = code::InvalidArgument;
+        static_cast<status_type&>(result) = code::invalid_argument;
     }
 
     void                  doIndex(status_ref result, address_ref dst, const_address_ref src, const_difference_ref offset) const noexcept override {
       VK_assert(src.addressSpace() == *this);
       VK_assert(dst.addressSpace() == *this);
       static_cast<address_type&>(dst).value() = (void*)(this->doGetPointerBits(src) + *static_cast<const difference_type*>(offset));
-      static_cast<status_type&>(result) = code::Success;
+      static_cast<status_type&>(result) = code::success;
     }
     std::partial_ordering doCompare(const_address_ref addressA, const_address_ref addressB) const noexcept override {
       VK_axiom(addressA.addressSpace() == *this);

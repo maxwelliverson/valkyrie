@@ -130,7 +130,7 @@ namespace valkyrie::graphics::engine{
     inline status enable(bool b = true)  noexcept {
 
       if (!doIsSupported())
-        return code::NotSupported;
+        return code::not_supported;
 
       auto result = this->doSetEnabled(b);
 
@@ -179,7 +179,7 @@ namespace valkyrie::graphics::engine{
           return std::move(result);
       }
 
-      return code::Success;
+      return code::success;
     }
 
   protected:

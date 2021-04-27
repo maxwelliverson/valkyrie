@@ -53,12 +53,9 @@ namespace
   void default_bad_alloc_size_handler(const allocator_info& info, u64 passed,
                                       u64 supported) noexcept
 {
-#if FOONATHAN_HOSTED_IMPLEMENTATION
   std::fprintf(stderr,
-                     "[%s] Allocator %s (at %p) received invalid size/alignment %zu, "
-                     "max supported is %zu",
-                     FOONATHAN_MEMORY_LOG_PREFIX, info.name, info.allocator, passed, supported);
-#endif
+                     "[valkyrie] Allocator %s (at %p) received invalid size/alignment %zu, "
+                     "max supported is %zu", info.name, info.allocator, passed, supported);
 }
 
 std::atomic<bad_allocation_size::handler> bad_alloc_size_h(default_bad_alloc_size_handler);

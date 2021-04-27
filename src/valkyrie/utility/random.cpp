@@ -42,7 +42,7 @@ namespace {
     template <std::derived_from<AutonomousTask> T>
     friend class Task;
 
-    status threadStatus = code::NotReady;
+    status threadStatus = code::not_ready;
     std::atomic_uint32_t refCount;
 
     virtual status           begin() = 0;

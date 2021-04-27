@@ -36,34 +36,34 @@ namespace valkyrie{
     typename allocator_traits<T>::allocator_type;
     typename allocator_traits<T>::is_stateful;
   }
-  &&requires(typename allocator_traits<T>::allocator_type &alloc,
-             const typename allocator_traits<T>::allocator_type &calloc,
+  &&requires(typename allocator_traits<remove_cvref_t<T>>::allocator_type &alloc,
+             const typename allocator_traits<remove_cvref_t<T>>::allocator_type &calloc,
              void *n,
              u64 count,
              u64 size,
              u64 align) {
-    { allocator_traits<T>::allocate_node(alloc, size, align) } -> node;
-    { allocator_traits<T>::allocate_array(alloc, count, size, align) } -> node_array;
-    allocator_traits<T>::deallocate_node(alloc, n, size, align);
-    allocator_traits<T>::deallocate_array(alloc, n, count, size, align);
-    { allocator_traits<T>::max_node_size(calloc) } -> std::convertible_to<u64>;
-    { allocator_traits<T>::max_array_size(calloc) } -> std::convertible_to<u64>;
-    { allocator_traits<T>::max_alignment(calloc) } -> std::convertible_to<u64>;
+    { allocator_traits<remove_cvref_t<T>>::allocate_node(alloc, size, align) } -> node;
+    { allocator_traits<remove_cvref_t<T>>::allocate_array(alloc, count, size, align) } -> node_array;
+    allocator_traits<remove_cvref_t<T>>::deallocate_node(alloc, n, size, align);
+    allocator_traits<remove_cvref_t<T>>::deallocate_array(alloc, n, count, size, align);
+    { allocator_traits<remove_cvref_t<T>>::max_node_size(calloc) } -> std::convertible_to<u64>;
+    { allocator_traits<remove_cvref_t<T>>::max_array_size(calloc) } -> std::convertible_to<u64>;
+    { allocator_traits<remove_cvref_t<T>>::max_alignment(calloc) } -> std::convertible_to<u64>;
   };
 
   template <typename T>
-  concept composable_raw_allocator = requires{
-    typename composable_allocator_traits<T>::allocator_type;
+  concept composable_raw_allocator = raw_allocator<T> && requires{
+    typename composable_allocator_traits<remove_cvref_t<T>>::allocator_type;
   }
-  && requires(typename composable_allocator_traits<T>::allocator_type&       alloc,
+  && requires(typename composable_allocator_traits<remove_cvref_t<T>>::allocator_type&       alloc,
               void*                                                          n,
               u64                                                            count,
               u64                                                            size,
               u64                                                            align){
-    { composable_allocator_traits<T>::try_allocate_node(alloc, size, align) } noexcept -> node;
-    { composable_allocator_traits<T>::try_allocate_array(alloc, count, size, align) } noexcept -> node_array;
-    { composable_allocator_traits<T>::try_deallocate_node(alloc, n, size, align) } -> same_as<bool>;
-    { composable_allocator_traits<T>::try_deallocate_array(alloc, n, count, size, align) } -> same_as<bool>;
+    { composable_allocator_traits<remove_cvref_t<T>>::try_allocate_node(alloc, size, align) } noexcept -> node;
+    { composable_allocator_traits<remove_cvref_t<T>>::try_allocate_array(alloc, count, size, align) } noexcept -> node_array;
+    { composable_allocator_traits<remove_cvref_t<T>>::try_deallocate_node(alloc, n, size, align) } -> same_as<bool>;
+    { composable_allocator_traits<remove_cvref_t<T>>::try_deallocate_array(alloc, n, count, size, align) } -> same_as<bool>;
   };
   template <typename T>
   concept block_allocator = requires(T& alloc, const T& calloc, memory_block block){

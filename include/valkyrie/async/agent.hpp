@@ -7,7 +7,7 @@
 
 #include "atomic.hpp"
 #include <valkyrie/utility/function_ref.hpp>
-#include <valkyrie/status/maybe.hpp>
+#include <valkyrie/status/result.hpp>
 
 #include <concepts>
 #include <coroutine>
@@ -104,22 +104,22 @@ namespace valkyrie::Traits{
     inline constexpr static uuid       domain_uuid{"1204717e-359a-4b77-9e7f-e0ab787e8e55"};
 
     inline const*//*expr*//* static StatusEnumMap<enum_type> info{
-        { severity::Success,       AgentCode::Success,                   VK_string("Success"),                                                          { code::Success } },
-        { severity::Info,          AgentCode::Queued,                    VK_string("Message is queued but has not yet been read"),                      { code::InProgress, code::Success } },
+        { severity::Success,       AgentCode::Success,                   VK_string("Success"),                                                          { code::success } },
+        { severity::Info,          AgentCode::Queued,                    VK_string("Message is queued but has not yet been read"),                      { code::in_progress, code::success } },
         { severity::InternalError, AgentCode::UnknownError,              VK_string("Unknown Internal Error occurred in the Valkyrie Agents subsystem"), { } },
-        { severity::Warning,       AgentCode::ChannelBlocked,            VK_string("Channel is currently blocked (Eg. by waiting on a semaphore)"),     { code::Busy } },
-        {                                AgentCode::ChannelTooManyProducers,   VK_string("Channel has too many producers"),                                   { code::ConnectionLimitReached } },
-        {                                AgentCode::ChannelNoConsumer,         VK_string("Channel has no consumer"),                                          { code::NotConnected } },
-        {                                AgentCode::ChannelBufferOverflow,     VK_string("AgentCode::ChannelBufferOverflow"),                     { code::InsufficientSize, code::OutOfBoundsAccess } },
-        {                                AgentCode::ChannelMessageTooLarge,    VK_string("AgentCode::ChannelMessageTooLarge"),                    { code::ResourceTooLarge, code::InvalidArgument } },
-        {                                AgentCode::CommandNotSupported,       VK_string("AgentCode::CommandNotSupported"),                       { code::NotSupported } },
-        {                                AgentCode::CommandDomainNotSupported, VK_string("AgentCode::CommandDomainNotSupported"),                 { code::NotSupported } },
-        {                                AgentCode::CommandInvalidValue,       VK_string("AgentCode::CommandInvalidValue"),                       { code::OutOfDomain, code::InvalidArgument } },
-        {                                AgentCode::PropertyNotFound,          VK_string("AgentCode::PropertyNotFound"),                          { code::ResourceNotFound } },
-        {                                AgentCode::PropertyInvalidFormat,     VK_string("AgentCode::PropertyInvalidFormat"),                     { code::InvalidFormat } },
-        {                                AgentCode::MessageInvalidContents,    VK_string("AgentCode::MessageInvalidContents"),                    { code::InvalidArgument } },
-        {                                AgentCode::MessageInvalidSize,        VK_string("AgentCode::MessageInvalidSize"),                        { code::InvalidArgument } },
-        {                                AgentCode::FailedToProcessExternal,   VK_string("AgentCode::FailedToProcessExternal"),                   { code::ExternalError } }
+        { severity::Warning,       AgentCode::ChannelBlocked,            VK_string("Channel is currently blocked (Eg. by waiting on a semaphore)"),     { code::busy } },
+        {                                AgentCode::ChannelTooManyProducers,   VK_string("Channel has too many producers"),                                   { code::connection_limit_reached } },
+        {                                AgentCode::ChannelNoConsumer,         VK_string("Channel has no consumer"),                                          { code::not_connected } },
+        {                                AgentCode::ChannelBufferOverflow,     VK_string("AgentCode::ChannelBufferOverflow"),                     { code::insufficient_size, code::out_of_bounds_access } },
+        {                                AgentCode::ChannelMessageTooLarge,    VK_string("AgentCode::ChannelMessageTooLarge"),                    { code::resource_too_large, code::invalid_argument } },
+        {                                AgentCode::CommandNotSupported,       VK_string("AgentCode::CommandNotSupported"),                       { code::not_supported } },
+        {                                AgentCode::CommandDomainNotSupported, VK_string("AgentCode::CommandDomainNotSupported"),                 { code::not_supported } },
+        {                                AgentCode::CommandInvalidValue,       VK_string("AgentCode::CommandInvalidValue"),                       { code::out_of_domain, code::invalid_argument } },
+        {                                AgentCode::PropertyNotFound,          VK_string("AgentCode::PropertyNotFound"),                          { code::resource_not_found } },
+        {                                AgentCode::PropertyInvalidFormat,     VK_string("AgentCode::PropertyInvalidFormat"),                     { code::invalid_format } },
+        {                                AgentCode::MessageInvalidContents,    VK_string("AgentCode::MessageInvalidContents"),                    { code::invalid_argument } },
+        {                                AgentCode::MessageInvalidSize,        VK_string("AgentCode::MessageInvalidSize"),                        { code::invalid_argument } },
+        {                                AgentCode::FailedToProcessExternal,   VK_string("AgentCode::FailedToProcessExternal"),                   { code::external_error } }
     };
   };
 }*/
@@ -274,7 +274,7 @@ namespace valkyrie{
   AgentException  make_status_code(AgentExceptionPayload* pPayload) noexcept;
 
   template <typename T>
-  using AgentResult = maybe<T, AgentStatusDomain>;
+  using AgentResult = result<T, AgentStatusDomain>;
 
   enum class MessageAction : u32{
     Advance  = 0x1,
@@ -506,14 +506,14 @@ namespace valkyrie{
     inline static AgentMailbox        deferCreation() noexcept {
       return AgentMailbox{};
     }
-    inline static maybe<AgentMailbox> create(AgentConcurrency concurrency) noexcept {
+    inline static result<AgentMailbox> create(AgentConcurrency concurrency) noexcept {
       status status;
       AgentMailbox mailbox{concurrency, status};
       if (status.failure())
         return std::move(status);
       return std::move(mailbox);
     }
-    inline static maybe<AgentMailbox> create(u32 queueSize, AgentConcurrency concurrency) noexcept {
+    inline static result<AgentMailbox> create(u32 queueSize, AgentConcurrency concurrency) noexcept {
       status status;
       AgentMailbox mailbox{queueSize, concurrency, status};
       if (status.failure())

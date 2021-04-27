@@ -46,13 +46,13 @@ namespace valkyrie{
     VK_nodiscard code doCode(const status_code<void>& status) const noexcept override {
       VK_axiom(status.domain() == *this);
       if (auto mappings = codeMappings(status); mappings.empty())
-        return code::Unknown;
+        return code::unknown;
       else
         return mappings.front();
     }
     VK_nodiscard bool doFailure(const status_code<void>& status) const noexcept override {
       for (code code : codeMappings(status))
-        if (code == code::Success)
+        if (code == code::success)
           return false;
       return true;
     }
