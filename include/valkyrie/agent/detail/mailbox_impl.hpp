@@ -66,7 +66,7 @@ namespace valkyrie::impl{
       using type = default_storage;
     };
     template <typename Traits>
-    requires(Traits::max_readers == 1 && Traits::max_writers == 1)
+    requires(Traits::max_readers == 1 && Traits::max_writers == 1 && !Traits::message_size_is_dynamic)
     struct get_storage<Traits>{
       using type = private_static_storage;
     };
@@ -76,7 +76,7 @@ namespace valkyrie::impl{
       using type = private_dynamic_storage;
     };
     template <typename Traits>
-    requires(Traits::max_readers == 1 && Traits::max_writers != 1)
+    requires(Traits::max_readers == 1 && Traits::max_writers != 1 && !Traits::message_size_is_dynamic)
     struct get_storage<Traits>{
       using type = default_static_storage<Traits::is_write_coherent>;
     };
@@ -109,10 +109,13 @@ namespace valkyrie::impl{
 
     template <typename WriterSema, typename ReaderSema, typename Base>
     class complete : public Base{
-
     public:
 
-      using Base::Base;
+      template <typename ...Args> requires std::constructible_from<Base, Args...>
+      complete(u64 maxWriters, u64 maxReaders, Args&& ...args) noexcept
+          : Base(std::forward<Args>(args)...),
+            writerSemaphore(maxWriters),
+            readerSemaphore(maxReaders){}
 
 
 
@@ -203,17 +206,21 @@ namespace valkyrie::impl{
 
       static_base() noexcept : static_base(default_allocator{}, default_capacity){}
 
+      template <raw_allocator Alloc>
+      explicit static_base(Alloc&& allocator) noexcept
+          : static_base(std::forward<Alloc>(allocator), default_capacity){}
+
       explicit static_base(u64 capacity) noexcept
           : static_base(default_allocator{}, capacity){}
 
-      template <typename Alloc>
+      template <raw_allocator Alloc>
       static_base(Alloc&& allocator, u64 capacity) noexcept
           : queueAllocator(make_any_allocator_reference(std::forward<Alloc>(allocator))),
             queueCapacity(capacity),
             msgQueue(static_cast<byte*>(
                 queueAllocator.allocate_array(queueCapacity, message_size, alignof(message)))){ }
 
-      template <typename Alloc> requires(is_composable_allocator<remove_cvref_t<Alloc>>::value)
+      template <composable_raw_allocator Alloc>
       static_base(Alloc&& allocator, u64 capacity) noexcept
           : queueAllocator(make_any_allocator_reference(std::forward<Alloc>(allocator))),
             queueCapacity(capacity),
@@ -261,7 +268,6 @@ namespace valkyrie::impl{
       any_allocator_reference queueAllocator;
       u64                     queueCapacity;
       byte*                   msgQueue;
-      semaphore               messageSlots;
     public:
 
     };
@@ -312,6 +318,17 @@ namespace valkyrie::impl{
 
       atomic<u64> slotsAvailable; //TODO: Figure out how to initialize this to the number of slots...
       atomic<u64> msgCount;
+    };
+    template <>
+    class default_static_storage<true>{
+    protected:
+      VK_constant bool is_write_coherent = true;
+
+      u64         readNext  = 0;
+      atomic<u64> writeNext = 0;
+
+      atomic<u64> msgCount = 0;
+      binary_semaphore isWriting{1};
     };
 
 
@@ -372,7 +389,6 @@ namespace valkyrie::impl{
         else {
           const u64 writeIndex = this->writeNext;
           this->msgCount.wait(this->queueCapacity, std::memory_order_acquire);
-          ++this->msgCount;
           ++this->writeNext;
           this->normalize_offset(this->writeNext);
           nextOffset = this->writeNext;
@@ -476,25 +492,61 @@ namespace valkyrie::impl{
         VK_detect_invalid_size(size);
 
         if constexpr ( Storage::is_write_coherent ) {
-          //TODO: Implement
-          /*if constexpr ( dynamic_message_sizes ) {
-            u64 writeOffset = this->writeNext.load(std::memory_order_acquire);
-            u64 nextWrite;
-            do {
-              const u64 readOffset = this->readNext.load(std::memory_order_acquire);
-              nextWrite = writeOffset + size;
-              if (nextWrite >= (readOffset + (this->queueLength * bool(readOffset < writeOffset)))) VK_unlikely {
-                this->readNext.wait(readOffset, std::memory_order_acq_rel);
+          u64 writeOffset;
+          u64 nextWrite;
+          u64 readOffset;
+
+          do {
+            if constexpr ( dynamic_message_sizes ) {
+              // load readEnd and treat as though it is equal to writeNext
+              writeOffset = this->readEnd.load(std::memory_order_acquire);
+
+              // calculate the next message offset based on that
+              nextWrite     = writeOffset + size;
+              this->normalize_offset(nextWrite);
+
+              // try to update writeNext, this will fail if the mailbox is already being written to.
+              if ( this->writeNext.compare_exchange_weak(writeOffset, nextWrite, std::memory_order_acq_rel) ) {
+
+                // load readOffset and make sure the mailbox has enough space available to write to
+                readOffset = this->readNext.load(std::memory_order_acquire);
+                if (nextWrite < (readOffset + (this->queueLength * bool(readOffset < writeOffset)))) VK_likely {
+                  // if so, the operation is a success and we leave the loop
+                  break;
+                }
+
+                // in the (ideally) rare case that the mailbox has insufficient space
+                // reset writeNext so that other threads blocked threads can advance
+                this->writeNext.store(writeOffset, std::memory_order_release);
+                this->writeNext.notify_one();
+
+                // wait for a message to be read before trying again
+                this->readNext.wait(readOffset, std::memory_order_acquire);
                 continue;
               }
-              this->normalize_offset(nextWrite);
-            } while(!this->writeNext.compare_exchange_strong(writeOffset, nextWrite, std::memory_order_acq_rel));
-            nextOffset = nextWrite;
-            return this->to_address(writeOffset);
-          }
-          else {
 
-          }*/
+              // wait for other writes to be finished before trying again
+              this->readEnd.wait(writeOffset, std::memory_order_acquire);
+            }
+            else {
+              this->isWriting.acquire();
+
+              if (this->msgCount.load(std::memory_order_acquire) != this->queueCapacity ) VK_likely {
+                writeOffset = this->writeNext.load(std::memory_order_acquire);
+
+                nextWrite  = writeOffset + this->message_size;
+                this->normalize_offset(nextWrite);
+                break;
+              }
+              // release instead of keeping it locked while waiting for a message to be read
+              // this is to prevent possible deadlock in weird edge cases
+              this->isWriting.release();
+              this->msgCount.wait(this->queueCapacity, std::memory_order_acquire);
+            }
+          } while(true);
+
+          nextOffset = nextWrite;
+          return this->to_address(writeOffset);
         }
         else {
           if constexpr ( dynamic_message_sizes ) {
@@ -514,20 +566,134 @@ namespace valkyrie::impl{
           }
           else {
             u64 writeOffset = this->writeNext.load(std::memory_order_acquire);
+            u64 nextWrite;
+
+            do {
+              this->msgCount.wait(this->queueCapacity, std::memory_order_acquire);
+              nextWrite = writeOffset + this->message_size;
+              this->normalize_offset(nextWrite);
+            } while ( !this->writeNext.compare_exchange_strong(writeOffset, nextWrite, std::memory_order_acquire) );
+
+            nextOffset = nextWrite;
+            return this->to_address(writeOffset);
           }
         }
       }
       inline void*    do_try_begin_write(u64 size, u64& nextOffset) noexcept {
-
         VK_detect_invalid_size(size);
-      }
-      inline void     do_end_write(message* msg,   u64  nextOffset) noexcept {
-        if constexpr ( dynamic_message_sizes ) {
 
+        if constexpr ( Storage::is_write_coherent ) {
+          u64 writeOffset;
+          u64 nextWrite;
+          u64 readOffset;
+
+          if constexpr ( dynamic_message_sizes ) {
+            // load readEnd and treat as though it is equal to writeNext
+            writeOffset = this->readEnd.load(std::memory_order_acquire);
+
+            // calculate the next message offset based on that
+            nextWrite     = writeOffset + size;
+            this->normalize_offset(nextWrite);
+
+            // try to update writeNext, this will fail if the mailbox is already being written to.
+            if ( !this->writeNext.compare_exchange_strong(writeOffset, nextWrite, std::memory_order_acq_rel) ) {
+              return nullptr;
+            }
+
+            // load readOffset and make sure the mailbox has enough space available to write to
+            readOffset = this->readNext.load(std::memory_order_acquire);
+            if (nextWrite >= (readOffset + (this->queueLength * bool(readOffset < writeOffset)))) VK_unlikely {
+              // in the (ideally) rare case that the mailbox has insufficient space
+              // reset writeNext so that other threads blocked threads can advance
+              this->writeNext.store(writeOffset, std::memory_order_release);
+              this->writeNext.notify_one();
+              return nullptr;
+            }
+
+          }
+          else {
+            if (!this->isWriting.try_acquire()) return nullptr;
+            if ( this->msgCount.load(std::memory_order_acquire) == this->queueCapacity ) {
+              this->isWriting.release();
+              return nullptr;
+            }
+
+            writeOffset = this->writeNext.load(std::memory_order_acquire);
+
+            nextWrite  = writeOffset + this->message_size;
+            this->normalize_offset(nextWrite);
+          }
+
+          nextOffset = nextWrite;
+          return this->to_address(writeOffset);
         }
         else {
+          if constexpr ( dynamic_message_sizes ) {
+            u64 writeOffset = this->writeNext.load(std::memory_order_acquire);
+            u64 nextWrite;
+            u64 readOffset;
+            do {
+              readOffset = this->readNext.load(std::memory_order_acquire);
+              nextWrite = writeOffset + size;
 
+              if (nextWrite >= (readOffset + (this->queueLength * bool(readOffset < writeOffset)))) VK_unlikely {
+                return nullptr;
+              }
+
+              this->normalize_offset(nextWrite);
+            } while(!this->writeNext.compare_exchange_strong(writeOffset, nextWrite, std::memory_order_acq_rel));
+            nextOffset = nextWrite;
+            return this->to_address(writeOffset);
+          }
+          else {
+            u64 writeOffset = this->writeNext.load(std::memory_order_acquire);
+            u64 nextWrite;
+
+            do {
+              if ( this->msgCount.load(std::memory_order_acquire) == this->queueCapacity ) VK_unlikely {
+                return nullptr;
+              }
+              nextWrite = writeOffset + this->message_size;
+              this->normalize_offset(nextWrite);
+            } while ( !this->writeNext.compare_exchange_strong(writeOffset, nextWrite, std::memory_order_acquire) );
+
+            nextOffset = nextWrite;
+            return this->to_address(writeOffset);
+          }
         }
+      }
+      inline void     do_end_write(message* msg,   u64  nextOffset) noexcept {
+
+        VK_assert( msg );
+
+        if constexpr ( Storage::is_write_coherent ) {
+          if constexpr ( dynamic_message_sizes ) {
+            msg->info.nextOffset = narrow_cast<u32>(nextOffset);
+            this->readEnd.store(nextOffset, std::memory_order_release);
+            this->readEnd.notify_all();
+          }
+          else {
+            this->msgCount.fetch_add(1, std::memory_order_acq_rel);
+            this->msgCount.notify_one();
+            this->isWriting.release();
+          }
+        }
+        else {
+          atomic<impl::message_info&> info{msg->info};
+
+          // TODO: Implement
+          if constexpr ( dynamic_message_sizes ) {
+
+            if ( this-> )
+
+
+          }
+          else {
+
+          }
+        }
+
+
       }
 
       inline message* do_begin_read() noexcept;
@@ -538,7 +704,7 @@ namespace valkyrie::impl{
 
 
 
-    template <bool SingleWriter,
+    /*template <bool SingleWriter,
         bool SingleReader>
     struct mailbox_storage{
       atomic<u64> nextReadOffset = 0;
@@ -763,7 +929,7 @@ namespace valkyrie::impl{
       inline message* do_try_begin_read() noexcept { }
       inline void     do_end_read(message* msg) noexcept { }
     };
-
+*/
   }
 
   template <typename Desc>

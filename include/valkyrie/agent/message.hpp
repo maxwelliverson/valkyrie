@@ -21,7 +21,7 @@ namespace valkyrie{
 
 
   enum class agent_id      : u64;
-  enum class message_type  : u64;
+  enum class message_id    : u64;
   enum class message_state : u32 {
     invalid,
     writing,
@@ -29,6 +29,10 @@ namespace valkyrie{
     reading,
     vestigial,
   };
+
+
+  VK_constant agent_id   bad_agent   = static_cast<agent_id>(0);
+  VK_constant message_id bad_message = static_cast<message_id>(0);
 
 
   namespace impl{
@@ -39,32 +43,10 @@ namespace valkyrie{
   }
 
 
-
-
-  template <mailbox_descriptor Desc>
-  class basic_mailbox;
-
-
-  class alignas(16) message{
-
-  public:
+  struct alignas(16) message{
     impl::message_info info;
-    message_type       messageType;
+    message_id         messageId;
     agent_id           senderId;
-
-
-    template <mailbox_descriptor>
-    friend class basic_mailbox;
-    template <bool, bool, bool>
-    friend class impl::mailbox_ops;
-
-  protected:
-    message(message_type msgType, agent_id agentId) noexcept
-        : messageType(msgType), senderId(agentId){}
-
-  public:
-
-
   };
 }
 

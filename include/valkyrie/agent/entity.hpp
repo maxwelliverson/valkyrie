@@ -11,7 +11,19 @@ namespace valkyrie{
   class sender;
   class receiver;
 
-  class entity_base{
+
+
+  class entity{
+
+  };
+
+
+
+
+
+
+
+  /*class entity_base{
 
   public:
 
@@ -27,7 +39,7 @@ namespace valkyrie{
   template <typename Agent, typename Backend>
   class entity{
 
-  };
+  };*/
 
 
 }

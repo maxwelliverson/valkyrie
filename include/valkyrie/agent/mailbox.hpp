@@ -16,50 +16,168 @@ namespace valkyrie{
 
 
   namespace impl{
-
-    class mailbox_base{
-    protected:
-
-      mailbox_base() noexcept : msgQueue(nullptr), queueLength(0){}
-      mailbox_base(u64 length, system_status& status) noexcept;
-      mailbox_base(const mailbox_base&) = delete;
-      mailbox_base(mailbox_base&& ) noexcept;
-
-
-      ~mailbox_base();
-
-
-      VK_nodiscard inline void*    to_address(const u64 offset) const noexcept {
-        return msgQueue + offset;
-      }
-      VK_nodiscard inline message* to_message(const u64 offset) const noexcept {
-        return static_cast<message*>(to_address(offset));
-      }
-      VK_nodiscard inline u64      to_offset(const void* addr) const noexcept {
-        return static_cast<const byte*>(addr) - msgQueue;
-      }
-
-
-      byte* msgQueue;
-      u64   queueLength;
+    template <typename F>
+    concept msg_write_functor = requires(F&& functor, void* address){
+      { (std::forward<F>(functor))(address) } -> std::convertible_to<message*>;
     };
-
-
-
-
+    template <typename F>
+    concept msg_read_functor = requires(F&& functor, agent_id agent, message* msg){
+      (std::forward<F>(functor))(agent, msg);
+    };
   }
 
 
   template <mailbox_descriptor Desc>
-  class basic_mailbox{
+  class basic_mailbox : protected impl::mailbox_impl<Desc>::type {
+    using base = typename impl::mailbox_impl<Desc>::type;
     using traits = impl::mailbox_traits<Desc>;
+    
+    VK_constant u64 max_writers = traits::max_writers;
+    VK_constant u64 max_readers = traits::max_readers;
+
+    class writer{
+      basic_mailbox* mailbox_;
+      agent_id       agent_;
+    public:
+
+      writer() noexcept : mailbox_(nullptr), agent_(bad_agent){}
+      writer(agent_id agent, basic_mailbox* mailbox) noexcept
+          : mailbox_( mailbox->acquire_write_perms() ? mailbox : nullptr ),
+            agent_(agent){ }
+      writer(const writer&) = delete;
+      writer(writer&& other) noexcept
+          : mailbox_(std::exchange(other.mailbox_, nullptr)),
+            agent_(std::exchange(other.agent_, bad_agent)){ }
+      ~writer() {
+        if ( mailbox_ )
+          mailbox_->release_write_perms();
+      }
+
+      template <impl::msg_write_functor F>
+      inline void write(u64 size, F&& functor){
+        VK_assert( mailbox_ );
+        mailbox_->unsafe_write(agent_, size, std::forward<F>(functor));
+      }
+      template <impl::msg_write_functor F>
+      inline bool try_write(u64 size, F&& functor){
+        VK_assert( mailbox_ );
+        return mailbox_->unsafe_try_write(agent_, size, std::forward<F>(functor));
+      }
+
+      explicit operator bool() const noexcept {
+        return mailbox_;
+      }
+    };
+    class reader{
+      basic_mailbox* mailbox_;
+      agent_id       agent_;
+    public:
+
+      reader() noexcept : mailbox_(nullptr), agent_(bad_agent){}
+      reader(agent_id agent, basic_mailbox* mailbox) noexcept
+          : mailbox_( mailbox->acquire_read_perms() ? mailbox : nullptr ),
+            agent_(agent){ }
+      reader(const reader&) = delete;
+      reader(reader&& other) noexcept
+          : mailbox_(std::exchange(other.mailbox_, nullptr)),
+            agent_(std::exchange(other.agent_, bad_agent)){ }
+
+      ~reader() {
+        if ( mailbox_ )
+          mailbox_->release_read_perms();
+      }
+
+      template <impl::msg_read_functor F>
+      inline void read(F&& functor) noexcept {
+        VK_assert( mailbox_ );
+        mailbox_->unsafe_read(agent_, std::forward<F>(functor));
+      }
+      template <impl::msg_read_functor F>
+      inline bool try_read(F&& functor) noexcept {
+        VK_assert( mailbox_ );
+        return mailbox_->unsafe_try_read(agent_, std::forward<F>(functor));
+      }
+
+      explicit operator bool() const noexcept {
+        return mailbox_;
+      }
+    };
+    
+    struct pipeline{
+      writer in;
+      reader out;
+    };
+
   public:
+    
+    basic_mailbox() : base(max_writers, max_readers){ }
+    explicit basic_mailbox(u64 size) noexcept : base(max_writers, max_readers, size){ }
+    
+    template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
+    basic_mailbox(Alloc&& allocator, u64 size) noexcept 
+        : base(max_writers, max_readers, std::forward<Alloc>(allocator), size){}
+    template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
+    explicit basic_mailbox(Alloc&& allocator) noexcept
+        : base(max_writers, max_readers, std::forward<Alloc>(allocator)){}
+    
+    
 
-    using descriptor = Desc;
+    
+    writer open_writer(agent_id agent) noexcept {
+      return writer(agent, this);
+    }
+    reader open_reader(agent_id agent) noexcept {
+      return reader(agent, this);
+    }
+    
+    pipeline open_pipe(agent_id from, agent_id to) noexcept {
+      if ( auto w = open_writer(from) ) {
+        if ( auto r = open_reader(to) ) {
+          return pipeline{
+              .in = std::move(w),
+              .out = std::move(r)
+          };
+        }
+      }
+    }  
 
 
-
-
+    template <impl::msg_write_functor F>
+    void unsafe_write(agent_id agent, u64 size, F&& functor) noexcept {
+      u64 nextOffset;
+      message* msg = (std::forward<F>(functor))(this->do_begin_write(size, nextOffset));
+      msg->senderId = agent;
+      this->do_end_write(msg, nextOffset);
+    }
+    template <impl::msg_write_functor F>
+    bool unsafe_try_write(agent_id agent, u64 size, F&& functor) noexcept {
+      
+      u64 nextOffset;
+      if ( void* address = this->do_try_begin_write(size, nextOffset)) VK_likely {
+        message* msg = (std::forward<F>(functor))(address);
+        msg->senderId = agent;
+        this->do_end_write(msg, nextOffset);
+        return true;
+      }
+      
+      return false;
+    }
+    
+    template <impl::msg_read_functor F>
+    void unsafe_read(agent_id agent, F&& functor) noexcept {
+      message* msg = this->do_begin_read();
+      (std::forward<F>(functor))(agent, msg);
+      this->do_end_read(msg);
+    }
+    template <impl::msg_read_functor F>
+    bool unsafe_try_read(agent_id agent, F&& functor) noexcept {
+      if (message* msg = this->do_try_begin_read()) {
+        (std::forward<F>(functor))(agent, msg);
+        this->do_end_read(msg);
+        return true;
+      }
+      return false;
+    }
   };
 
 
@@ -115,6 +233,36 @@ namespace valkyrie{
   using mailbox          = basic_mailbox<policy::default_mailbox<MsgSize>>;
   template <auto MsgSize>
   using communal_mailbox = basic_mailbox<policy::communal_mailbox<MsgSize>>;
+
+
+
+  /*using my_mailbox    = private_mailbox<dynamic>;
+  using other_mailbox = private_mailbox<32>;
+  
+  
+  void hello(message*(* ctor)(void*), void(* proc)(agent_id, message*), u64 size){
+    my_mailbox mb_0{};    // a to b
+    other_mailbox mb_1{}; // b to c
+    agent_id agent_a = (agent_id)1;
+    agent_id agent_b = (agent_id)2;
+    agent_id agent_c = (agent_id)3;
+
+    auto [in_0, out_0] = mb_0.open_pipe(agent_a, agent_b);
+    auto [in_1, out_1] = mb_1.open_pipe(agent_b, agent_c);
+
+    auto in_1_ = std::move(in_1);
+
+    out_1.try_read(proc); // returns false
+    out_0.try_read(proc); // returns false
+    in_0.write(size, ctor);
+    out_0.read([&](agent_id agent, message* msg){
+      // ...
+      in_1_.write(size, [&](void* addr){
+        return static_cast<message*>(std::memcpy(addr, msg, size));
+      });
+    });
+    out_1.read(proc);
+  }*/
 }
 
 #endif //VALKYRIE_AGENT_MAILBOX_HPP

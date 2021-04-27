@@ -13,6 +13,41 @@
 
 namespace valkyrie{
 
+  template <typename Agent>
+  struct agent_traits{
+    /*
+     * static bool supports_message(const Agent&, message_id) noexcept;
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     */
+  };
+
+
+
+  enum class agent_id : u64;
+
+
+
+
+
+
+  class agent{
+  protected:
+
+    enum flag_t{
+
+    };
+
+
+    agent_id id;
+    flag_t   flags;
+  };
+
 
 
 
@@ -446,20 +481,6 @@ namespace valkyrie{
   public:
     virtual ~UnsafeReceiver();
   };
-
-
-
-  template <typename MsgDomain>
-  auto make_sender(Instance<MsgDomain>& instance) noexcept {
-    auto* senderInstance = instance.createSender();
-
-  }
-
-
-
-
-
-
 
   /*class Agent{
 
