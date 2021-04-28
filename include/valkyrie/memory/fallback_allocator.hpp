@@ -28,7 +28,7 @@ namespace valkyrie{
     using default_composable_traits  = composable_allocator_traits<Default>;
     using fallback_traits            = allocator_traits<Fallback>;
     using fallback_composable_traits = composable_allocator_traits<Fallback>;
-    using fallback_composable        = is_composable_allocator<typename fallback_traits::allocator_type>;
+    using fallback_composable        = std::bool_constant<composable_allocator<typename fallback_traits::allocator_type>>;
 
     public:
     using default_allocator_type     = typename allocator_traits<Default>::allocator_type;

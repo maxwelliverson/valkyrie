@@ -604,43 +604,6 @@ make_block_allocator_t<BlockOrRawAllocator, BlockAllocator> make_block_allocator
                                            block_size, std::forward<Args>(args)...);
 }
 /// @}
-
-namespace memory_literals
-{
-  /// Syntax sugar to express sizes with unit prefixes.
-  /// \returns The number of bytes `value` is in the given unit.
-  /// \ingroup core
-  /// @{
-  constexpr u64 operator"" _KiB(unsigned long long value) noexcept
-{
-  return u64(value * 1024);
-}
-
-constexpr u64 operator"" _KB(unsigned long long value) noexcept
-{
-return u64(value * 1000);
-}
-
-constexpr u64 operator"" _MiB(unsigned long long value) noexcept
-{
-return u64(value * 1024 * 1024);
-}
-
-constexpr u64 operator"" _MB(unsigned long long value) noexcept
-{
-return u64(value * 1000 * 1000);
-}
-
-constexpr u64 operator"" _GiB(unsigned long long value) noexcept
-{
-return u64(value * 1024 * 1024 * 1024);
-}
-
-constexpr u64 operator"" _GB(unsigned long long value) noexcept
-{
-return u64(value * 1000 * 1000 * 1000);
-}
-} // namespace literals
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_ARENA_HPP

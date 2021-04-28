@@ -65,6 +65,7 @@ namespace valkyrie{
 
     struct memory_info{
       memory_code kind;
+      atomic<u32> refCount;
     };
     struct out_of_memory_info : memory_info{
       allocator_info info;
@@ -98,7 +99,6 @@ namespace valkyrie{
    *
    * */
   class alloc_status_domain : public status_domain{
-    static thread_local impl::memory_info_proxy current_value_;
 
     inline static const status_code<alloc_status_domain>& cast(const status_code<void>& status) noexcept {
       return static_cast<const status_code<alloc_status_domain>&>(status);
@@ -198,6 +198,85 @@ namespace valkyrie{
     void do_erased_destroy(status_code<void> &code, size_t Bytes) const noexcept override{
 
     }
+
+    template <typename T>
+    struct mixin : T{
+
+    protected:
+      mixin() = default;
+      mixin(std::in_place_t, const alloc_status_domain* pDomain, impl::memory_info* ptr)
+      : T{std::in_place, pDomain, ptr}{
+        atomic_fetch_add<memory_order::relaxed>(ptr->refCount, 1);
+      }
+      mixin(const mixin& other)     : T(other){
+        incRef();
+      }
+      mixin(mixin&& other) noexcept : T(std::move(other)){
+        other.ptr() = nullptr;
+      }
+      mixin& operator=(const mixin& other) {
+        if (ptr() != other.ptr()) {
+          decRef();
+          T::value() = other.ptr();
+          incRef();
+        }
+        return *this;
+      }
+      mixin& operator=(mixin&& other) noexcept {
+        T::value() = other.ptr();
+        other.ptr() = nullptr;
+        return *this;
+      }
+      ~mixin() {
+        decRef();
+      }
+
+    public:
+      void clear() {
+        decRef();
+        T::clear();
+      }
+
+      inner_value_type& value() & noexcept {
+        return T::value()->value();
+      }
+      const inner_value_type& value() const & noexcept {
+        return T::value()->value();
+      }
+      inner_value_type&& value() && noexcept {
+        return std::move(T::value()->value());
+      }
+      const inner_value_type&& value() const && noexcept {
+        return std::move(T::value()->value());
+      }
+
+    protected:
+      auto*& ptr() noexcept {
+        return T::value();
+      }
+      const auto*& ptr() const noexcept {
+        return T::value();
+      }
+
+
+      void incRef() {
+        if (T::value())
+          T::value()->acquireRef();
+      }
+      void decRef() {
+        auto* pValue = T::value();
+        if (pValue && !pValue->releaseRef()) {
+          delete pValue;
+        }
+      }
+
+    private:
+      using T::clear;
+      using T::value;
+
+      template <typename>
+      friend class indirect_domain;
+    };
   };
 
   using alloc_status = status_code<alloc_status_domain>;

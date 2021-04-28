@@ -20,7 +20,7 @@ namespace valkyrie{
       {
           using traits            = allocator_traits<RawAllocator>;
           using composable_traits = composable_allocator_traits<RawAllocator>;
-          using composable        = is_composable_allocator<typename traits::allocator_type>;
+          using composable        = std::bool_constant<composable_allocator<typename traits::allocator_type>>;
 
           public:
           using allocator_type = typename allocator_traits<RawAllocator>::allocator_type;

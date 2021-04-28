@@ -9,6 +9,9 @@
 #include "detail/mailbox_impl.hpp"
 #include "detail/mailbox_traits.hpp"
 
+#include <valkyrie/status/result.hpp>
+#include <valkyrie/memory/literals.hpp>
+
 
 namespace valkyrie{
 
@@ -108,17 +111,32 @@ namespace valkyrie{
       reader out;
     };
 
-  public:
-    
-    basic_mailbox() : base(max_writers, max_readers){ }
-    explicit basic_mailbox(u64 size) noexcept : base(max_writers, max_readers, size){ }
-    
+
+    explicit basic_mailbox(u64 size, system_status& status) noexcept
+        : base(max_writers, max_readers, size, status){ }
+
     template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
-    basic_mailbox(Alloc&& allocator, u64 size) noexcept 
+    basic_mailbox(Alloc&& allocator, u64 size) noexcept
         : base(max_writers, max_readers, std::forward<Alloc>(allocator), size){}
     template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
     explicit basic_mailbox(Alloc&& allocator) noexcept
         : base(max_writers, max_readers, std::forward<Alloc>(allocator)){}
+
+  public:
+
+    basic_mailbox() : base(max_writers, max_readers){ }
+    basic_mailbox(const basic_mailbox&) = delete;
+
+    basic_mailbox(basic_mailbox&& other) noexcept = default;
+
+
+    static result<basic_mailbox> open(u64 size) noexcept {
+      system_status status;
+      basic_mailbox mailbox(size, status);
+      if ( status.failure() )
+        return std::move(status);
+      return std::move(mailbox);
+    }
     
     
 
@@ -202,16 +220,15 @@ namespace valkyrie{
     };
 
     template <auto Size>
-    struct bottle_mailbox{
+    struct outbox{
       VK_constant bool single_writer    = true;
       VK_constant bool many_readers     = true;
       VK_constant bool is_read_coherent = false;
     };
 
     template <auto Size>
-    struct default_mailbox{
+    struct inbox{
       VK_constant auto message_size = Size;
-      VK_define_tag(single_writer);
     };
 
     template <auto Size>
@@ -228,9 +245,9 @@ namespace valkyrie{
   template <auto MsgSize>
   using private_mailbox  = basic_mailbox<policy::private_mailbox<MsgSize>>;
   template <auto MsgSize>
-  using bottle_mailbox   = basic_mailbox<policy::bottle_mailbox<MsgSize>>;
+  using outbox           = basic_mailbox<policy::outbox<MsgSize>>;
   template <auto MsgSize>
-  using mailbox          = basic_mailbox<policy::default_mailbox<MsgSize>>;
+  using inbox            = basic_mailbox<policy::inbox<MsgSize>>;
   template <auto MsgSize>
   using communal_mailbox = basic_mailbox<policy::communal_mailbox<MsgSize>>;
 
@@ -263,6 +280,19 @@ namespace valkyrie{
     });
     out_1.read(proc);
   }*/
+
+
+  void hello() {
+
+    using namespace memory_literals;
+
+    using dynamic_inbox = inbox<dynamic>;
+    using chunk_inbox   = inbox<128>;
+
+
+    dynamic_inbox thisInbox{dynamic_inbox::open(64_KiB)};
+    chunk_inbox   chunkInbox{chunk_inbox::open(32)};
+  }
 }
 
 #endif //VALKYRIE_AGENT_MAILBOX_HPP

@@ -879,14 +879,18 @@ namespace valkyrie{
     template <typename T>
     concept class_type = std::is_class_v<T>;
 
-    template <typename T>
+    /*template <typename T>
     concept integral_type = requires{
       { traits::detail::NumericInfo<T>::is_integral };
-    } && traits::detail::NumericInfo<T>::is_integral;
+    } && traits::detail::NumericInfo<T>::is_integral;*/
     template <typename T>
+    concept integral_type = std::integral<T>;
+    template <typename T>
+    concept floating_point_type = std::floating_point<T>;
+/*    template <typename T>
     concept floating_point_type = requires{
       { traits::detail::NumericInfo<T>::is_floating_point };
-    } && traits::detail::NumericInfo<T>::is_floating_point;
+    } && traits::detail::NumericInfo<T>::is_floating_point;*/
     template <typename T>
     concept numeric_type = integral_type<T> || floating_point_type<T> || VK_instantiable_with(traits::Numeric, T);
 

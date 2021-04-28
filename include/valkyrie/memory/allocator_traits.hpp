@@ -5,7 +5,56 @@
 #ifndef VALKYRIE_MEMORY_ALLOCATOR_TRAITS_HPP
 #define VALKYRIE_MEMORY_ALLOCATOR_TRAITS_HPP
 
+#include <valkyrie/traits.hpp>
+
 namespace valkyrie{
+
+  namespace detail{
+    template <typename T>
+    struct protected_is_composable_test : T{
+
+      meta::true_type test_is_composable() const requires(requires{ { this->is_composable() } -> same_as<bool>; });
+      meta::false_type test_is_composable() const;
+
+    };
+  }
+
+  class memory_block;
+
+  template <typename T>
+  struct allocator_traits;
+  template <typename T>
+  struct composable_allocator_traits;
+
+  template <typename T>
+  concept node = same_as<T, void*>;
+  template <typename T>
+  concept node_array = node<T>;
+
+  /*template <typename T>
+  concept raw_allocator = requires {
+    typename allocator_traits<T>::allocator_type;
+    typename allocator_traits<T>::is_stateful;
+  }
+                          &&requires(typename allocator_traits<remove_cvref_t<T>>::allocator_type &alloc,
+  const typename allocator_traits<remove_cvref_t<T>>::allocator_type &calloc,
+  void *n,
+      u64 count,
+  u64 size,
+      u64 align) {
+{ allocator_traits<remove_cvref_t<T>>::allocate_node(alloc, size, align) } -> node;
+{ allocator_traits<remove_cvref_t<T>>::allocate_array(alloc, count, size, align) } -> node_array;
+allocator_traits<remove_cvref_t<T>>::deallocate_node(alloc, n, size, align);
+allocator_traits<remove_cvref_t<T>>::deallocate_array(alloc, n, count, size, align);
+{ allocator_traits<remove_cvref_t<T>>::max_node_size(calloc) } -> std::convertible_to<u64>;
+{ allocator_traits<remove_cvref_t<T>>::max_array_size(calloc) } -> std::convertible_to<u64>;
+{ allocator_traits<remove_cvref_t<T>>::max_alignment(calloc) } -> std::convertible_to<u64>;
+};*/
+
+
+
+
+
   namespace detail
   {
     template <typename A>
@@ -74,8 +123,7 @@ namespace traits_detail // use seperate namespace to avoid name clashes
     using type = Allocator&;
   };
 
-  template <template <typename, typename...> class Alloc, typename U, typename... Args,
-      typename T>
+  template <template <typename, typename...> class Alloc, typename U, typename... Args, typename T> requires(requires{ typename Alloc<T, Args...>; })
   struct allocator_rebinder<Alloc<U, Args...>, T>
   {
     using type = Alloc<T, Args...>&;
@@ -94,8 +142,7 @@ namespace traits_detail // use seperate namespace to avoid name clashes
   };
 
   template <class Allocator>
-  using allocator_type =
-  typename std::decay<typename allocator_type_impl<Allocator>::type>::type;
+  using allocator_type = typename std::decay<typename allocator_type_impl<Allocator>::type>::type;
 
   //=== is_stateful ===//
   // first try to access Allocator::is_stateful,
@@ -270,8 +317,7 @@ class allocator_traits
 {
 public:
   using allocator_type = traits_detail::allocator_type<Allocator>;
-  using is_stateful =
-  decltype(traits_detail::is_stateful<Allocator>(traits_detail::full_concept{}));
+  using is_stateful = decltype(traits_detail::is_stateful<Allocator>(traits_detail::full_concept{}));
 
   static void* allocate_node(allocator_type& state, u64 size,
                              u64 alignment)
@@ -342,59 +388,17 @@ public:
 #endif
 };
 
-namespace detail
-{
-  template <class RawAllocator>
-  typename allocator_traits<RawAllocator>::default_traits
-  alloc_uses_default_traits(RawAllocator&);
-
-  std::false_type alloc_uses_default_traits(...);
-
-  template <typename T>
-  struct has_invalid_alloc_function
-      : std::is_same<decltype(
-          traits_detail::allocate_node(traits_detail::full_concept{},
-                                       std::declval<typename allocator_traits<
-                                           T>::allocator_type&>(),
-                                       0, 0)),
-          traits_detail::error>
-  {
-  };
-
-  template <typename T>
-  struct has_invalid_dealloc_function
-      : std::is_same<
-          decltype(traits_detail::deallocate_node(traits_detail::full_concept{},
-                                                  std::declval<typename allocator_traits<
-                                                      T>::allocator_type&>(),
-                                                  nullptr, 0, 0)),
-          traits_detail::error>
-  {
-  };
-
-  template <typename T, class DefaultTraits>
-  struct is_raw_allocator : std::true_type
-  {
-  };
-
-  template <typename T>
-  struct is_raw_allocator<T, std::integral_constant<bool, true>>
-  : std::integral_constant<bool, allocator_is_raw_allocator<T>::value
-                                 && !(has_invalid_alloc_function<T>::value
-                                      || has_invalid_dealloc_function<T>::value)>
-{
-};
-} // namespace detail
-
-/// Traits that check whether a type models concept \concept{concept_rawallocator,RawAllocator}.<br>
-/// It must either provide the necessary functions for the default traits specialization or has specialized it.
-/// \ingroup core
 template <typename T>
-struct is_raw_allocator
-    : detail::is_raw_allocator<T,
-        decltype(detail::alloc_uses_default_traits(std::declval<T&>()))>
-{
-};
+concept raw_allocator = requires{
+  typename allocator_traits<T>::allocator_type;
+} && (allocator_traits<T>::default_traits::value ||
+      requires(typename allocator_traits<T>::allocator_type& alloc, u64 n){
+        { traits_detail::allocate_node(traits_detail::full_concept{}, alloc, n, n) }
+        -> not_same_as<traits_detail::error>;
+        { traits_detail::deallocate_node(traits_detail::full_concept{}, alloc, nullptr, n, n) } noexcept
+        -> not_same_as<traits_detail::error>;
+      });
+
 
 namespace traits_detail
 {
@@ -474,25 +478,20 @@ namespace traits_detail
 /// Any specialization must provide the same interface.
 /// \ingroup core
 template <class Allocator>
-class composable_allocator_traits
-{
+class composable_allocator_traits {
 public:
   using allocator_type = typename allocator_traits<Allocator>::allocator_type;
 
   static void* try_allocate_node(allocator_type& state, u64 size,
                                  u64 alignment) noexcept
   {
-    static_assert(is_raw_allocator<Allocator>::value,
-                  "ComposableAllocator must be RawAllocator");
-    return traits_detail::try_allocate_node(traits_detail::full_concept{}, state, size,
-                                            alignment);
+    static_assert(raw_allocator<Allocator>);
+    return traits_detail::try_allocate_node(traits_detail::full_concept{}, state, size, alignment);
   }
 
   static void* try_allocate_array(allocator_type& state, u64 count,
                                   u64 size, u64 alignment) noexcept
   {
-    static_assert(is_raw_allocator<Allocator>::value,
-                  "ComposableAllocator must be RawAllocator");
     return traits_detail::try_allocate_array(traits_detail::full_concept{}, state,
                                              count, size, alignment);
   }
@@ -500,81 +499,65 @@ public:
   static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
                                   u64 alignment) noexcept
   {
-    static_assert(is_raw_allocator<Allocator>::value,
-                  "ComposableAllocator must be RawAllocator");
     return traits_detail::try_deallocate_node(traits_detail::full_concept{}, state,
                                               node, size, alignment);
   }
 
   static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
-                                   u64 size, u64 alignment) noexcept
-  {
-    static_assert(is_raw_allocator<Allocator>::value,
-                  "ComposableAllocator must be RawAllocator");
+                                   u64 size, u64 alignment) noexcept {
     return traits_detail::try_deallocate_array(traits_detail::full_concept{}, state,
                                                array, count, size, alignment);
   }
 
 #if !defined(DOXYGEN)
-  using foonathan_memory_default_traits = std::true_type;
+  using default_traits = std::true_type;
 #endif
 };
 
-namespace detail
-{
-  template <class RawAllocator>
-  typename composable_allocator_traits<RawAllocator>::foonathan_memory_default_traits
-  composable_alloc_uses_default_traits(RawAllocator&);
 
-  std::false_type composable_alloc_uses_default_traits(...);
+  template <typename A>
+  concept composable_allocator = raw_allocator<A> && (composable_allocator_traits<A>::default_traits::value
+                               || requires(typename composable_allocator_traits<A>::allocator_type& alloc,
+                                           u64 n){
+    { traits_detail::try_allocate_node(traits_detail::full_concept{}, alloc, n, n) }
+      -> not_same_as<traits_detail::error>;
+    { traits_detail::try_deallocate_node(traits_detail::full_concept{}, alloc, nullptr, n, n) } noexcept
+        -> not_same_as<traits_detail::error>;
+  });
 
-  template <typename T>
-  struct has_invalid_try_alloc_function
-      : std::is_same<
-          decltype(traits_detail::try_allocate_node(traits_detail::full_concept{},
-                                                    std::declval<typename allocator_traits<
-                                                        T>::allocator_type&>(),
-                                                    0, 0)),
-          traits_detail::error>
-  {
-  };
-
-  template <typename T>
-  struct has_invalid_try_dealloc_function
-      : std::is_same<
-          decltype(
-              traits_detail::try_deallocate_node(traits_detail::full_concept{},
-                                                 std::declval<typename allocator_traits<
-                                                     T>::allocator_type&>(),
-                                                 nullptr, 0, 0)),
-          traits_detail::error>
-  {
-  };
-
-  template <typename T, class DefaultTraits>
-  struct is_composable_allocator : valkyrie::is_raw_allocator<T>
-  {
-  };
-
-  template <typename T>
-  struct is_composable_allocator<T, std::integral_constant<bool, true>>
-  : std::integral_constant<bool, valkyrie::is_raw_allocator<T>::value
-                                 && !(has_invalid_try_alloc_function<T>::value
-                                      || has_invalid_try_dealloc_function<T>::value)>
-{
-};
-} // namespace detail
-
-/// Traits that check whether a type models concept \concept{concept_rawallocator,ComposableAllocator}.<br>
-/// It must be a \concept{concept_rawallocator,RawAllocator} and either provide the necessary functions for the default traits specialization or has specialized it.
-/// \ingroup core
 template <typename T>
-struct is_composable_allocator
-    : detail::is_composable_allocator<T, decltype(detail::composable_alloc_uses_default_traits(
-        std::declval<T&>()))>
-{
+concept block_allocator = requires(T& alloc, const T& calloc, memory_block block){
+  { alloc.allocate_block() } -> same_as<memory_block>;
+  alloc.deallocate_block(block);
+  { calloc.next_block_size() } -> std::convertible_to<u64>;
 };
 
+template <typename T>
+concept memory_storage_policy = requires(T& policy, const T& cpolicy){
+  typename T::allocator_type;
+  { policy.get_allocator() } -> std::convertible_to<typename T::allocator_type&>;
+  { cpolicy.get_allocator() } -> std::convertible_to<const typename T::allocator_type&>;
+} && decltype(std::declval<const detail::protected_is_composable_test<T>&>().test_is_composable())::value;
+template <typename T>
+concept segregatable_allocator = requires(T& seg, const T& cseg, u64 count, u64 size, u64 align){
+  requires raw_allocator<typename T::allocator_type>;
+  { seg.get_allocator() } -> exact_same_as<typename T::allocator_type&>;
+  { cseg.get_allocator() } -> exact_same_as<const typename T::allocator_type&>;
+  { cseg.use_allocate_node(size, align) } -> same_as<bool>;
+  { cseg.use_allocate_array(count, size, align) } -> same_as<bool>;
+};
+template <typename T>
+concept memory_tracker      = requires(T& t, void* p, u64 count, u64 size, u64 align){
+  t.on_node_allocation(p, size, align);
+  t.on_array_allocation(p, count, size, align);
+  t.on_node_deallocation(p, size, align);
+  t.on_array_deallocation(p, count, size, align);
+};
+template <typename T>
+concept memory_deep_tracker = memory_tracker<T> && requires(T& t, memory_block block){
+  t.on_allocator_growth(block);
+  t.on_allocator_shrinkage(block);
+};
 
 
 }

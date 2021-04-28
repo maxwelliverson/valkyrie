@@ -93,7 +93,7 @@ class allocator_storage
 using traits = allocator_traits<typename StoragePolicy::allocator_type>;
 using composable_traits =
 composable_allocator_traits<typename StoragePolicy::allocator_type>;
-using composable   = is_composable_allocator<typename StoragePolicy::allocator_type>;
+using composable   = std::bool_constant<composable_allocator<typename StoragePolicy::allocator_type>>;
 using actual_mutex = const detail::mutex_storage<
 detail::mutex_for<typename StoragePolicy::allocator_type, Mutex>>;
 
@@ -355,7 +355,7 @@ class direct_storage : allocator_traits<RawAllocator>::allocator_type
 
     bool is_composable() const noexcept
     {
-      return is_composable_allocator<allocator_type>::value;
+      return composable_allocator<allocator_type>;
     }
     };
 
@@ -575,7 +575,7 @@ class reference_storage : impl::reference_storage<RawAllocator> {
 
         bool is_composable() const noexcept
         {
-          return is_composable_allocator<allocator_type>::value;
+          return composable_allocator<allocator_type>;
         }
 };
 
@@ -747,7 +747,7 @@ private:
   template <class RawAllocator>
   class basic_allocator : public base_allocator, private impl::reference_storage<RawAllocator> {
     using traits     = allocator_traits<RawAllocator>;
-    using composable = is_composable_allocator<typename traits::allocator_type>;
+    using composable = std::bool_constant<composable_allocator<typename traits::allocator_type>>;
     using storage    = impl::reference_storage<RawAllocator>;
 
   public:

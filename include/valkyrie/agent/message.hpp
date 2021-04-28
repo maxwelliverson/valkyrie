@@ -22,13 +22,7 @@ namespace valkyrie{
 
   enum class agent_id      : u64;
   enum class message_id    : u64;
-  enum class message_state : u32 {
-    invalid,
-    writing,
-    enqueued,
-    reading,
-    vestigial,
-  };
+
 
 
   VK_constant agent_id   bad_agent   = static_cast<agent_id>(0);
@@ -36,15 +30,39 @@ namespace valkyrie{
 
 
   namespace impl{
-    struct message_info{
-      u32           nextOffset = 0;
-      message_state state      = message_state::invalid;
+
+    enum class message_state32 : u32 {
+      invalid,
+      written,
+      enqueued,
+      reading,
+      vestigial
+    };
+    enum class message_state64 : u64 {
+      invalid,
+      written,
+      enqueued,
+      reading,
+      vestigial
+    };
+
+    struct message_info32{
+      u32 nextOffset        = 0;
+      message_state32 state = message_state32::invalid;
+    };
+    struct message_info64{
+      u64 nextOffset        = 0;
+      message_state64 state = message_state64::invalid;
     };
   }
 
 
   struct alignas(16) message{
-    impl::message_info info;
+    union{
+      u64                  nextOffset = 0;
+      impl::message_info32 info32;
+      impl::message_info64 info64;
+    };
     message_id         messageId;
     agent_id           senderId;
   };
