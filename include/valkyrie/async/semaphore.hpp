@@ -5,10 +5,12 @@
 #ifndef VALKYRIE_ASYNC_SEMAPHORE_HPP
 #define VALKYRIE_ASYNC_SEMAPHORE_HPP
 
-#include "atomic.hpp"
-#include <valkyrie/preprocessor.hpp>
-#include <valkyrie/primitives.hpp>
+
+
+#include <valkyrie/traits.hpp>
 #include <valkyrie/utility/time.hpp>
+
+#include "atomic.hpp"
 
 #if __has_include(<semaphore>)
 #include <semaphore>
@@ -24,6 +26,21 @@
 
 
 namespace valkyrie{
+
+
+  inline namespace concepts{
+    template <typename S>
+    concept semaphore_c = requires(S& sem, timeout time, deadline until, i64 count){
+      S::max();
+      sem.acquire();
+      sem.release();
+      sem.release(count);
+      { sem.try_acquire() } noexcept -> exact_same_as<bool>;
+      { sem.try_acquire(time) } noexcept -> exact_same_as<bool>;
+      { sem.try_acquire(until) } noexcept -> exact_same_as<bool>;
+    };
+  }
+
 
 #if !VK_std_has_semaphore
   namespace detail{
@@ -131,10 +148,41 @@ namespace valkyrie{
   using binary_semaphore = counting_semaphore<1>;
   using semaphore       = counting_semaphore<>;
 #else
-  template <size_t N = std::numeric_limits<i64>::max()>
-  using counting_semaphore = std::counting_semaphore<N>;
+  template <u64 MaxCount = std::numeric_limits<i64>::max()>
+  class counting_semaphore{
+  public:
+
+    explicit constexpr counting_semaphore(i64 initial_value) noexcept : sem_(initial_value) { }
+
+    counting_semaphore(const counting_semaphore&) = delete;
+    counting_semaphore& operator=(const counting_semaphore&) = delete;
+
+    inline constexpr static i64(max)() noexcept {
+      return MaxCount;
+    }
+
+    void acquire() noexcept {
+      this->sem_.acquire();
+    }
+    void release(i64 update = 1) noexcept {
+      this->sem_.release(update);
+    }
+
+    VK_nodiscard bool try_acquire()         noexcept {
+      return this->sem_.try_acquire();
+    }
+    VK_nodiscard bool try_acquire(timeout t)  noexcept {
+      return this->sem_.try_acquire_for(t.duration());
+    }
+    VK_nodiscard bool try_acquire(deadline until) noexcept {
+      return this->sem_.try_acquire_until(until.time_point());
+    }
+
+  private:
+    std::counting_semaphore<MaxCount> sem_;
+  };
   using semaphore = counting_semaphore<>;
-  using binary_semaphore = std::binary_semaphore;
+  using binary_semaphore = counting_semaphore<1>;
 #endif
 
 
@@ -155,18 +203,16 @@ namespace valkyrie{
     void acquire() noexcept { }
     void release(i64 update = 1) noexcept { }
 
-    bool try_acquire() noexcept { return true; }
-    VK_nodiscard bool try_acquire(timeout) noexcept { return true; }
+    VK_nodiscard bool try_acquire()         noexcept { return true; }
+    VK_nodiscard bool try_acquire(timeout)  noexcept { return true; }
     VK_nodiscard bool try_acquire(deadline) noexcept { return true; }
-
-    template <typename T, typename U>
-    VK_nodiscard bool try_acquire_for(std::chrono::duration<T, U>) noexcept { return true; }
-    template <typename T, typename U>
-    VK_nodiscard bool try_acquire_until(std::chrono::time_point<T, U>) noexcept { return true; }
   };
 
 
-
+  static_assert(semaphore_c<counting_semaphore<10>>);
+  static_assert(semaphore_c<semaphore>);
+  static_assert(semaphore_c<binary_semaphore>);
+  static_assert(semaphore_c<noop_semaphore>);
 }
 
 #endif//VALKYRIE_ASYNC_SEMAPHORE_HPP
