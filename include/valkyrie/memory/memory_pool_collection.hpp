@@ -8,7 +8,7 @@
 #include <valkyrie/primitives.hpp>
 
 #include "default_allocator.hpp"
-#include "detail/align.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "detail/memory_stack.hpp"
 #include "detail/free_list_array.hpp"
 #include "debugging.hpp"

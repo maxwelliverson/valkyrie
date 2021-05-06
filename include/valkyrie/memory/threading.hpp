@@ -93,8 +93,7 @@ namespace valkyrie
     // non changeable pointer to an Allocator that keeps a lock
     // I don't think EBO is necessary here...
     template <class Alloc, class Mutex>
-    class locked_allocator
-    {
+    class locked_allocator {
     public:
       locked_allocator(Alloc& alloc, Mutex& m) noexcept : mutex_(&m), alloc_(&alloc)
       {

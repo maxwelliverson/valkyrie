@@ -107,8 +107,7 @@ namespace valkyrie{
   /// It is similar to \ref memory_stack but does not support growing and uses virtual memory,
   /// also meant for big blocks not small allocations.
   /// \ingroup allocator
-  class virtual_block_allocator
-  {
+  class virtual_block_allocator {
   public:
     /// \effects Creates it giving it the block size and the total number of blocks it can allocate.
     /// It reserves enough virtual memory for <tt>block_size * no_blocks</tt>.

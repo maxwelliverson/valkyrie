@@ -8,8 +8,8 @@
 #include <valkyrie/primitives.hpp>
 #include <valkyrie/traits.hpp>
 
-#include "detail/align.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/utility/align.hpp>
+
 
 namespace valkyrie {
   /// A \concept{concept_rawallocator,RawAllocator} adapter that ensures a minimum alignment.

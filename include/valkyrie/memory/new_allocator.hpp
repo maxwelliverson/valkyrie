@@ -12,10 +12,8 @@
 namespace valkyrie{
   struct allocator_info;
 
-  namespace detail
-  {
-    struct new_allocator_impl
-    {
+  namespace detail {
+    struct new_allocator_impl {
       static allocator_info info() noexcept;
 
       static void* allocate(u64 size, u64) noexcept;
@@ -25,8 +23,7 @@ namespace valkyrie{
       static u64 max_node_size() noexcept;
     };
 
-    VALKYRIE_LL_ALLOCATOR_LEAK_CHECKER(new_allocator_impl,
-        new_alloator_leak_checker)
+    VALKYRIE_LL_ALLOCATOR_LEAK_CHECKER(new_allocator_impl, new_alloator_leak_checker)
   } // namespace detail
 
   /// A stateless \concept{concept_rawallocator,RawAllocator} that allocates memory using (nothrow) <tt>operator new</tt>.

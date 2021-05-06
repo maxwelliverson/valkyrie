@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_MEMORY_STACK_HPP
 #define VALKYRIE_MEMORY_DETAIL_MEMORY_STACK_HPP
 
-#include "align.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "../debugging.hpp"
 
 namespace valkyrie::detail{

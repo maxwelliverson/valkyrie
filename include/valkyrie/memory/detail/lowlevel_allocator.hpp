@@ -5,15 +5,13 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_LOWLEVEL_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_DETAIL_LOWLEVEL_ALLOCATOR_HPP
 
-#include <valkyrie/memory/detail/align.hpp>
-#include <valkyrie/memory/detail/debug_helpers.hpp>
+#include <valkyrie/utility/align.hpp>
+#include "debug_helpers.hpp"
 
 namespace valkyrie::detail{
   template <class Functor>
-  struct lowlevel_allocator_leak_handler
-  {
-    void operator()(i64 amount)
-    {
+  struct lowlevel_allocator_leak_handler {
+    void operator()(i64 amount) {
       debug_handle_memory_leak(Functor::info(), amount);
     }
   };
@@ -37,8 +35,7 @@ namespace valkyrie::detail{
       return *this;
     }
 
-    void* allocate_node(u64 size, u64 alignment) noexcept
-    {
+    void* allocate_node(u64 size, u64 alignment) noexcept {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
       auto memory = Functor::allocate(actual_size, alignment);

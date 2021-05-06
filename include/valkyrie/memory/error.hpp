@@ -6,6 +6,7 @@
 #define VALKYRIE_MEMORY_ERROR_HPP
 
 #include <valkyrie/primitives.hpp>
+#include <valkyrie/async/atomic.hpp>
 #include <valkyrie/status/status_code.hpp>
 
 #include <stdexcept>
@@ -93,8 +94,7 @@ namespace valkyrie{
 
   
 
-
-  /**
+  /*
    * TODO: Implement!!!
    *
    * class alloc_status_domain : public status_domain{
@@ -279,7 +279,7 @@ namespace valkyrie{
   };
 
   using alloc_status = status_code<alloc_status_domain>;
-  using alloc_error  = error_code<alloc_status_domain>;
+  using alloc_error  = error_code<alloc_status_domain>;*/
 
 
 

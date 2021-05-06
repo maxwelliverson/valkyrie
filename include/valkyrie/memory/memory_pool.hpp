@@ -6,9 +6,8 @@
 #define VALKYRIE_MEMORY_MEMORY_POOL_HPP
 
 
-#include "detail/align.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "detail/debug_helpers.hpp"
-#include "error.hpp"
 #include "memory_arena.hpp"
 #include "memory_pool_type.hpp"
 

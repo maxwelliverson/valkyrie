@@ -10,8 +10,7 @@
 #include <valkyrie/status/status_code.hpp>
 #include <valkyrie/adt/interval.hpp>
 
-#include "detail/align.hpp"
-#include "detail/concepts.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "detail/debug_helpers.hpp"
 #include "error.hpp"
 #include "default_allocator.hpp"
@@ -27,17 +26,15 @@ namespace valkyrie{
     u64   size;   ///< The size of the memory block (might be \c 0).
 
     /// \effects Creates an invalid memory block with starting address \c nullptr and size \c 0.
-    memory_block() noexcept : memory_block(nullptr, u64(0)) {}
+    memory_block() noexcept : memory(nullptr), size(0) {}
 
     /// \effects Creates a memory block from a given starting address and size.
-    memory_block(void* mem, u64 s) noexcept : memory(mem), size(s) {}
+    memory_block(void* mem, u64 s) noexcept
+        : memory(mem), size(s) {}
 
     /// \effects Creates a memory block from a [begin,end) range.
     memory_block(void* begin, void* end) noexcept
-        : memory_block(begin, static_cast<u64>(static_cast<char*>(end)
-                                                       - static_cast<char*>(begin)))
-        {
-        }
+        : memory_block(begin, static_cast<u64>(static_cast<char*>(end) - static_cast<char*>(begin))){ }
 
     /// \returns Whether or not a pointer is inside the memory.
     bool contains(const void* address) const noexcept {
@@ -83,8 +80,7 @@ namespace detail
       return *this;
     }
 
-    friend void swap(memory_block_stack& a, memory_block_stack& b) noexcept
-    {
+    friend void swap(memory_block_stack& a, memory_block_stack& b) noexcept {
       std::swap(a.head_, b.head_);
     }
 
@@ -95,11 +91,10 @@ namespace detail
     using inserted_mb = memory_block;
 
     // how much an inserted block is smaller
-    static constexpr u64 implementation_offset() noexcept
-    {
+    static constexpr u64 implementation_offset() noexcept {
       // node size rounded up to the next multiple of max_alignment.
-      return (sizeof(node) / max_alignment + (sizeof(node) % max_alignment != 0))
-             * max_alignment;
+      return align_to<max_alignment>(sizeof(node));
+      //return (sizeof(node) / max_alignment + (sizeof(node) % max_alignment != 0)) * max_alignment;
     }
 
     // pushes a memory block
@@ -112,15 +107,12 @@ namespace detail
     void steal_top(memory_block_stack& other) noexcept;
 
     // returns the last pushed() inserted memory block
-    inserted_mb top() const noexcept
-    {
+    inserted_mb top() const noexcept {
       VK_assert(head_);
-      auto mem = static_cast<void*>(head_);
-      return {static_cast<char*>(mem) + implementation_offset(), head_->usable_size};
+      return {static_cast<char*>(static_cast<void*>(head_)) + implementation_offset(), head_->usable_size};
     }
 
-    bool empty() const noexcept
-    {
+    bool empty() const noexcept {
       return head_ == nullptr;
     }
 
@@ -130,8 +122,7 @@ namespace detail
     u64 size() const noexcept;
 
   private:
-    struct node
-    {
+    struct node {
       node*       prev;
       u64 usable_size;
 
@@ -145,8 +136,7 @@ namespace detail
   class memory_arena_cache;
 
   template <>
-  class memory_arena_cache<cached_arena>
-  {
+  class memory_arena_cache<cached_arena> {
   protected:
     bool cache_empty() const noexcept
     {
@@ -263,8 +253,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   }
 
   /// \effects Deallocates all memory blocks that where requested back to the \concept{concept_blockallocator,BlockAllocator}.
-  ~memory_arena() noexcept
-  {
+  ~memory_arena() noexcept {
     // clear cache
     shrink_to_fit();
     // now deallocate everything
@@ -281,8 +270,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
       cache(std::move(other)),
       used_(std::move(other.used_)) { }
 
-  memory_arena& operator=(memory_arena&& other) noexcept
-  {
+  memory_arena& operator=(memory_arena&& other) noexcept {
     memory_arena tmp(std::move(other));
     swap(*this, tmp);
     return *this;
@@ -291,8 +279,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
 
   /// \effects Swaps to memory arena objects.
   /// This does not invalidate any memory blocks.
-  friend void swap(memory_arena& a, memory_arena& b) noexcept
-  {
+  friend void swap(memory_arena& a, memory_arena& b) noexcept {
     std::swap(static_cast<allocator_type&>(a), static_cast<allocator_type&>(b));
     std::swap(static_cast<cache&>(a), static_cast<cache&>(b));
     std::swap(a.used_, b.used_);
@@ -303,8 +290,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   /// if it is empty, allocates a new one.
   /// \returns The new \ref memory_block.
   /// \throws Anything thrown by the \concept{concept_blockallocator,BlockAllocator} allocation function.
-  memory_block allocate_block()
-  {
+  memory_block allocate_block() {
     if (!this->take_from_cache(used_))
       used_.push(allocator_type::allocate_block());
 
@@ -315,8 +301,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
 
   /// \returns The current memory block.
   /// This is the memory block that will be deallocated by the next call to \ref deallocate_block().
-  memory_block current_block() const noexcept
-  {
+  memory_block current_block() const noexcept {
     return used_.top();
   }
 
@@ -324,43 +309,37 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   /// The current memory block is the block on top of the stack of blocks.
   /// If caching is enabled, it does not really deallocate it but puts it onto a cache for later use,
   /// use \ref shrink_to_fit() to purge that cache.
-  void deallocate_block() noexcept
-  {
+  void deallocate_block() noexcept {
     auto block = used_.top();
     detail::debug_fill_internal(block.memory, block.size, true);
     this->do_deallocate_block(get_allocator(), used_);
   }
 
   /// \returns If `ptr` is in memory owned by the arena.
-  bool owns(const void* ptr) const noexcept
-  {
+  bool owns(const void* ptr) const noexcept {
     return used_.owns(ptr);
   }
 
   /// \effects Purges the cache of unused memory blocks by returning them.
   /// The memory blocks will be deallocated in reversed order of allocation.
   /// Does nothing if caching is disabled.
-  void shrink_to_fit() noexcept
-  {
+  void shrink_to_fit() noexcept {
     this->do_shrink_to_fit(get_allocator());
   }
 
   /// \returns The capacity of the arena, i.e. how many blocks are used and cached.
-  u64 capacity() const noexcept
-  {
+  u64 capacity() const noexcept {
     return size() + cache_size();
   }
 
   /// \returns The size of the cache, i.e. how many blocks can be allocated without allocation.
-  u64 cache_size() const noexcept
-  {
+  u64 cache_size() const noexcept {
     return cache::cache_size();
   }
 
   /// \returns The size of the arena, i.e. how many blocks are in use.
   /// It is always smaller or equal to the \ref capacity().
-  u64 size() const noexcept
-  {
+  u64 size() const noexcept {
     return used_.size();
   }
 
@@ -368,8 +347,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   /// i.e. of the next call to \ref allocate_block().
   /// If there are blocks in the cache, returns size of the next one.
   /// Otherwise forwards to the \concept{concept_blockallocator,BlockAllocator} and subtracts an implementation offset.
-  u64 next_block_size() const noexcept
-  {
+  u64 next_block_size() const noexcept {
     return this->cache_empty() ?
            allocator_type::next_block_size()
            - detail::memory_block_stack::implementation_offset() :
@@ -378,12 +356,14 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
 
   /// \returns A reference of the \concept{concept_blockallocator,BlockAllocator} object.
   /// \requires It is undefined behavior to move this allocator out into another object.
-  allocator_type& get_allocator() noexcept
-  {
+  allocator_type& get_allocator() noexcept {
+    return *this;
+  }
+  const allocator_type& get_allocator() const noexcept {
     return *this;
   }
 
-  private:
+private:
   detail::memory_block_stack used_;
 };
 
@@ -403,7 +383,7 @@ class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type {
 
     using traits = allocator_traits<RawAllocator>;
 
-    public:
+  public:
     using allocator_type = typename traits::allocator_type;
 
     /// \effects Creates it by giving it the initial block size, the allocator object and the growth factor.
@@ -468,8 +448,7 @@ class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type {
 /// The one block allocation is performed through the \c allocate_array() function of the given \concept{concept_rawallocator,RawAllocator}.
 /// \ingroup adapter
 template <class RawAllocator = default_allocator>
-class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type
-    {
+class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type {
         using traits = allocator_traits<RawAllocator>;
 
         public:
@@ -539,17 +518,13 @@ namespace detail
   template <class RawAlloc>
   using default_block_wrapper = growing_block_allocator<RawAlloc>;
 
-  template <template <class...> class Wrapper, class BlockAllocator, typename... Args>
-  BlockAllocator make_block_allocator(std::true_type, u64 block_size,
-                                      Args&&... args)
-  {
+  template <template <class...> class Wrapper, block_allocator_c BlockAllocator, typename... Args>
+  BlockAllocator make_block_allocator(u64 block_size, Args&&... args) {
     return BlockAllocator(block_size, std::forward<Args>(args)...);
   }
 
-  template <template <class...> class Wrapper, class RawAlloc>
-  auto make_block_allocator(std::false_type, u64 block_size,
-                            RawAlloc alloc = RawAlloc()) -> Wrapper<RawAlloc>
-  {
+  template <template <class...> class Wrapper, allocator_c RawAlloc>
+  auto make_block_allocator(u64 block_size, RawAlloc alloc = RawAlloc()) -> Wrapper<RawAlloc> {
     return Wrapper<RawAlloc>(block_size, std::move(alloc));
   }
 } // namespace detail
@@ -560,10 +535,7 @@ namespace detail
 /// \ingroup core
 template <class BlockOrRawAllocator,
     template <typename...> class BlockAllocator = detail::default_block_wrapper>
-using make_block_allocator_t = std::conditional_t<
-    block_allocator<BlockOrRawAllocator>,
-        BlockOrRawAllocator,
-    BlockAllocator<BlockOrRawAllocator>>;
+using make_block_allocator_t = std::conditional_t<block_allocator_c<BlockOrRawAllocator>, BlockOrRawAllocator, BlockAllocator<BlockOrRawAllocator>>;
 
 /// @{
 /// Helper function make a \concept{concept_blockallocator,BlockAllocator}.
@@ -571,19 +543,13 @@ using make_block_allocator_t = std::conditional_t<
 /// \requires Same requirements as the constructor.
 /// \ingroup core
 template <class BlockOrRawAllocator, typename... Args>
-make_block_allocator_t<BlockOrRawAllocator> make_block_allocator(u64 block_size,
-                                                                 Args&&... args)
-{
-  return detail::make_block_allocator<
-      detail::default_block_wrapper,
-      BlockOrRawAllocator>(std::bool_constant<block_allocator<BlockOrRawAllocator>>{}, block_size,
-                           std::forward<Args>(args)...);
+make_block_allocator_t<BlockOrRawAllocator> make_block_allocator(u64 block_size, Args&&... args) {
+  return detail::make_block_allocator<detail::default_block_wrapper, BlockOrRawAllocator>(block_size, std::forward<Args>(args)...);
 }
 
 template <template <class...> class BlockAllocator, class BlockOrRawAllocator,
     typename... Args>
-make_block_allocator_t<BlockOrRawAllocator, BlockAllocator> make_block_allocator(
-    u64 block_size, Args&&... args)
+make_block_allocator_t<BlockOrRawAllocator, BlockAllocator> make_block_allocator(u64 block_size, Args&&... args)
 {
   return detail::make_block_allocator<BlockAllocator, BlockOrRawAllocator>(block_size, std::forward<Args>(args)...);
 }
