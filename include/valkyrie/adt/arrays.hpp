@@ -6,6 +6,7 @@
 #define VALKYRIE_ADT_ARRAYS_HPP
 
 #include <valkyrie/adt/array_ref.hpp>
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/math/calculus/polynomial.hpp>
 #include <valkyrie/utility/iterator.hpp>
 

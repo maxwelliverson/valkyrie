@@ -6,9 +6,9 @@
 #define VALKYRIE_GRAPHICS_API_QUEUE_HPP
 
 #include <valkyrie/adt/array_ref.hpp>
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/graphics/api/vulkan.hpp>
 #include <valkyrie/utility/bitflag.hpp>
-#include <valkyrie/utility/interval.hpp>
 
 
 namespace valkyrie::graphics::api{

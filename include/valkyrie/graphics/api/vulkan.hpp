@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_GRAPHICS_API_VULKAN_HPP
 #define VALKYRIE_GRAPHICS_API_VULKAN_HPP
 
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/graphics/api/enums.hpp>
-#include <valkyrie/utility/interval.hpp>
-#include <valkyrie/utility/shapes.hpp>
 #include <valkyrie/status/result.hpp>
+#include <valkyrie/utility/shapes.hpp>
 
 #include <concepts>
 #include <tuple>

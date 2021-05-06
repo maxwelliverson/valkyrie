@@ -7,8 +7,8 @@
 
 
 #include <valkyrie/adt/flat_map.hpp>
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/adt/static_vector.hpp>
-#include <valkyrie/utility/interval.hpp>
 #include <valkyrie/utility/version.hpp>
 
 #include <valkyrie/graphics/api/vulkan.hpp>

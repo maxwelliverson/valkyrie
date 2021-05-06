@@ -5,9 +5,9 @@
 #ifndef VALKYRIE_PHYSICAL_DEVICE_HPP
 #define VALKYRIE_PHYSICAL_DEVICE_HPP
 
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/graphics/api/queue.hpp>
 #include <valkyrie/graphics/api/vulkan.hpp>
-#include <valkyrie/utility/interval.hpp>
 
 //#include <wayland-client-protocol.hpp>
 

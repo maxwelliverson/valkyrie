@@ -8,6 +8,7 @@
 #include <valkyrie/traits.hpp>
 
 #include <valkyrie/status/status_code.hpp>
+#include <valkyrie/adt/interval.hpp>
 
 #include "detail/align.hpp"
 #include "detail/concepts.hpp"
@@ -39,11 +40,9 @@ namespace valkyrie{
         }
 
     /// \returns Whether or not a pointer is inside the memory.
-    bool contains(const void* address) const noexcept
-    {
-      auto mem  = static_cast<const char*>(memory);
-      auto addr = static_cast<const char*>(address);
-      return addr >= mem && addr < mem + size;
+    bool contains(const void* address) const noexcept {
+      const auto mem  = static_cast<const char*>(memory);
+      return interval<const void*>(mem, mem + size).contains(address);
     }
   };
 

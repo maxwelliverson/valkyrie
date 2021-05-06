@@ -2,11 +2,11 @@
 // Created by Maxwell on 2021-01-29.
 //
 
-#include <valkyrie/utility/interval.hpp>
-#include <valkyrie/utility/shapes.hpp>
-#include <valkyrie/utility/version.hpp>
+#include <valkyrie/adt/interval.hpp>
 #include <valkyrie/adt/string_view.hpp>
 #include <valkyrie/preprocessor.hpp>
+#include <valkyrie/utility/shapes.hpp>
+#include <valkyrie/utility/version.hpp>
 
 #include <cuda.h>
 #include <curand_discrete2.h>
