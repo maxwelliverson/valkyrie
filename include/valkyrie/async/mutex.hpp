@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_ASYNC_MUTEX_HPP
 #define VALKYRIE_ASYNC_MUTEX_HPP
 
+#include <valkyrie/utility/time.hpp>
 
 #include "semaphore.hpp"
-#include "atomic.hpp"
-#include <valkyrie/utility/time.hpp>
+
 
 
 // Mutex implementations that are faster and smaller than the
@@ -16,6 +16,30 @@
 // are only used in-process.
 
 namespace valkyrie{
+
+
+  inline namespace concepts{
+    template <typename M>
+    concept mutex_c = requires(M& mut, timeout t, deadline d){
+
+      { mut.read_lock()      } noexcept;
+      { mut.try_read_lock()  } noexcept -> exact_same_as<bool>;
+      { mut.try_read_lock(t) } noexcept -> exact_same_as<bool>;
+      { mut.try_read_lock(d) } noexcept -> exact_same_as<bool>;
+      { mut.read_unlock()    } noexcept;
+
+      { mut.upgrade_lock()      } noexcept;
+      { mut.try_upgrade_lock()  } noexcept -> exact_same_as<bool>;
+      { mut.try_upgrade_lock(t) } noexcept -> exact_same_as<bool>;
+      { mut.try_upgrade_lock(d) } noexcept -> exact_same_as<bool>;
+
+      { mut.write_lock()        } noexcept;
+      { mut.try_write_lock()    } noexcept -> exact_same_as<bool>;
+      { mut.try_write_lock(t)   } noexcept -> exact_same_as<bool>;
+      { mut.try_write_lock(d)   } noexcept -> exact_same_as<bool>;
+      { mut.write_unlock()      } noexcept;
+    };
+  }
 
   
   
@@ -34,20 +58,17 @@ namespace valkyrie{
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Clk, typename Dur>
-      inline static mutex_type* try_lock_until(mutex_type& mut, const std::chrono::time_point<Clk, Dur>& time_point) {
-        if (mut.try_read_lock_until(time_point))
+      inline static mutex_type* try_lock(mutex_type& mut, deadline time_point) {
+        if (mut.try_read_lock(time_point))
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Rep, typename Period>
-      inline static mutex_type* try_lock_for(mutex_type& mut, const std::chrono::duration<Rep, Period>& time) {
-        if (mut.try_read_lock_for(time))
+      inline static mutex_type* try_lock(mutex_type& mut, timeout time) {
+        if (mut.try_read_lock(time))
           return std::addressof(mut);
         return nullptr;
       }
-
-      inline static void unlock(mutex_type& mut) noexcept {
+      inline static void        unlock(mutex_type& mut) noexcept {
         mut.read_unlock();
       }
     };
@@ -64,18 +85,17 @@ namespace valkyrie{
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Clk, typename Dur>
-      inline static mutex_type* try_lock_until(mutex_type& mut, const std::chrono::time_point<Clk, Dur>& time_point) {
-        if (mut.try_write_lock_until(time_point))
+      inline static mutex_type* try_lock(mutex_type& mut, timeout time) {
+        if (mut.try_write_lock(time))
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Rep, typename Period>
-      inline static mutex_type* try_lock_for(mutex_type& mut, const std::chrono::duration<Rep, Period>& time) {
-        if (mut.try_write_lock_for(time))
+      inline static mutex_type* try_lock(mutex_type& mut, deadline time_point) {
+        if (mut.try_write_lock(time_point))
           return std::addressof(mut);
         return nullptr;
       }
+
 
       inline static void unlock(mutex_type& mut) noexcept {
         mut.read_unlock();
@@ -94,15 +114,13 @@ namespace valkyrie{
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Clk, typename Dur>
-      inline static mutex_type* try_lock_until(mutex_type& mut, const std::chrono::time_point<Clk, Dur>& time_point) {
-        if (mut.try_upgrade_lock_until(time_point))
+      inline static mutex_type* try_lock(mutex_type& mut, deadline time_point) {
+        if (mut.try_upgrade_lock(time_point))
           return std::addressof(mut);
         return nullptr;
       }
-      template <typename Rep, typename Period>
-      inline static mutex_type* try_lock_for(mutex_type& mut, const std::chrono::duration<Rep, Period>& time) {
-        if (mut.try_upgrade_lock_for(time))
+      inline static mutex_type* try_lock(mutex_type& mut, timeout time) {
+        if (mut.try_upgrade_lock(time))
           return std::addressof(mut);
         return nullptr;
       }
@@ -164,13 +182,13 @@ namespace valkyrie{
     VK_nodiscard lock(mutex_type& mut, impl::access_tag_t, impl::non_blocking_t) noexcept
         : mut_(Access<Mtx>::try_lock(mut)){ }
     VK_nodiscard lock(mutex_type& mut, deadline deadline_) noexcept
-        : mut_(Access<Mtx>::try_lock_until(mut, deadline_.time_point())){ }
+        : mut_(Access<Mtx>::try_lock(mut, deadline_)){ }
     VK_nodiscard lock(mutex_type& mut, impl::access_tag_t, deadline deadline_) noexcept
-        : mut_(Access<Mtx>::try_lock_until(mut, deadline_.time_point())){ }
+        : mut_(Access<Mtx>::try_lock(mut, deadline_)){ }
     VK_nodiscard lock(mutex_type& mut, timeout timeout_) noexcept
-        : mut_(Access<Mtx>::try_lock_for(mut, timeout_.duration())){ }
+        : mut_(Access<Mtx>::try_lock(mut, timeout_)){ }
     VK_nodiscard lock(mutex_type& mut, impl::access_tag_t, timeout timeout_) noexcept
-        : mut_(Access<Mtx>::try_lock_for(mut, timeout_.duration())){ }
+        : mut_(Access<Mtx>::try_lock(mut, timeout_)){ }
 
 
 
@@ -186,7 +204,7 @@ namespace valkyrie{
 
 
     ~lock() {
-      this->do_unlock();
+      this->private_unlock();
     }
 
     explicit operator bool() const noexcept {
@@ -195,12 +213,12 @@ namespace valkyrie{
 
 
     void unlock() noexcept {
-      do_unlock();
+      private_unlock();
       mut_ = nullptr;
     }
 
     mutex_type* take() noexcept {
-      do_unlock();
+      private_unlock();
       return release();
     }
     mutex_type* release() noexcept {
@@ -215,7 +233,7 @@ namespace valkyrie{
     
   private:
 
-    inline void do_unlock() noexcept {
+    inline void private_unlock() noexcept {
       if (mut_)
         Access<Mtx>::unlock(*mut_);
     }
@@ -260,28 +278,26 @@ namespace valkyrie{
     VK_nodiscard bool try_read_lock() noexcept {
       return sem_.try_acquire();
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_read_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) {
-      return sem_.try_acquire_until(time_point);
+    VK_nodiscard bool try_read_lock(timeout time) noexcept {
+      return sem_.try_acquire(time);
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_read_lock_for(const std::chrono::duration<Rep, Period>& time) {
-      return sem_.try_acquire_for(time);
+    VK_nodiscard bool try_read_lock(deadline time_point) noexcept {
+      return sem_.try_acquire(time_point);
     }
+
 
 
     void              upgrade_lock() noexcept {}
     VK_nodiscard bool try_upgrade_lock() noexcept {
       return true;
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_upgrade_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) noexcept {
+    VK_nodiscard bool try_upgrade_lock(timeout time) noexcept {
       return true;
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_upgrade_lock_for(const std::chrono::duration<Rep, Period>& time) noexcept {
+    VK_nodiscard bool try_upgrade_lock(deadline time_point) noexcept {
       return true;
     }
+
 
 
     void              write_lock() noexcept {
@@ -290,13 +306,11 @@ namespace valkyrie{
     VK_nodiscard bool try_write_lock() noexcept {
       return sem_.try_acquire();
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_write_lock_for(const std::chrono::duration<Rep, Period>& time) {
-      return sem_.try_acquire_for(time);
+    VK_nodiscard bool try_write_lock(timeout time) noexcept {
+      return sem_.try_acquire(time);
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_write_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) {
-      return sem_.try_acquire_until(time_point);
+    VK_nodiscard bool try_write_lock(deadline time_point) noexcept {
+      return sem_.try_acquire(time_point);
     }
 
 
@@ -334,22 +348,20 @@ namespace valkyrie{
       }
       return true;
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_read_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) {
+    VK_nodiscard bool try_read_lock(deadline time_point) noexcept {
       lock outer(read_mutex);
 
-      if (++reader_count == 1 && !write_mutex.try_write_lock_until(time_point)) {
+      if (++reader_count == 1 && !write_mutex.try_write_lock(time_point)) {
         --reader_count;
         return false;
       }
 
       return true;
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_read_lock_for(const std::chrono::duration<Rep, Period>& time) {
+    VK_nodiscard bool try_read_lock(timeout time) noexcept {
       lock outer(read_mutex);
 
-      if (++reader_count == 1 && !write_mutex.try_write_lock_for(time)) {
+      if (++reader_count == 1 && !write_mutex.try_write_lock(time)) {
         --reader_count;
         return false;
       }
@@ -372,21 +384,19 @@ namespace valkyrie{
 
       return true;
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_upgrade_lock_for(const std::chrono::duration<Rep, Period>& time) {
+    VK_nodiscard bool try_upgrade_lock(timeout time) noexcept {
       lock outer(read_mutex);
 
       if (--reader_count != 0)
-        return write_mutex.try_write_lock_for(time);
+        return write_mutex.try_write_lock(time);
 
       return true;
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_upgrade_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) {
+    VK_nodiscard bool try_upgrade_lock(deadline time_point) noexcept {
       lock outer(read_mutex);
 
       if (--reader_count != 0)
-        return write_mutex.try_write_lock_until(time_point);
+        return write_mutex.try_write_lock(time_point);
 
       return true;
     }
@@ -398,15 +408,12 @@ namespace valkyrie{
     VK_nodiscard bool try_write_lock() noexcept {
       return write_mutex.try_write_lock();
     }
-    template <typename Rep, typename Period>
-    VK_nodiscard bool try_write_lock_for(const std::chrono::duration<Rep, Period>& time) {
-      return write_mutex.try_write_lock_for(time);
+    VK_nodiscard bool try_write_lock(timeout time) noexcept {
+      return write_mutex.try_write_lock(time);
     }
-    template <typename Clk, typename Dur>
-    VK_nodiscard bool try_write_lock_until(const std::chrono::time_point<Clk, Dur>& time_point) {
-      return write_mutex.try_write_lock_until(time_point);
+    VK_nodiscard bool try_write_lock(deadline time_point) noexcept {
+      return write_mutex.try_write_lock(time_point);
     }
-
 
     void read_unlock() noexcept {
       lock outer(read_mutex);
@@ -422,13 +429,13 @@ namespace valkyrie{
   class noop_mutex{
   public:
 
-    constexpr noop_mutex() = default;
-    noop_mutex(const noop_mutex&) = delete;
+    //constexpr noop_mutex() = default;
+    //noop_mutex(const noop_mutex&) = delete;
 
-    noop_mutex& operator=(const noop_mutex&) = delete;
+    //noop_mutex& operator=(const noop_mutex&) = delete;
 
 
-    VK_forceinline void     read_lock()         noexcept { }
+    VK_forceinline void     read_lock()            noexcept { }
     VK_forceinline bool try_read_lock()            noexcept { return true; }
     VK_forceinline bool try_read_lock(timeout)     noexcept { return true; }
     VK_forceinline bool try_read_lock(deadline)    noexcept { return true; }
@@ -447,6 +454,15 @@ namespace valkyrie{
     VK_forceinline void  read_unlock() noexcept { }
     VK_forceinline void write_unlock() noexcept { }
   };
+
+
+  static_assert(mutex_c<mutex>);
+  static_assert(mutex_c<shared_mutex>);
+  static_assert(mutex_c<noop_mutex>);
+
 }
+
+#define VK_scope_lock(mutex, ...) valkyrie::lock scope_LOCK_{mutex, ##__VA_ARGS__}
+#define VK_if_lock(mutex, access, ...) if (valkyrie::lock if_scope_LOCK_{mutex, access, VK_if(VK_pack_is_empty(__VA_ARGS__)(valkyrie::do_not_block)VK_else(__VA_ARGS__))})
 
 #endif//VALKYRIE_ASYNC_MUTEX_HPP
