@@ -47,7 +47,7 @@ namespace valkyrie{
     }
   };
 
-  template <block_allocator BlockAllocator, bool Cached = true>
+  template <block_allocator_c BlockAllocator, bool Cached = true>
   class memory_arena;
 
 /// @{
@@ -244,13 +244,14 @@ namespace detail
 /// passing it \ref uncached_arena (or \c false) disables it,
 /// \ref cached_arena (or \c true) enables it explicitly.
 /// \ingroup core
-template <block_allocator BlockAllocator, bool Cached /* = true */>
+template <block_allocator_c BlockAllocator, bool Cached /* = true */>
 class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   using cache = detail::memory_arena_cache<Cached>;
 
   public:
   using allocator_type = BlockAllocator;
-  using is_cached      = std::integral_constant<bool, Cached>;
+  VK_constant bool is_cached = Cached;
+  //using is_cached      = std::integral_constant<bool, Cached>;
 
   /// \effects Creates it by giving it the size and other arguments for the \concept{concept_blockallocator,BlockAllocator}.
   /// It forwards these arguments to its constructor.
@@ -277,12 +278,9 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
   /// The new arena takes ownership over all the memory blocks from the other arena object,
   /// which is empty after that.
   /// This does not invalidate any memory blocks.
-  memory_arena(memory_arena&& other) noexcept
-  : allocator_type(std::move(other)),
+  memory_arena(memory_arena&& other) noexcept : allocator_type(std::move(other)),
       cache(std::move(other)),
-      used_(std::move(other.used_))
-  {
-  }
+      used_(std::move(other.used_)) { }
 
   memory_arena& operator=(memory_arena&& other) noexcept
   {
@@ -391,10 +389,7 @@ class memory_arena : BlockAllocator, detail::memory_arena_cache<Cached> {
 };
 
 
-extern template class memory_arena<static_block_allocator, true>;
-extern template class memory_arena<static_block_allocator, false>;
-extern template class memory_arena<virtual_block_allocator, true>;
-extern template class memory_arena<virtual_block_allocator, false>;
+
 
 
 /// A \concept{concept_blockallocator,BlockAllocator} that uses a given \concept{concept_rawallocator,RawAllocator} for allocating the blocks.
@@ -403,10 +398,9 @@ extern template class memory_arena<virtual_block_allocator, false>;
 /// allowing an amortized constant allocation time in the higher level allocator.
 /// The factor can be given as rational in the template parameter, default is \c 2.
 /// \ingroup adapter
-template <raw_allocator RawAllocator = default_allocator, unsigned Num = 2, unsigned Den = 1>
-class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type
-    {
-        static_assert(float(Num) / Den >= 1.0, "invalid growth factor");
+template <allocator_c RawAllocator = default_allocator, unsigned Num = 2, unsigned Den = 1>
+class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type {
+    static_assert(float(Num) / Den >= 1.0, "invalid growth factor");
 
     using traits = allocator_traits<RawAllocator>;
 
@@ -467,9 +461,7 @@ class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type
     };
 
 
-extern template class growing_block_allocator<>;
-        extern template class memory_arena<growing_block_allocator<>, true>;
-        extern template class memory_arena<growing_block_allocator<>, false>;
+
 
 
 /// A \concept{concept_blockallocator,BlockAllocator} that allows only one block allocation.
@@ -543,11 +535,6 @@ class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type
     };
 
 
-extern template class fixed_block_allocator<>;
-        extern template class memory_arena<fixed_block_allocator<>, true>;
-        extern template class memory_arena<fixed_block_allocator<>, false>;
-
-
 namespace detail
 {
   template <class RawAlloc>
@@ -599,11 +586,25 @@ template <template <class...> class BlockAllocator, class BlockOrRawAllocator,
 make_block_allocator_t<BlockOrRawAllocator, BlockAllocator> make_block_allocator(
     u64 block_size, Args&&... args)
 {
-  return detail::make_block_allocator<
-      BlockAllocator, BlockOrRawAllocator>(std::bool_constant<block_allocator<BlockOrRawAllocator>>{},
-                                           block_size, std::forward<Args>(args)...);
+  return detail::make_block_allocator<BlockAllocator, BlockOrRawAllocator>(block_size, std::forward<Args>(args)...);
 }
 /// @}
+
+
+
+
+
+  extern template class growing_block_allocator<>;
+  extern template class fixed_block_allocator<>;
+
+  extern template class memory_arena<static_block_allocator, true>;
+  extern template class memory_arena<static_block_allocator, false>;
+  extern template class memory_arena<virtual_block_allocator, true>;
+  extern template class memory_arena<virtual_block_allocator, false>;
+  extern template class memory_arena<growing_block_allocator<>, true>;
+  extern template class memory_arena<growing_block_allocator<>, false>;
+  extern template class memory_arena<fixed_block_allocator<>, true>;
+  extern template class memory_arena<fixed_block_allocator<>, false>;
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_ARENA_HPP

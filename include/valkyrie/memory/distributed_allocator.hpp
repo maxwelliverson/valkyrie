@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_MEMORY_DISTRIBUTED_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_DISTRIBUTED_ALLOCATOR_HPP
 
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 #include "default_allocator.hpp"
 
 #include <valkyrie/agent/channel.hpp>

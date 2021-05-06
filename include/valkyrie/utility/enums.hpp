@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_UTILITIES_ENUMS_HPP
 #define VALKYRIE_UTILITIES_ENUMS_HPP
 
-
+/*
 #include "bitflag.hpp"
 #include "valkyrie/adt/string_view.hpp"
-#include <valkyrie/ADT/flat_map.hpp>
+#include <valkyrie/adt/flat_map.hpp>
 #include <valkyrie/status/generic_code.hpp>
 
 
@@ -179,10 +179,10 @@ namespace valkyrie{
 
       using allocator_type = void;
 
-      /*constexpr EnumEntryMapContainer(const std::array<EnumEntry<E>, N>& array) noexcept
+      *//*constexpr EnumEntryMapContainer(const std::array<EnumEntry<E>, N>& array) noexcept
           : EnumEntryMapContainer{array.data(), std::make_index_sequence<N>{}}{}
       constexpr EnumEntryMapContainer(std::initializer_list<value_type> list) noexcept
-          : EnumEntryMapContainer{list.begin(), std::make_index_sequence<N>{}}{}*/
+          : EnumEntryMapContainer{list.begin(), std::make_index_sequence<N>{}}{}*//*
 
       template <typename ...Args>
       constexpr EnumEntryMapContainer(Args&& ...args) noexcept
@@ -446,7 +446,7 @@ namespace valkyrie{
 #define VK_status_enum_domain(name_, uuid_) inline constexpr static ::valkyrie::StringView domain_name{VK_raw_string(name_)}; inline constexpr static ::valkyrie::uuid domain_uuid{uuid_}
 #define VK_status_enum_info(...) inline static const ::valkyrie::StatusEnumMap info{ VK_for_each_delimit(PP_VK_impl_PROCESS_STATUS_ENUM_INFO, VK_comma_delimiter, ##__VA_ARGS__) }
 
-  /*template <>
+  template <>
   struct Custom::status_enum_type<ExampleEnum>{
     using enum_type = ExampleEnum;
     struct domain_type{
@@ -461,6 +461,6 @@ namespace valkyrie{
         (C, message = "Charlie", generic = { code::done, code::insufficient_size })
     );
   };*/
-}
+//}
 
 #endif//VALKYRIE_UTILITIES_ENUMS_HPP

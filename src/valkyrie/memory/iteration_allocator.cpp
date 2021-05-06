@@ -8,5 +8,4 @@ using namespace valkyrie;
 
 
 template class valkyrie::iteration_allocator<2>;
-template class valkyrie::allocator_traits<iteration_allocator<2>>;
-template class valkyrie::composable_allocator_traits<iteration_allocator<2>>;
+VK_trait_instantiation(allocator, iteration_allocator<2>);

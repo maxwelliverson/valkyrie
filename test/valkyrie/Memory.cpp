@@ -3,7 +3,7 @@
 //
 
 #include <valkyrie/Memory/small_object_allocator.hpp>
-#include <valkyrie/utility/interval.hpp>
+#include <valkyrie/adt/interval.hpp>
 
 namespace detail{
 

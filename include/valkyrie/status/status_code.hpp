@@ -162,7 +162,7 @@ namespace valkyrie{
             Value(static_cast<StatusStorage&&>(Other).Value){
         Other.Domain = nullptr;
       }
-      template <typename ...Args> requires(ConstructibleFrom<value_type, Args...>)
+      template <typename ...Args> requires(constructible_from<value_type, Args...>)
       explicit StatusStorage(std::in_place_t, const domain_type * Domain, Args&& ...args) noexcept
           : Base(Domain),
             Value(std::forward<Args>(args)...){}
@@ -234,9 +234,9 @@ namespace valkyrie{
 
     status_code clone() const { return *this; }
 
-    /*template <not_same_as<Dom> OtherDom> requires(ConstructibleFrom<value_type, const typename *//*domain_traits<*//*OtherDom*//*>*//*::value_type&>)
+    /*template <not_same_as<Dom> OtherDom> requires(constructible_from<value_type, const typename *//*domain_traits<*//*OtherDom*//*>*//*::value_type&>)
     status_code(const status_code<OtherDom>& other) noexcept : status_code(other.value()){}
-    template <not_same_as<Dom> OtherDom> requires(ConstructibleFrom<value_type, typename *//*domain_traits<*//*OtherDom*//*>*//*::value_type&&>)
+    template <not_same_as<Dom> OtherDom> requires(constructible_from<value_type, typename *//*domain_traits<*//*OtherDom*//*>*//*::value_type&&>)
     status_code(status_code<OtherDom>&& other) noexcept : status_code(std::move(other).value()){}*/
 
 
@@ -246,23 +246,15 @@ namespace valkyrie{
         : status_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){}
 
     /*template <StatusEnum Enum>
-    requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
-    status_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<ThisType, typename enum_traits<Enum>::status_type>)
-        : status_code(typename enum_traits<Enum>::status_type(std::forward<Enum>(E))){}*/
+    requires(constructible_from<ThisType, status_code<typename enum_traits<Enum>::status_domain>>)
+    status_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<ThisType, status_code<typename enum_traits<Enum>::status_domain>>)
+        : status_code(status_code<typename enum_traits<Enum>::status_domain>(std::forward<Enum>(E))){}*/
 
-    template <typename ...Args> requires(ConstantDomain && ConstructibleFrom<value_type, Args...>)
-    explicit status_code(std::in_place_t, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, Args...>)
-        : Base(std::in_place, std::addressof(domain_type::get()),  std::forward<Args>(args)...){}
-
-    template <typename T, typename ...Args> requires(ConstantDomain && ConstructibleFrom<value_type, std::initializer_list<T>, Args...>)
-    explicit status_code(std::in_place_t, std::initializer_list<T> Il, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, std::initializer_list<T>, Args...>)
-        : Base(std::in_place, std::addressof(domain_type::get()), Il, std::forward<Args>(args)...){}
-
-    explicit(!status_enum_type<value_type>) status_code(const value_type & Other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
+    explicit(!status_enum_c<value_type>) status_code(const value_type & Other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
     requires(ConstantDomain && std::copy_constructible<value_type>)
         : Base(std::in_place, std::addressof(domain_type::get()), Other){}
 
-    explicit(!status_enum_type<value_type>) status_code(value_type && Other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
+    explicit(!status_enum_c<value_type>) status_code(value_type && Other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
     requires(ConstantDomain && std::move_constructible<value_type>)
         : Base(std::in_place, std::addressof(domain_type::get()), std::move(Other)){}
 
@@ -327,10 +319,10 @@ namespace valkyrie{
         requires(requires{ { make_status_code((T&&)val, (Args&&)args...) } -> std::convertible_to<ThisType>; })
         : status_code(make_status_code(std::forward<T>(val), std::forward<Args>(args)...)){}
 
-    template <status_enum_type Enum>
-    requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
-    status_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<ThisType, typename enum_traits<Enum>::status_type>)
-        : status_code(typename enum_traits<Enum>::status_type(std::forward<Enum>(E))){}
+    template <status_enum_c Enum>
+    requires(constructible_from<ThisType, status_code<typename enum_traits<Enum>::status_domain>>)
+    status_code(Enum E) noexcept(std::is_nothrow_constructible_v<ThisType, status_code<typename enum_traits<Enum>::status_domain>>)
+        : status_code(status_code<typename enum_traits<Enum>::status_domain>(std::forward<Enum>(E))){}
 
 
     value_type value() const noexcept { return this->Value; }
@@ -339,7 +331,7 @@ namespace valkyrie{
 
   template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
   status_code(Arg&& arg, Args&& ...args) noexcept  -> status_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
-  template <status_enum_type E>
+  template <status_enum_c E>
   status_code(E) -> status_code<typename enum_traits<E>::status_domain>;
 
 
@@ -359,6 +351,7 @@ namespace valkyrie{
     }
 
   public:
+    using typename Base::domain_type;
     using typename Base::value_type;
     using typename Base::string_ref;
 
@@ -387,23 +380,23 @@ namespace valkyrie{
       _checkIfSuccess();
     }
 
-    template <status_enum_type Enum>
-    requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
-    error_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<error_code, typename enum_traits<Enum>::status_type>)
-        : error_code(typename enum_traits<Enum>::status_type(std::forward<Enum>(E))){
+    template <status_enum_c Enum>
+    requires(pointer_convertible_to<typename enum_traits<Enum>::status_domain, domain_type>)
+    error_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<error_code, status_code<typename enum_traits<Enum>::status_domain>>)
+        : error_code(status_code<typename enum_traits<Enum>::status_domain>(std::forward<Enum>(E))){
       _checkIfSuccess();
     }
 
     template <typename ...Args>
     explicit error_code(std::in_place_t, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, Args...>)
-    requires(ConstructibleFrom<Base, std::in_place_t, Args...>)
+    requires(constructible_from<Base, std::in_place_t, Args...>)
         : Base(std::in_place, std::forward<Args>(args)...){
       _checkIfSuccess();
     }
 
     template <typename T, typename ...Args>
     explicit error_code(std::in_place_t, std::initializer_list<T> Il, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, std::initializer_list<T>, Args...>)
-    requires(ConstructibleFrom<Base, std::in_place_t, std::initializer_list<T>, Args...>)
+    requires(constructible_from<Base, std::in_place_t, std::initializer_list<T>, Args...>)
         : Base(std::in_place, Il, std::forward<Args>(args)...){
       _checkIfSuccess();
     }
@@ -464,14 +457,14 @@ namespace valkyrie{
     }
 
     template <typename Dom>
-    requires(ConstructibleFrom<Base, const status_code<Dom>&>)
+    requires(constructible_from<Base, const status_code<Dom>&>)
     error_code(const status_code<Dom>& Other) noexcept :
         Base(Other){
       _checkIfSuccess();
     }
 
     template <typename Dom>
-    requires(ConstructibleFrom<Base, status_code<Dom>&&>)
+    requires(constructible_from<Base, status_code<Dom>&&>)
     error_code(status_code<Dom>&& Other) noexcept :
         Base(std::move(Other)){
       _checkIfSuccess();
@@ -479,14 +472,14 @@ namespace valkyrie{
 
 
     template <typename Dom>
-    requires(ConstructibleFrom<Base, const status_code<Dom>&>)
+    requires(constructible_from<Base, const status_code<Dom>&>)
     error_code(const error_code<Dom>& Other) noexcept :
         Base(static_cast<const status_code<Dom>&>(Other)){
       _checkIfSuccess();
     }
 
     template <typename Dom>
-    requires(ConstructibleFrom<Base, status_code<Dom>&&>)
+    requires(constructible_from<Base, status_code<Dom>&&>)
     error_code(error_code<Dom>&& Other) noexcept :
         Base(static_cast<status_code<Dom>&&>(Other)){
       _checkIfSuccess();
@@ -500,10 +493,10 @@ namespace valkyrie{
       _checkIfSuccess();
     }
 
-    template <status_enum_type Enum>
-    requires(ConstructibleFrom<ThisType, typename enum_traits<Enum>::status_type>)
-    error_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<error_code, typename enum_traits<Enum>::status_type>)
-        : error_code(typename enum_traits<Enum>::status_type(std::forward<Enum>(E))){
+    template <status_enum_c Enum>
+    requires(constructible_from<ThisType, status_code<typename enum_traits<Enum>::status_domain>>)
+    error_code(Enum&& E) noexcept(std::is_nothrow_constructible_v<error_code, status_code<typename enum_traits<Enum>::status_domain>>)
+        : error_code(status_code<typename enum_traits<Enum>::status_domain>(std::forward<Enum>(E))){
       _checkIfSuccess();
     }
 
@@ -514,7 +507,7 @@ namespace valkyrie{
 
   template <typename Arg, typename ...Args> requires(detail::has_make_status_code<Arg, Args...>)
   error_code(Arg&& arg, Args&& ...args) noexcept -> error_code<typename decltype(make_status_code((Arg&&)arg, (Args&&)args...))::domain_type>;
-  template <status_enum_type E>
+  template <status_enum_c E>
   error_code(E) -> error_code<typename enum_traits<E>::status_domain>;
 
 

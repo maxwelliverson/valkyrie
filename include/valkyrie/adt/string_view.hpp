@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_STRING_VIEW_HPP
 #define VALKYRIE_STRING_VIEW_HPP
 
-#include <valkyrie/traits.hpp>
-#include <valkyrie/utility/casting.hpp>
+//#include <valkyrie/traits.hpp>
+#include <valkyrie/utility/hash.hpp>
 
 #include <iterator>
 #include <string_view>
@@ -381,7 +381,7 @@ namespace valkyrie{
 
     /*constexpr */~string_view() noexcept = default;
 
-    template <contiguous_range<const utf8> Rng>
+    template <std::ranges::contiguous_range Rng> requires(same_as_one_of<std::ranges::range_value_t<Rng>, utf8, char>)
     constexpr string_view(Rng& rng) noexcept
         : pString(std::ranges::data(rng)),
           length_(std::ranges::size(rng)){}
@@ -927,6 +927,18 @@ namespace valkyrie{
   public:
 
   };*/
+
+
+
+  template <>
+  struct traits::hash<string_view>{
+    VK_constant u64 call64(string_view sv) noexcept {
+      return impl::hash_append_bytes64(sv);
+    }
+    VK_constant u32 call32(string_view sv) noexcept {
+      return impl::hash_append_bytes32(sv);
+    }
+  };
 
 }
 

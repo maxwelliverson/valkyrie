@@ -13,16 +13,6 @@ namespace valkyrie{
   }
 
 
-  template <>
-  struct traits::Singleton<sys::win32_status_domain>{
-    inline constexpr static string_view name = VK_raw_string(win32_status_domain);
-    inline constexpr static string_view scoped_name = VK_raw_string(valkyrie::sys::detail::win32_status_domain);
-    inline constexpr static uuid       class_id{"cf4339da-2b4a-49f9-b66e-8f32eb61d2c9"};
-
-    inline constexpr static const sys::win32_status_domain& get() noexcept;
-  };
-
-
   namespace sys{
     class win32_status_domain : public status_domain{
     public:
@@ -64,13 +54,11 @@ namespace valkyrie{
       bool do_failure(const status_code<void>& status) const noexcept override;
       bool do_equivalent(const status_code<void>& A, const status_code<void>& B) const noexcept override;
 
-      constexpr static const win32_status_domain& get() noexcept;
+      static const win32_status_domain& get() noexcept {
+        constexpr static win32_status_domain instance{};
+        return instance;
+      }
     };
-
-
-    namespace detail{
-      inline constexpr static win32_status_domain win32_status_domain{};
-    }
 
 
 
@@ -83,13 +71,15 @@ namespace valkyrie{
   }
   using system_status = sys::win32::status;
   using system_error  = sys::win32::error;
-}
 
-constexpr const valkyrie::sys::win32_status_domain & valkyrie::traits::Singleton<valkyrie::sys::win32_status_domain>::get() noexcept {
-  return valkyrie::sys::detail::win32_status_domain;
-}
-constexpr const valkyrie::sys::win32_status_domain & valkyrie::sys::win32_status_domain::get() noexcept {
-  return valkyrie::sys::detail::win32_status_domain;
+
+  template <>
+  struct traits::klass<sys::win32_status_domain>{
+    inline constexpr static string_view name = VK_raw_string(win32_status_domain);
+    inline constexpr static string_view scoped_name = VK_raw_string(valkyrie::sys::detail::win32_status_domain);
+
+    using supertype = status_domain;
+  };
 }
 
 

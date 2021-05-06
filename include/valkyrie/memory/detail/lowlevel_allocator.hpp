@@ -24,10 +24,9 @@ namespace valkyrie::detail{
   // static void deallocate(void *memory, u64 size, u64 alignment);
   // static u64 max_node_size();
   template <class Functor>
-  class lowlevel_allocator : global_leak_checker<lowlevel_allocator_leak_handler<Functor>>
-  {
+  class lowlevel_allocator : global_leak_checker<lowlevel_allocator_leak_handler<Functor>> {
   public:
-    using is_stateful = std::false_type;
+    VK_constant bool is_stateful = false;
 
     lowlevel_allocator() noexcept = default;
     lowlevel_allocator(lowlevel_allocator&&) noexcept = default;
@@ -54,7 +53,7 @@ namespace valkyrie::detail{
 
     }
 
-    void deallocate_node(void* node, u64 size, u64 alignment) noexcept {
+    void  deallocate_node(void* node, u64 size, u64 alignment) noexcept {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
       auto memory = debug_fill_free(node, size, max_alignment);

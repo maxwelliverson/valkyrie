@@ -113,7 +113,7 @@ namespace valkyrie{
 
     template <typename DiffType>
     struct param_difference_type{
-      using type = param_t<DiffType>;
+      using type = in_param_t<DiffType>;
     };
     template <same_as<void> DiffType>
     struct param_difference_type<DiffType>{
@@ -125,7 +125,7 @@ namespace valkyrie{
     using function_ptr = Fn*;
 
     template <typename Derived, typename Ptr>
-    concept has_on_acquire = requires(function_ptr<Ptr(Derived* VK_param(nonnull), param_t<Ptr>) noexcept>& fn){
+    concept has_on_acquire = requires(function_ptr<Ptr(Derived* VK_param(nonnull), in_param_t<Ptr>) noexcept>& fn){
       fn = get_function_ptr<&Derived::on_acquire>::value;
     };
     template <typename Derived>
@@ -185,7 +185,7 @@ namespace valkyrie{
         return *static_cast<const derived_type*>(this);
       }
 
-      using ptr_param_t = param_t<Ptr>;
+      using ptr_param_t = in_param_t<Ptr>;
 
       using PFN_on_acquire = Ptr(*)(Derived* VK_param(nonnull), ptr_param_t) /*noexcept*/;
       using PFN_on_release = void(*)(Derived* VK_param(nonnull)) /*noexcept*/;
@@ -253,7 +253,7 @@ namespace valkyrie{
       ptr_storage(ptr_storage&& other) noexcept requires(IsNonTrivialAcqTrivialRel) : ptr_(do_acquire()) {}
 
       ~ptr_storage() {
-        this->do_release();
+        do_release();
       }
 
 
@@ -313,7 +313,6 @@ namespace valkyrie{
         return on_acquire_(static_cast<derived_type*>(this), p);
       }
 
-
       Ptr ptr_;
     };
 
@@ -369,7 +368,7 @@ namespace valkyrie{
         return *static_cast<const derived_type*>(this);
       }
 
-      using diff_param_t = param_t<DiffType>;
+      using diff_param_t = in_param_t<DiffType>;
 
     public:
 
@@ -624,9 +623,9 @@ namespace valkyrie{
    *                  but two optional hooks are provided for
    *                  lifetime tracking. It is valid to only provide
    *                  one hook but not the other.
-   *                    - Ptr on_acquire(param_t<Ptr>) noexcept
+   *                    - Ptr on_acquire(in_param_t<Ptr>) noexcept
    *                      OR
-   *                      static Ptr on_acquire(Derived*, param_t<Ptr>) noexcept
+   *                      static Ptr on_acquire(Derived*, in_param_t<Ptr>) noexcept
    *                    - void on_release() noexcept
    *                      OR
    *                      static void on_release(Derived*) noexcept
@@ -739,7 +738,7 @@ namespace valkyrie{
     using pointer = typename base::pointer;
 
   private:
-    using ptr_param_t = param_t<pointer>;
+    using ptr_param_t = in_param_t<pointer>;
   public:
 
     nonnull()               = delete;

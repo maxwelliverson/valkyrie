@@ -8,7 +8,7 @@
 #include <memory_resource>
 
 #include "detail/utility.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 
 namespace valkyrie{
   /// The \c memory_resource abstract base class used in the implementation.
@@ -70,8 +70,7 @@ namespace valkyrie{
             auto max = traits_type::max_node_size(*this);
             if (bytes <= max)
               traits_type::deallocate_node(*this, p, bytes, alignment);
-            else
-            {
+            else {
               auto div = bytes / max;
               auto mod = bytes % max;
               auto n   = div + (mod != 0);

@@ -311,14 +311,14 @@ namespace valkyrie{
     constexpr array_ref & operator=(const array_ref &) noexcept = default;
     constexpr array_ref & operator=(array_ref &&) noexcept = default;
 
-    template <std::derived_from<T> U, auto UExt_, auto UStr_>
+    template <pointer_convertible_to<T> U, auto UExt_, auto UStr_>
     requires(ExtentCompatible<UExt_> && StrideCompatible<UStr_>)
     constexpr explicit(ExtentNarrowing<UExt_> || StrideNarrowing<UStr_>)
     array_ref(const array_ref<U, UExt_, UStr_>& other) : Storage(other.size(), other.stride()), pArray(other.pArray){
       VK_assert(this->size() == other.size());
       VK_assert(this->stride() == other.stride());
     }
-    template <std::derived_from<T> U, auto UExt_, auto UStr_>
+    template <pointer_convertible_to<T> U, auto UExt_, auto UStr_>
     requires(ExtentCompatible<UExt_> && StrideCompatible<UStr_>)
     constexpr explicit(ExtentNarrowing<UExt_> || StrideNarrowing<UStr_>)
     array_ref(array_ref<U, UExt_, UStr_>&& other) noexcept : Storage(other.size(), other.stride()), pArray(other.pArray){
@@ -326,20 +326,20 @@ namespace valkyrie{
       VK_assert(this->stride() == other.stride());
     }
 
-    template <std::derived_from<T> U, size_t N>
+    template <pointer_convertible_to<T> U, size_t N>
     requires(LayoutCompatible<U, N>)
     constexpr array_ref(U(&array)[N]) noexcept : Storage(N, sizeof(U)), pArray(array){}
-    template <std::derived_from<T> U, size_t N>
+    template <pointer_convertible_to<T> U, size_t N>
     requires(LayoutCompatible<U, N> && std::is_const_v<T>)
     constexpr array_ref(const U(&array)[N]) noexcept : Storage(N, sizeof(U)), pArray(array){}
 
     constexpr array_ref(T& singleValue) noexcept requires(SingleElementIsValid)
         : Storage(1, sizeof(T)), pArray(std::addressof(singleValue)){}
 
-    template <std::derived_from<T> U>
+    template <pointer_convertible_to<T> U>
     requires(LayoutCompatible<U>)
     constexpr array_ref(U* pArray, u64 extent) noexcept : Storage(extent, sizeof(U)), pArray(pArray) {}
-    template <std::derived_from<T> U>
+    template <pointer_convertible_to<T> U>
     requires(LayoutCompatible<U> && !Self::isDynamic())
     constexpr explicit array_ref(U* pArray) noexcept : Storage(Extent_, sizeof(U)), pArray(pArray){}
 
@@ -353,11 +353,12 @@ namespace valkyrie{
           pArray(std::ranges::data(a)){}
 
 
-    template <typename C, typename U, auto UExt_, auto UStr_, std::derived_from<T> V>
+    template <typename C, typename U, auto UExt_, auto UStr_, pointer_convertible_to<T> V>
     constexpr array_ref(array_ref<U, UExt_, UStr_> other, V C::* pMember) noexcept requires(requires{
       { std::addressof(other.front().*pMember) } -> std::convertible_to<T*>;
     } && LayoutCompatible<PseudoType<U, UStr_>, UExt_>)
-        : Storage(other.size(), other.stride()), pArray(std::addressof(other.front().*pMember)){}
+        : Storage(other.size(), other.stride()),
+          pArray(std::addressof(other.front().*pMember)){}
 
 
     constexpr bool empty() const noexcept {
@@ -455,19 +456,26 @@ namespace valkyrie{
     T* pArray;
   };
 
-  template <static_memory_span_type Arr>
-  array_ref(Arr&&) -> array_ref<typename array_traits<Arr>::element_type, array_traits<Arr>::size, sizeof(typename array_traits<Arr>::element_type)>;
-  template <dynamic_memory_span_type Arr>
-  array_ref(Arr&&) -> array_ref<typename array_traits<Arr>::element_type, dynamic, sizeof(typename array_traits<Arr>::element_type)>;
+  template <typename Arr> requires(contiguous_range_c<remove_ref_t<Arr>> && !range_traits<remove_ref_t<Arr>>::is_dynamic)
+  array_ref(Arr&&) -> array_ref<typename range_traits<remove_ref_t<Arr>>::element_type, range_traits<remove_ref_t<Arr>>::static_size, sizeof(typename range_traits<remove_ref_t<Arr>>::element_type)>;
+  template <typename Arr> requires(contiguous_range_c<remove_ref_t<Arr>> &&  range_traits<remove_ref_t<Arr>>::is_dynamic)
+  array_ref(Arr&&) -> array_ref<typename range_traits<remove_ref_t<Arr>>::element_type, dynamic, sizeof(typename range_traits<remove_ref_t<Arr>>::element_type)>;
+
   template <typename T>
   array_ref(T*, u64) -> array_ref<T, dynamic, sizeof(T)>;
+  template <typename U, auto ExtA, auto StrA, typename T, typename C>
+  requires(requires(U& value, T C::* pMem){ value.*pMem; })
+  array_ref(array_ref<U, ExtA, StrA>, T C::*) -> array_ref<T, ExtA, StrA>;
 
 
   /*template <auto MemPtr, typename Arr>
   array_ref<>*/
 
 
-  template <member_pointer auto MemPtr, std::derived_from<member_pointer_class_t<decltype(MemPtr)>> T, auto Extent, auto Stride>
+  template <member_pointer auto MemPtr,
+            pointer_convertible_to<member_pointer_class_t<decltype(MemPtr)>> T,
+            auto Extent,
+            auto Stride>
   auto subobject_span(const array_ref<T, Extent, Stride>& array) noexcept {
     //using element_type           = member_pointer_pointee_t<decltype(MemPtr)>;
     //constexpr static auto size   = array_traits<Arr>::size;
@@ -480,6 +488,9 @@ namespace valkyrie{
 
   template <typename T, auto Ext_ = dynamic>
   using span = array_ref<T, Ext_, sizeof(T)>;
+
+
+
 }
 
 

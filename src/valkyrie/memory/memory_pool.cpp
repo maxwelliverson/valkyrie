@@ -17,10 +17,6 @@ template class valkyrie::memory_pool<node_pool>;
 template class valkyrie::memory_pool<array_pool>;
 template class valkyrie::memory_pool<small_node_pool>;
 
-template class valkyrie::allocator_traits<memory_pool<node_pool>>;
-template class valkyrie::allocator_traits<memory_pool<array_pool>>;
-template class valkyrie::allocator_traits<memory_pool<small_node_pool>>;
-
-template class valkyrie::composable_allocator_traits<memory_pool<node_pool>>;
-template class valkyrie::composable_allocator_traits<memory_pool<array_pool>>;
-template class valkyrie::composable_allocator_traits<memory_pool<small_node_pool>>;
+VK_trait_instantiation(allocator, memory_pool<node_pool>);
+VK_trait_instantiation(allocator, memory_pool<array_pool>);
+VK_trait_instantiation(allocator, memory_pool<small_node_pool>);

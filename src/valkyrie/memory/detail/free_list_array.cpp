@@ -3,7 +3,7 @@
 //
 
 #include "free_list_utils.hpp"
-#include <valkyrie/memory/detail/ilog2.hpp>
+#include <valkyrie/traits.hpp>
 #include <valkyrie/memory/detail/free_list_array.hpp>
 
 using namespace valkyrie;

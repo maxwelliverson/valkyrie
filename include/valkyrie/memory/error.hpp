@@ -97,8 +97,7 @@ namespace valkyrie{
   /**
    * TODO: Implement!!!
    *
-   * */
-  class alloc_status_domain : public status_domain{
+   * class alloc_status_domain : public status_domain{
 
     inline static const status_code<alloc_status_domain>& cast(const status_code<void>& status) noexcept {
       return static_cast<const status_code<alloc_status_domain>&>(status);

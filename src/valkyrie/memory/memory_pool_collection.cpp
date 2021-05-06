@@ -20,29 +20,11 @@ template class valkyrie::memory_pool_collection<node_pool, log2_buckets>;
 template class valkyrie::memory_pool_collection<array_pool, log2_buckets>;
 template class valkyrie::memory_pool_collection<small_node_pool, log2_buckets>;
 
-template class valkyrie::allocator_traits<memory_pool_collection<node_pool,
-                                                                          identity_buckets>>;
-template class valkyrie::allocator_traits<memory_pool_collection<array_pool,
-                                                                          identity_buckets>>;
-template class valkyrie::allocator_traits<memory_pool_collection<small_node_pool,
-                                                                          identity_buckets>>;
+VK_trait_instantiation(allocator, memory_pool_collection<node_pool, identity_buckets>);
+VK_trait_instantiation(allocator, memory_pool_collection<array_pool, identity_buckets>);
+VK_trait_instantiation(allocator, memory_pool_collection<small_node_pool, identity_buckets>);
 
-template class valkyrie::allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
-template class valkyrie::allocator_traits<memory_pool_collection<array_pool,
-                                                                          log2_buckets>>;
-template class valkyrie::allocator_traits<memory_pool_collection<small_node_pool,
-                                                                          log2_buckets>>;
+VK_trait_instantiation(allocator, memory_pool_collection<node_pool, log2_buckets>);
+VK_trait_instantiation(allocator, memory_pool_collection<array_pool, log2_buckets>);
+VK_trait_instantiation(allocator, memory_pool_collection<small_node_pool, log2_buckets>);
 
-template class valkyrie::
-    composable_allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
-template class valkyrie::
-    composable_allocator_traits<memory_pool_collection<array_pool, identity_buckets>>;
-template class valkyrie::
-    composable_allocator_traits<memory_pool_collection<small_node_pool, identity_buckets>>;
-
-template class valkyrie::composable_allocator_traits<memory_pool_collection<node_pool,
-                                                                                     log2_buckets>>;
-template class valkyrie::composable_allocator_traits<memory_pool_collection<array_pool,
-                                                                                     log2_buckets>>;
-template class valkyrie::
-    composable_allocator_traits<memory_pool_collection<small_node_pool, log2_buckets>>;

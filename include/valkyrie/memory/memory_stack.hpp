@@ -6,68 +6,46 @@
 #define VALKYRIE_MEMORY_MEMORY_STACK_HPP
 
 #include "detail/memory_stack.hpp"
-#include "error.hpp"
 #include "memory_arena.hpp"
 
+#include <valkyrie/utility/ordering.hpp>
+
+
+#include <tuple>
+
 namespace valkyrie{
-#if !defined(DOXYGEN)
+
   template <class Impl>
   class memory_stack;
-#endif
 
-  namespace detail
-  {
-    class stack_marker
-    {
+  namespace detail {
+    class stack_marker {
       u64 index;
       char*       top;
       const char* end;
 
-      stack_marker(u64 i, const detail::fixed_memory_stack& s,
-                   const char* e) noexcept
-          : index(i), top(s.top()), end(e)
-          {
-          }
+      stack_marker(u64 i, const detail::fixed_memory_stack& s, const char* e) noexcept
+          : index(i), top(s.top()), end(e) { }
 
-      friend bool operator==(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        if (lhs.index != rhs.index)
-          return false;
-        VK_assert_msg(lhs.end == rhs.end, "you must not compare two "
-                                                        "stack markers from different "
-                                                        "stacks");
-        return lhs.top == rhs.top;
+      friend bool operator==(const stack_marker& a, const stack_marker& b) noexcept {
+        VK_assert_msg((a.index != b.index) || (a.end == b.end),
+                      "you must not compare two stack markers from different stacks");
+        return std::tie(a.index, a.top) == std::tie(b.index, b.top);
+      }
+      friend strong_ordering operator<=>(const stack_marker& a, const stack_marker& b) noexcept {
+        VK_assert_msg((a.index != b.index) || (a.end == b.end),
+                      "you must not compare two stack markers from different stacks");
+
+        struct tmp{
+          u64 index;
+          char* top;
+
+          strong_ordering operator<=>(const tmp&) const noexcept = default;
+        };
+
+        return tmp{ a.index, a.top } <=> tmp{ b.index, b.top };
       }
 
-      friend bool operator!=(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        return !(rhs == lhs);
-      }
-
-      friend bool operator<(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        if (lhs.index != rhs.index)
-          return lhs.index < rhs.index;
-        VK_assert_msg(lhs.end == rhs.end, "you must not compare two "
-                                                        "stack markers from different "
-                                                        "stacks");
-        return lhs.top < rhs.top;
-      }
-
-      friend bool operator>(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        return rhs < lhs;
-      }
-
-      friend bool operator<=(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        return !(rhs < lhs);
-      }
-
-      friend bool operator>=(const stack_marker& lhs, const stack_marker& rhs) noexcept
-      {
-        return !(lhs < rhs);
-      }
 
       template <class Impl>
       friend class valkyrie::memory_stack;
@@ -86,8 +64,7 @@ namespace valkyrie{
   /// deallocation is not directly supported, only setting the marker to a previously queried position.
   /// \ingroup allocator
   template <class BlockOrRawAllocator = default_allocator>
-  class memory_stack
-      : detail::default_leak_checker<detail::memory_stack_leak_handler>
+  class memory_stack : detail::default_leak_checker<detail::memory_stack_leak_handler>
       {
           public:
           using allocator_type = make_block_allocator_t<BlockOrRawAllocator>;
@@ -98,8 +75,7 @@ namespace valkyrie{
           /// \note Due to debug fence sizes, the actual amount of usable memory can vary.
           /// However, this is impossible to compute without knowing the exact allocation pattern before,
           /// so this is just a rough estimate.
-          static constexpr u64 min_block_size(u64 byte_size) noexcept
-          {
+          static constexpr u64 min_block_size(u64 byte_size) noexcept {
             return detail::memory_block_stack::implementation_offset() + byte_size;
           }
 
@@ -107,10 +83,8 @@ namespace valkyrie{
           /// It will allocate the first block and sets the top to its beginning.
           template <typename... Args>
           explicit memory_stack(u64 block_size, Args&&... args)
-          : arena_(block_size, std::forward<Args>(args)...),
-          stack_(arena_.allocate_block().memory)
-          {
-          }
+              : arena_(block_size, std::forward<Args>(args)...),
+                stack_(arena_.allocate_block().memory) { }
 
           /// \effects Allocates a memory block of given size and alignment.
           /// It simply moves the top marker.
@@ -238,7 +212,7 @@ namespace valkyrie{
             return arena_.get_allocator();
           }
 
-          private:
+      private:
           allocator_info info() const noexcept
           {
             return {"valkyrie::memory_stack", this};
@@ -253,8 +227,7 @@ namespace valkyrie{
           memory_arena<allocator_type> arena_;
           detail::fixed_memory_stack   stack_;
 
-          friend allocator_traits<memory_stack<BlockOrRawAllocator>>;
-          friend composable_allocator_traits<memory_stack<BlockOrRawAllocator>>;
+          friend traits::allocator<memory_stack<BlockOrRawAllocator>>;
       };
 
   /// Simple utility that automatically unwinds a `Stack` to a previously saved location.
@@ -263,8 +236,7 @@ namespace valkyrie{
   /// like a \ref valkyrie::memory_stack
   /// \ingroup allocator
   template <class Stack = memory_stack<>>
-  class memory_stack_raii_unwind
-  {
+  class memory_stack_raii_unwind {
   public:
     using stack_type  = Stack;
     using marker_type = typename stack_type::marker;
@@ -366,108 +338,79 @@ namespace valkyrie{
   /// i.e. \ref memory_stack::allocate() and this \c allocate_node().
   /// \ingroup allocator
   template <class BlockAllocator>
-  class allocator_traits<memory_stack<BlockAllocator>>
-  {
+  struct traits::allocator<memory_stack<BlockAllocator>> {
   public:
     using allocator_type = memory_stack<BlockAllocator>;
-    using is_stateful    = std::true_type;
 
     /// \returns The result of \ref memory_stack::allocate().
-    static void* allocate_node(allocator_type& state, u64 size,
-                               u64 alignment)
-    {
+    inline static void* allocate_node(allocator_type& state, u64 size, u64 alignment) {
       auto mem = state.allocate(size, alignment);
       state.on_allocate(size);
       return mem;
     }
 
     /// \returns The result of \ref memory_stack::allocate().
-    static void* allocate_array(allocator_type& state, u64 count, u64 size,
-                                u64 alignment)
-    {
+    inline static void* allocate_array(allocator_type& state, u64 count, u64 size, u64 alignment) {
       return allocate_node(state, count * size, alignment);
     }
 
     /// @{
     /// \effects Does nothing besides bookmarking for leak checking, if that is enabled.
     /// Actual deallocation can only be done via \ref memory_stack::unwind().
-    static void deallocate_node(allocator_type& state, void*, u64 size,
-                                u64) noexcept
-    {
+    inline static void deallocate_node(allocator_type& state, void*, u64 size, u64) noexcept {
       state.on_deallocate(size);
     }
 
-    static void deallocate_array(allocator_type& state, void* ptr, u64 count,
-                                 u64 size, u64 alignment) noexcept
-    {
+    inline static void deallocate_array(allocator_type& state, void* ptr, u64 count, u64 size, u64 alignment) noexcept {
       deallocate_node(state, ptr, count * size, alignment);
     }
     /// @}
 
-    /// @{
-    /// \returns The maximum size which is \ref memory_stack::next_capacity().
-    static u64 max_node_size(const allocator_type& state) noexcept
-    {
-      return state.next_capacity();
-    }
-
-    static u64 max_array_size(const allocator_type& state) noexcept
-    {
-      return state.next_capacity();
-    }
-    /// @}
-
-    /// \returns The maximum possible value since there is no alignment restriction
-    /// (except indirectly through \ref memory_stack::next_capacity()).
-    static u64 max_alignment(const allocator_type&) noexcept
-    {
-      return u64(-1);
-    }
-  };
-
-  /// Specialization of the \ref composable_allocator_traits for \ref memory_stack classes.
-  /// \ingroup allocator
-  template <class BlockAllocator>
-  class composable_allocator_traits<memory_stack<BlockAllocator>>
-  {
-  public:
-    using allocator_type = memory_stack<BlockAllocator>;
 
     /// \returns The result of \ref memory_stack::try_allocate().
-    static void* try_allocate_node(allocator_type& state, u64 size,
-                                   u64 alignment) noexcept
-    {
+    static void* try_allocate_node(allocator_type& state, u64 size, u64 alignment) noexcept {
       return state.try_allocate(size, alignment);
     }
 
     /// \returns The result of \ref memory_stack::try_allocate().
-    static void* try_allocate_array(allocator_type& state, u64 count,
-                                    u64 size, u64 alignment) noexcept
-    {
+    static void* try_allocate_array(allocator_type& state, u64 count, u64 size, u64 alignment) noexcept {
       return state.try_allocate(count * size, alignment);
     }
 
     /// @{
     /// \effects Does nothing.
     /// \returns Whether the memory will be deallocated by \ref memory_stack::unwind().
-    static bool try_deallocate_node(allocator_type& state, void* ptr, u64,
-                                    u64) noexcept
-    {
+    static bool try_deallocate_node(allocator_type& state, void* ptr, u64, u64) noexcept {
       return state.arena_.owns(ptr);
     }
 
-    static bool try_deallocate_array(allocator_type& state, void* ptr, u64 count,
-                                     u64 size, u64 alignment) noexcept
-    {
+    static bool try_deallocate_array(allocator_type& state, void* ptr, u64 count, u64 size, u64 alignment) noexcept {
       return try_deallocate_node(state, ptr, count * size, alignment);
     }
+
+
+
+
+
+    /// @{
+    /// \returns The maximum size which is \ref memory_stack::next_capacity().
+    static u64 max_node_size(const allocator_type& state) noexcept {
+      return state.next_capacity();
+    }
+
+    static u64 max_array_size(const allocator_type& state) noexcept {
+      return state.next_capacity();
+    }
     /// @}
+
+    /// \returns The maximum possible value since there is no alignment restriction
+    /// (except indirectly through \ref memory_stack::next_capacity()).
+    static u64 max_alignment(/*const allocator_type&*/) noexcept {
+      return u64(-1);
+    }
   };
 
-
-  extern template class allocator_traits<memory_stack<>>;
-  extern template class composable_allocator_traits<memory_stack<>>;
-
+  VK_extern_trait_instantiation(allocator, memory_stack<>);
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_STACK_HPP

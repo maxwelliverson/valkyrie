@@ -6,10 +6,10 @@
 #define VALKYRIE_MEMORY_STATIC_ALLOCATOR_HPP
 
 
-#include "detail/align.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "detail/memory_stack.hpp"
 #include "detail/utility.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 
 #include <valkyrie/traits.hpp>
 
@@ -82,7 +82,7 @@ namespace valkyrie{
   };
 
 
-  extern template class allocator_traits<static_allocator>;
+  VK_extern_trait_instantiation(allocator, static_allocator);
 
 
   struct memory_block;

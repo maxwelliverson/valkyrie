@@ -6,7 +6,8 @@
 #define VALKYRIE_MEMORY_TRACKING_HPP
 
 
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
+
 #include "detail/utility.hpp"
 #include "memory_arena.hpp"
 

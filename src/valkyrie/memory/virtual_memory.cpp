@@ -189,7 +189,7 @@ return virtual_memory_page_size;
 }
 
 
-template class valkyrie::allocator_traits<virtual_memory_allocator>;
+VK_trait_instantiation(allocator, virtual_memory_allocator);
 
 
 virtual_block_allocator::virtual_block_allocator(u64 block_size, u64 no_blocks)

@@ -19,8 +19,7 @@ allocator_info static_allocator::info() const noexcept
 return {"valkyrie::static_allocator", this};
 }
 
-
-template class valkyrie::allocator_traits<static_allocator>;
+VK_trait_instantiation(allocator, static_allocator);
 
 
 memory_block static_block_allocator::allocate_block()

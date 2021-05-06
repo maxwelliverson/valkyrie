@@ -6,7 +6,7 @@
 #define VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP
 
 #include "detail/lowlevel_allocator.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 
 namespace valkyrie{
   struct allocator_info;
@@ -64,8 +64,7 @@ namespace valkyrie{
 
 
   extern template class detail::lowlevel_allocator<detail::heap_allocator_impl>;
-  extern template class allocator_traits<heap_allocator>;
-
+  VK_extern_trait_instantiation(allocator, heap_allocator);
 }
 
 #endif//VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP

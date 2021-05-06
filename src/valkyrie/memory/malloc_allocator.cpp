@@ -15,4 +15,4 @@ return {"valkyrie::malloc_allocator", nullptr};
 
 
 template class detail::lowlevel_allocator<detail::malloc_allocator_impl>;
-template class valkyrie::allocator_traits<malloc_allocator>;
+VK_extern_trait_instantiation(allocator, malloc_allocator);

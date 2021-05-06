@@ -4,7 +4,6 @@
 
 #include <valkyrie/primitives.hpp>
 #include <valkyrie/memory/debugging.hpp>
-#include <valkyrie/async/atomic.hpp>
 #include <valkyrie/memory/error.hpp>
 
 using namespace valkyrie;

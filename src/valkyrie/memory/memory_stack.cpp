@@ -15,6 +15,5 @@ void detail::memory_stack_leak_handler::operator()(i64 amount)
 
 template class valkyrie::memory_stack<>;
 template class valkyrie::memory_stack_raii_unwind<memory_stack<>>;
-template class valkyrie::allocator_traits<memory_stack<>>;
-template class valkyrie::composable_allocator_traits<memory_stack<>>;
+VK_trait_instantiation(allocator, memory_stack<>);
 

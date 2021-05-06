@@ -7,7 +7,7 @@
 
 #include "detail/ebo_storage.hpp"
 #include "detail/utility.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 #include "error.hpp"
 
 namespace valkyrie{

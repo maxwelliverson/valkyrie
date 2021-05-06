@@ -13,6 +13,8 @@
 
 namespace valkyrie{
   using default_allocator = VK_concat(VALKYRIE_DEFAULT_ALLOCATOR, _allocator);
+
+  static_assert(allocator_c<default_allocator>);
 }
 
 #endif//VALKYRIE_MEMORY_DEFAULT_ALLOCATOR_HPP

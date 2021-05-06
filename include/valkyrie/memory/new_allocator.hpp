@@ -5,8 +5,9 @@
 #ifndef VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP
 
+#include <valkyrie/traits.hpp>
+
 #include "detail/lowlevel_allocator.hpp"
-#include "allocator_traits.hpp"
 
 namespace valkyrie{
   struct allocator_info;
@@ -36,8 +37,7 @@ namespace valkyrie{
 
 
   extern template class detail::lowlevel_allocator<detail::new_allocator_impl>;
-  extern template class allocator_traits<new_allocator>;
-
+  VK_extern_trait_instantiation(allocator, new_allocator);
 }
 
 #endif//VALKYRIE_MEMORY_NEW_ALLOCATOR_HPP

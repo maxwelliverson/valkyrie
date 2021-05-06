@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_MEMORY_VIRTUAL_MEMORY_HPP
 #define VALKYRIE_MEMORY_VIRTUAL_MEMORY_HPP
 
-#include "detail/concepts.hpp"
+#include <valkyrie/traits.hpp>
 
 #include "detail/debug_helpers.hpp"
-#include "allocator_traits.hpp"
+
 
 namespace valkyrie{
   namespace detail
@@ -98,8 +98,7 @@ namespace valkyrie{
       };
 
 
-  extern template class allocator_traits<virtual_memory_allocator>;
-
+  VK_extern_trait_instantiation(allocator, virtual_memory_allocator);
 
   struct memory_block;
   struct allocator_info;

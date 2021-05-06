@@ -10,7 +10,7 @@
 #include <limits>
 #include <new>
 
-#include <valkyrie/memory/detail/align.hpp>
+#include <valkyrie/utility/align.hpp>
 #include <valkyrie/memory/detail/debug_helpers.hpp>
 #include <valkyrie/memory/error.hpp>
 
@@ -85,8 +85,7 @@ struct valkyrie::detail::chunk : chunk_base {
   }
 };
 
-const u64 chunk::memory_offset =
-    sizeof(chunk) % detail::max_alignment == 0 ? sizeof(chunk) : (sizeof(chunk) / detail::max_alignment + 1) * detail::max_alignment;
+const u64 chunk::memory_offset = sizeof(chunk) % detail::max_alignment == 0 ? sizeof(chunk) : (sizeof(chunk) / detail::max_alignment + 1) * detail::max_alignment;
 const u64 chunk::max_nodes = std::numeric_limits<unsigned char>::max();
 
 namespace {
@@ -148,8 +147,7 @@ small_free_memory_list::small_free_memory_list(u64 node_size) noexcept
     : node_size_(node_size),
       capacity_(0u),
       alloc_chunk_(&base_),
-      dealloc_chunk_(&base_) {
-}
+      dealloc_chunk_(&base_) { }
 
 small_free_memory_list::small_free_memory_list(u64 node_size, void *mem,
                                                u64 size) noexcept

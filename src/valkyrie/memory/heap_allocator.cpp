@@ -47,4 +47,4 @@ return max_size();
 
 
 template class detail::lowlevel_allocator<detail::heap_allocator_impl>;
-template class valkyrie::allocator_traits<heap_allocator>;
+VK_trait_instantiation(allocator, heap_allocator);

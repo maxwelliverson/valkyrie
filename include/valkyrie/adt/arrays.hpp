@@ -5,10 +5,9 @@
 #ifndef VALKYRIE_ADT_ARRAYS_HPP
 #define VALKYRIE_ADT_ARRAYS_HPP
 
-#include <valkyrie/utility/interval.hpp>
-#include <valkyrie/utility/iterator.hpp>
 #include <valkyrie/adt/array_ref.hpp>
 #include <valkyrie/math/calculus/polynomial.hpp>
+#include <valkyrie/utility/iterator.hpp>
 
 
 #include <algorithm>
@@ -1405,7 +1404,7 @@ namespace valkyrie{
 namespace valkyrie {
   // Trait specializations...
 
-  template<typename T, size_t... Extents>
+  /*template<typename T, size_t... Extents>
   struct traits::static_array<Array<T, Extents...>> {
     using element_type = T;
     inline constexpr static T *data(Array<T, Extents...> &span) noexcept;
@@ -1452,7 +1451,7 @@ namespace valkyrie {
   template<typename T, auto Ext>
   struct traits::View<span<T, Ext>> {};
 
-  /*template<typename T, size_t N>
+  template<typename T, size_t N>
   struct traits::static_array<CArray<T, N>> {
     inline constexpr static T *data(CArray<T, N> &cArray) noexcept {
       return cArray.data();
@@ -1461,7 +1460,7 @@ namespace valkyrie {
       return cArray.data();
     }
     inline constexpr static size_t size = N;
-  };*/
+  };
   template<typename T, size_t N>
   struct traits::static_array<T[N]> {
     inline constexpr static T *data(T (&cArray)[N]) noexcept {
@@ -1475,11 +1474,12 @@ namespace valkyrie {
       return cArray;
     }
     inline constexpr static size_t size = N;
-  };
+  };*/
 }// namespace valkyrie
 
 #endif//VALKYRIE_ARRAY_HPP
 
+/*
 #if defined(_ARRAY_)
 #ifndef VALKYRIE_STL_COMPAT_ARRAY
 #define VALKYRIE_STL_COMPAT_ARRAY
@@ -1526,4 +1526,4 @@ template <typename T, size_t Ext>
 struct valkyrie::traits::View<std::span<T, Ext>>{ };
 
 #endif
-#endif //VALKYRIE_ADT_ARRAYS_HPP
+#endif // defined(_SPAN_)*/

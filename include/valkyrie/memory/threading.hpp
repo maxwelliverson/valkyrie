@@ -7,8 +7,6 @@
 
 #include <valkyrie/traits.hpp>
 
-#include "allocator_traits.hpp"
-
 #include <mutex>
 
 namespace valkyrie

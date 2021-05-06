@@ -1,31 +1,22 @@
 //
-// Created by Maxwell on 2020-11-12.
+// Created by maxwe on 2021-04-28.
 //
 
 #ifndef VALKYRIE_TRAITS_HPP
 #define VALKYRIE_TRAITS_HPP
 
+
 #include "meta.hpp"
 #include "utility/uuid.hpp"
+#include "utility/pow2.hpp"
 
 #include <bit>
 #include <ranges>
 
-#define VK_trait(name_, decl_, given_, ...) struct name_ {                              \
-    template <size_t, PP_VK_impl_TRAIT_PARAMS_##given_>                                   \
-    struct Trait;                                                                         \
-    template < PP_VK_impl_TRAIT_PARAMS_##given_ >                                         \
-    struct Trait<0, PP_VK_impl_TRAIT_ARGS_##given_ > : meta::fallback{};                   \
-    PP_VK_impl_TRAIT_BODY_MACRO(PP_VK_impl_TRAIT_BODY_MACRO_##decl_, PP_VK_impl_TRAIT_BIND_##given_, ##__VA_ARGS__)\
-    };
-#define VK_valid_typename(...) requires{ typename __VA_ARGS__; }
-#define VK_complete_type(...) requires{ typename __VA_ARGS__; { sizeof(typename __VA_ARGS__) }; }
-
-
-
 
 namespace valkyrie{
 
+  class memory_block;
   template <typename>
   class status_code;
   template <typename Domain>
@@ -35,15 +26,24 @@ namespace valkyrie{
   template <typename E>
   class status_enum_domain;
 
+  template </*concepts::enumerator*/ typename E>
+  class bitflag;
+
+  class string_view;
+
   enum class dynamic_t : u32;
-  enum class severity : i32;
+  enum class severity  : i32;
+  enum class code      : i32;
+
+  struct root{};
+  struct variable_size{};
 
   inline namespace concepts{
+
     template <typename T, typename U>
     concept same_as = meta::is_same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>::value;
     template <typename T, typename U>
     concept exact_same_as = meta::is_same_as<T, U>::value && meta::is_same_as<T, U>::value;
-
 
 
     template <typename T, typename U>
@@ -64,17 +64,38 @@ namespace valkyrie{
 
 
 
-    template <typename P, typename T = const void>
-    concept raw_pointer = std::is_pointer_v<P> && std::convertible_to<P, T*>;
-    template <typename T>
-    concept enumerator = std::is_enum_v<T>;
-    template <typename TT, typename ...T>
-    concept specialized = requires{
-      typename TT::template instantiate<T...>;
-      sizeof(typename TT::template instantiate<T...>);
-    } && !requires{
-      typename TT::template instantiate<T...>::invalid_specialization;
+
+
+    template <typename From, typename To>
+    concept convertible_to = std::convertible_to<From, To>;
+    template <typename T, typename ...Args>
+    concept constructible_from = std::constructible_from<T, Args...>;
+
+
+
+    template <typename From, typename To>
+    concept pointer_castable_to    = requires(std::add_pointer_t<From> from,
+                                              std::add_lvalue_reference_t<std::add_pointer_t<To>> to){
+      to = static_cast<To*>(from);
     };
+
+    template <typename From, typename To>
+    concept pointer_convertible_to =
+        pointer_castable_to<From, To> &&
+        convertible_to<std::add_pointer_t<From>, std::add_pointer_t<To>> &&
+        requires(std::add_pointer_t<From> from, std::add_lvalue_reference_t<std::add_pointer_t<To>> to){
+      to = from;
+    };
+
+    template <typename P, typename T = const void>
+    concept raw_pointer = std::is_pointer_v<P> && pointer_convertible_to<std::remove_pointer_t<P>, T>;
+    template <typename P>
+    concept member_pointer = meta::is_a_member_pointer<P>::value;
+
+
+
+    /*template <typename T>
+    concept enumerator = std::is_enum_v<T>;*/
 
     template <typename T, typename U>
     concept equality_comparable_with = requires(const T& t, const U& u){
@@ -99,892 +120,2037 @@ namespace valkyrie{
     template <typename T>
     concept ordered = ordered_with<T, T>;
 
+
     template <typename O, typename T, typename U = T>
     concept weak_order = requires(O&& order, const T& t, const U& u){
       { std::forward<O>(order)(t, u) } -> std::convertible_to<std::weak_ordering>;
     };
-  }
-  
-  namespace traits{
-    template <typename T>
-    struct static_array : meta::template_no_default{};
 
-    template <typename T>
-    struct DynamicArray : meta::template_no_default{};
 
-    template <typename T>
-    struct View : meta::template_no_default{};
-
-    template <typename T, typename U>
-    struct Alias : meta::template_no_default{};
-
-    template <typename Ptr>
-    struct Pointer : meta::template_no_default{};
-
-    template <typename E>
-    struct Enum : meta::template_no_default{};
-
-    template <typename E>
-    struct BitFlagEnum : meta::template_no_default{};
-
-    template <typename E>
-    struct StatusEnum : meta::template_no_default{};
-
-    template <typename E>
-    struct Status : meta::template_no_default{};
-
-    template <typename E>
-    struct Error : meta::template_no_default{};
-
-    template <typename T>
-    struct BitwiseMovable : meta::template_no_default{};
-
-    template <typename Str>
-    struct String : meta::template_no_default{};
-
-    template <typename A>
-    struct Allocator : meta::template_no_default{};
-
-    template <typename I>
-    struct Iterator : meta::template_no_default{};
-
-    template <typename T>
-    struct Serializable : meta::template_no_default{};
-
-    template <typename T>
-    struct Container : meta::template_no_default{};
-
-    template <typename T>
-    struct Range : meta::template_no_default{};
-
-    template <typename T>
-    struct Singleton : meta::template_no_default{};
-
-    template <typename T>
-    struct Class : meta::template_no_default{};
-
-    template <typename T>
-    struct Numeric : meta::template_no_default{};
-
-    template <typename T>
-    struct Domain : meta::template_no_default{};
-
-    template <typename T>
-    struct Graph : meta::template_no_default{
-      // using node_type = ...;
-      // using edge_type = ...;
-    };
-    
-    namespace detail{
-
-
-
-
-
-      template <typename T>
-      inline constexpr static const T& referenceTo(const T* pVal) noexcept {
-        return *pVal;
-      }
-
-
-
-
-      template <typename T, size_t N, typename ...Args>
-      struct probe_initial_case{
-        inline constexpr static size_t value = N - 1;
-        using type = typename T::template Trait<N - 1, Args...>;
-      };
-      template <typename T, size_t N, typename ...Args> requires(VK_instantiable_with(T::template Trait, N, Args...))
-      struct probe_initial_case<T, N, Args...> : probe_initial_case<T, N + 1, Args...>{};
-
-      template <typename TraitType, typename ...Args>
-      using probe = typename probe_initial_case<TraitType, 1, Args...>::type;
-
-      template <typename Trait, typename ...T>
-      concept satisfied_by = !std::derived_from<probe<Trait, T...>, meta::fallback>;
-      template <typename T, typename Trait>
-      concept satisfies = satisfied_by<Trait, T>;
-
-
-      namespace Array{
-        VK_trait(ElementType,
-                   alias(element_type),
-                     given(typename A),
-                       typename(traits::static_array<A>::element_type),
-                       typename(traits::DynamicArray<A>::element_type),
-                       typename(std::ranges::range_value_t<A>)
-        );
-
-        VK_trait(StaticSize,
-                 let(staticSize),
-                 given(typename A),
-                 if(VK_complete_type(traits::static_array<A>))(traits::static_array<A>::size)
-        );
-      }
-
-      namespace Pointer{
-        VK_trait(ElementType,
-                 alias(element_type),
-                 given(typename P),
-                 typename (traits::Pointer<P>::element_type),
-                 typename (std::pointer_traits<P>::element_type)
-        );
-        VK_trait(Reference,
-                 alias(reference),
-                 given(typename P),
-                 typename(traits::Pointer<P>::reference),
-                 if(requires(P&& p){ { *std::forward<P>(p) }; }) decltype(*std::declval<P>())
-        );
-        VK_trait(DifferenceType,
-                 alias(difference_type),
-                 given(typename P),
-                 typename(traits::Pointer<P>::difference_type),
-                 if(requires(P& a, P& b){ { a - b }; }) decltype(std::declval<P>() - std::declval<P>()),
-                 typename(std::pointer_traits<P>::difference_type)
-        );
-      }
-
-      namespace Status{
-        VK_trait(DomainType,
-                 alias(domain_type),
-                   given(typename S),
-                     typename( traits::Status<S>::domain_type ),
-                     typename( traits::Error<S>::domain_type ),
-                     if (requires(const S& status){ { status.domain() }; }) std::remove_cvref_t<decltype(std::declval<const S&>().domain())>
-        );
-        VK_trait(ValueType,
-                 alias(value_type),
-                 given(typename S),
-                 typename(traits::Status<S>::value_type),
-                 typename(traits::Error<S>::value_type),
-                 if (satisfied_by<DomainType, S> && requires{ typename probe<DomainType, S>::domain_type::value_type; }) (typename probe<DomainType, S>::domain_type::value_type),
-                 if (requires(const S& status){ { status.value() }; }) std::remove_cvref_t<decltype(std::declval<const S&>().value())>
-        );
-      }
-
-      namespace Enum{
-
-        VK_trait(Name,
-                 let(name),
-                 given(typename E),
-                 member_value(name, traits::BitFlagEnum<E>),
-                 member_value(name, traits::StatusEnum<E>),
-                 member_value(name, traits::Enum<E>)
-        );
-
-        VK_trait(ScopedName,
-                 let(scoped_name),
-                   given(typename E),
-                     member_value(scoped_name, traits::BitFlagEnum<E>),
-                     member_value(scoped_name, traits::StatusEnum<E>),
-                     member_value(scoped_name, traits::Enum<E>),
-                     member_value(name, probe<Name, E>)
-        );
-
-
-
-
-        VK_trait(Type,
-                 alias(enum_type),
-                   given(typename E),
-                     member_type(enum_type, traits::BitFlagEnum<E>),
-                     member_type(bit_type, traits::BitFlagEnum<E>),
-                     member_type(enum_type, traits::StatusEnum<E>),
-                     member_type(enum_type, traits::Enum<E>),
-                     if(std::is_enum_v<E>) E
-        );
-
-        VK_trait(UnderlyingType,
-                 alias(underlying_type),
-                   given(typename E),
-                     member_type(underlying_type, traits::BitFlagEnum<E>),
-                     member_type(underlying_type, traits::StatusEnum<E>),
-                     member_type(underlying_type, traits::Enum<E>),
-                     member_type(type, std::underlying_type<E>)
-        );
-
-        VK_trait(Values,
-                 let(values),
-                   given(typename E),
-                     member_value(values, traits::Enum<E>)/*,
-                     member_value(flags, traits::BitFlagEnum<E>)*/
-        );
-
-        VK_trait(Entries,
-                 let(entries),
-                   given(typename E),
-                     if (VK_instantiable_with(traits::Enum, E) && requires(E val){ { traits::Enum<E>::entries[val] }; }) traits::Enum<E>::entries,
-                     if (VK_instantiable_with(traits::BitFlagEnum, E) && requires(E val){ { traits::BitFlagEnum<E>::entries[val] }; }) traits::BitFlagEnum<E>::entries
-        );
-
-        VK_trait(IsBitFlag,
-                 let(is_bit_flag),
-                   given(typename E),
-                     otherwise (VK_instantiable_with(traits::BitFlagEnum, E))
-        );
-
-        VK_trait(status_domain,
-                 alias(domain_type),
-                   given(typename E),
-                     member_type(domain_type, traits::StatusEnum<E>),
-                     member_type(status_type::domain_type, traits::StatusEnum<E>),
-                     if (VK_instantiable_with(traits::StatusEnum, E)) status_enum_domain<E>
-        );
-
-        VK_trait(StatusType,
-                 alias(status_type),
-                   given(typename E),
-                     member_type(status_type, traits::StatusEnum<E>),
-                     if (requires{ typename probe<status_domain, E>::domain_type; typename probe<status_domain, E>::domain_type::status_type; })(typename probe<status_domain, E>::domain_type::status_type),
-                     if (satisfies<E, status_domain>) (status_code<typename probe<status_domain, E>::domain_type>),
-                     if (requires(E e){ { make_status_code(e) } -> satisfies<Status::ValueType>; }) decltype(make_status_code(std::declval<E>()))
-        );
-
-        VK_trait(StatusInfo,
-                 let(status_info),
-                   given(typename E),
-                     if (requires(E e){
-                       { traits::StatusEnum<E>::info[e].message };
-                       { traits::StatusEnum<E>::info[e].generic };
-                       { traits::StatusEnum<E>::info[e].severity } -> concepts::same_as<severity>;
-                     }) referenceTo(&traits::StatusEnum<E>::info)
-        );
-
-
-
-        VK_trait(IsStatusEnum,
-                 let(is_status_enum),
-                   given(typename E),
-                     otherwise (satisfied_by<StatusType, E> && satisfied_by<status_domain, E>/* && satisfied_by<StatusInfo, E>*/)
-        );
-
-
-
-        VK_trait(Flags,
-                 let(bits),
-                   given(typename E),
-                     member_value(bits, traits::BitFlagEnum<E>)
-        );
-
-        VK_trait(FlagType,
-                 alias(flag_type),
-                   given(typename E),
-                     member_type(flag_type, traits::BitFlagEnum<E>),
-                     member_type(type::flag_type, meta::identity<E>)
-        );
-      }
-
-      namespace Container{
-        VK_trait(Pointer,
-                 alias(pointer),
-                   given(typename C),
-                     typename(traits::Container<C>::pointer),
-                     typename (C::pointer),
-                     if (requires(C& c){ { std::ranges::data(c) }; }) decltype(std::ranges::data(std::declval<C&>()))
-        );
-        VK_trait(IsStatic,
-                 let(isStatic),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Container, C) && requires{ { traits::Container<C>::isStatic } -> std::convertible_to<bool>; }) traits::Container<C>::isStatic,
-                     if (VK_instantiable_with(std::tuple_size, C) && requires{ { std::tuple_size_v<C> } -> std::convertible_to<size_t>; }) true,
-                     if (VK_instantiable_with(traits::static_array, C)) true
-        );
-      }
-
-      namespace Class{
-        VK_trait(Name,
-                 let(name),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Class, C) && requires{ { traits::Class<C>::name }; }) traits::Class<C>::name,
-                     if (VK_instantiable_with(traits::Singleton, C) && requires{ { traits::Singleton<C>::name }; } ) traits::Singleton<C>::name
-        );
-        VK_trait(Uuid,
-                 let(id),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Singleton, C) && requires{ { traits::Singleton<C>::class_id } -> same_as<uuid>; } ) traits::Singleton<C>::class_id,
-                     if (VK_instantiable_with(traits::Class, C) && requires{ { traits::Class<C>::class_id } -> same_as<uuid>; }) traits::Class<C>::class_id,
-                     if (requires{ { C::class_id } -> same_as<uuid>; }) C::class_id
-        );
-        VK_trait(Info,
-                 let(info),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Class, C) && requires{ { traits::Class<C>::info }; }) traits::Class<C>::info,
-                     if (VK_instantiable_with(traits::Singleton, C) && requires{ { traits::Singleton<C>::info }; } ) traits::Singleton<C>::info
-        );
-        VK_trait(Size,
-                 let(size),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Class, C) && requires{ { traits::Class<C>::size } -> std::convertible_to<size_t>; }  && !requires{ { sizeof(C) }; }) traits::Class<C>::size,
-                     otherwise( sizeof(C) )
-        );
-        VK_trait(Alignment,
-                 let(alignment),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Class, C) && requires{ { traits::Class<C>::alignment } -> std::convertible_to<size_t>; }  && !requires{ { alignof(C) }; }) traits::Class<C>::alignment,
-                     otherwise( alignof(C) )
-        );
-
-        /*VK_trait(Instance,
-                 let(instance),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Singleton, C) && requires{ { traits::Singleton<C>::instance } -> std::convertible_to<const C&>; }) traits::Singleton<C>::instance,
-                     if (VK_instantiable_with(traits::Singleton, C) && requires{ { traits::Singleton<C>::get() } -> std::convertible_to<const C&>; }) traits::Singleton<C>::get(),
-                     if (requires{ { C::instance } -> std::convertible_to<const C&>; } ) C::instance,
-                     if (requires{ { C::get() } -> std::convertible_to<const C&>; } ) C::get(),
-                     if (VK_instantiable_with(traits::Singleton, C)) C{}
-        );*/
-
-        VK_trait(IsSingleton,
-                 let(isSingleton),
-                   given(typename C),
-                     if (VK_instantiable_with(traits::Singleton, C)) true//,
-                     //otherwise(requires{ { std::addressof(C::get()) } -> std::convertible_to<const C*>; }) /* && satisfied_by<Instance, C>*/
-        );
-      }
-
-      namespace Domain{
-        VK_trait(DomainType,
-                 alias(domain_type),
-                   given(typename D),
-                     member_type(domain_type, traits::Domain<D>),
-                     if (std::convertible_to<const D*, const status_domain*>) D,
-                     member_type(domain_type, D),
-                     otherwise(D)
-        );
-        VK_trait(StatusType,
-                 alias(status_type),
-                   given(typename D),
-                     member_type(status_type, traits::Domain<D>),
-                     member_type(status_type, D),
-                     if (std::convertible_to<const D*, const status_domain*>) status_code<D>
-        );
-        VK_trait(ErrorType,
-                 alias(error_type),
-                   given(typename D),
-                     member_type(error_type, traits::Domain<D>),
-                     member_type(error_type, D),
-                     if (std::convertible_to<const D*, const status_domain*>) error_code<D>
-        );
-        VK_trait(ValueType,
-                 alias(value_type),
-                   given(typename D),
-                     member_type(value_type, traits::Domain<D>),
-                     member_type(value_type, D)
-        );
-        VK_trait(IsConstant,
-                 let(is_constant),
-                   given(typename D),
-                     member_value(is_constant, traits::Domain<D>),
-                     if (satisfies<D, Class::IsSingleton>) true
-        );
-      }
-
-      namespace Numeric{
-        VK_trait(IsIntegral,
-                   let(is_integral),
-                     given(typename N),
-                       member_value(integral, traits::Numeric<N>),
-                       if (std::integral<N>) true
-        );
-        VK_trait(IsFloatingPoint,
-                   let(is_floating_point),
-                     given(typename N),
-                     member_value(floating_point, traits::Numeric<N>),
-                     if (std::floating_point<N>) true
-        );
-        VK_trait(IsSigned,
-                 let(is_signed),
-                   given(typename N),
-                     member_value(is_signed, traits::Numeric<N>),
-                     if (std::floating_point<N>) true,
-                     otherwise (std::signed_integral<N>)
-        );
-        VK_trait(IsBounded,
-                 let(is_bounded),
-                   given(typename N),
-                     member_value(is_bounded, traits::Numeric<N>),
-                     if (std::numeric_limits<N>::is_specialized) std::numeric_limits<N>::is_bounded,
-                     otherwise (true)
-        );
-        VK_trait(IsExact,
-                 let(is_exact),
-                   given(typename N),
-                     member_value(is_exact, traits::Numeric<N>),
-                     if (std::numeric_limits<N>::is_exact) std::numeric_limits<N>::is_exact,
-                     otherwise (probe<IsIntegral, N>::is_integral)
-        );
-        VK_trait(Bits,
-                 let(bits),
-                   given(typename N),
-                     member_value(bits, traits::Numeric<N>),
-                     otherwise (sizeof(N) * CHAR_BIT)
-        );
-      }
-
-      namespace Agent{
-        VK_trait(BaseType,
-                 alias(base_type),
-                   given(typename A),
-                     member_type(base_type, A)
-                 );
-        VK_trait(MessageType,
-                 alias(message_type),
-                   given(typename A),
-                     member_type(message_type, A)
-                 );
-        VK_trait(StatusType,
-                 alias(status_type),
-                   given(typename A),
-                     member_type(status_type, A)
-                 );
-        VK_trait(RootBaseType,
-                 alias(root_base_type),
-                   given(typename A),
-                     if (satisfies<A, BaseType> && satisfies<typename probe<BaseType, A>::base_type, RootBaseType>)(typename probe<BaseType, A>::base_type),
-                     if (satisfies<A, MessageType> && satisfies<A, StatusType>) A
-                 );
-      }
-
-      template <typename P>
-      struct PointerRebindBackup{};
-      template <typename P> requires(requires{ typename std::pointer_traits<P>::template rebind<void>; })
-      struct PointerRebindBackup<P>{
-        template <typename U>
-        using rebind = typename std::pointer_traits<P>::template rebind<U>;
-      };
-
-      template <typename P>
-      struct PointerRebind : PointerRebindBackup<P>{};
-      template <typename P> requires(requires{ typename traits::Pointer<P>::template rebind<void>; })
-      struct PointerRebind<P>{
-        template <typename U>
-        using rebind = typename traits::Pointer<P>::template rebind<U>;
-      };
-
-
-      template <typename P>
-      struct PointerToAddressBackup{};
-      template <typename P> requires(requires(P& p){ { std::to_address(p) } -> concepts::raw_pointer; })
-      struct PointerToAddressBackup<P>{
-        inline constexpr static auto* toAddress(P& p) noexcept {
-          return std::to_address(p);
-        }
-      };
-      template <typename T>
-      struct PointerToAddressBackup<T*>{
-        inline constexpr static T* toAddress(T* t) noexcept {
-          return t;
-        }
-      };
-
-      template <typename P>
-      struct PointerToAddress : PointerToAddressBackup<P>{};
-      template <typename P> requires(requires(P& p){ { traits::Pointer<P>::toAddress(p) } -> concepts::raw_pointer; })
-      struct PointerToAddress<P>{
-        inline constexpr static auto* toAddress(P& p) noexcept {
-          return traits::Pointer<P>::toAddress(p);
-        }
-      };
-
-
-      template <typename P>
-      struct PointerToPointerBackup{};
-      template <typename P> requires(requires(typename probe<Pointer::ElementType, P>::element_type& t){ { std::pointer_traits<P>::to_pointer(t) } -> exact_same_as<P>; })
-      struct PointerToPointerBackup<P>{
-        inline constexpr static P toPointer(typename probe<Pointer::ElementType, P>::element_type& t) noexcept {
-          return std::pointer_traits<P>::to_pointer(t);
-        }
-      };
-      template <typename T>
-      struct PointerToPointerBackup<T*>{
-        inline constexpr static T* toPointer(T& t) noexcept {
-          return std::addressof(t);
-        }
-      };
-
-      template <typename T>
-      struct PointerToPointer : PointerToPointerBackup<T>{};
-      template <typename P> requires(requires(typename probe<Pointer::ElementType, P>::element_type& t){ { traits::Pointer<P>::toPointer(t) } -> exact_same_as<P>; })
-      struct PointerToPointer<P>{
-        inline constexpr static P toPointer(typename probe<Pointer::ElementType, P>::element_type& t) noexcept {
-          return traits::Pointer<P>::toPointer(t);
-        }
-      };
-
-
-      template <typename T>
-      struct PointerCastBackup{};
-      template <typename P> requires(requires(const P& p){ { static_cast<typename PointerRebind<P>::template rebind<copy_cv_t<void, typename probe<Pointer::ElementType, P>::element_type>>>(p) }; })
-      struct PointerCastBackup<P>{
-      private:
-        template <typename To>
-        using cast_result_t = typename PointerRebind<P>::template rebind<copy_cv_t<To, typename probe<Pointer::ElementType, P>::element_type>>;
-      public:
-        template <typename To>
-        inline constexpr static cast_result_t<To> cast(const P& ptr) noexcept {
-          return static_cast<cast_result_t<To>>(ptr);
-        }
-      };
-
-      template <typename P>
-      struct PointerCast : PointerCastBackup<P>{};
-      template <typename P>
-      requires(requires(const P& ptr){
-        { traits::Pointer<P>::template cast<void>(ptr) } ->
-        exact_same_as<typename PointerRebind<P>::template rebind<
-            copy_cv_t<void, typename probe<Pointer::ElementType, P>::element_type>>>;
-      })
-      struct PointerCast<P>{
-        template <typename To>
-        inline constexpr static auto cast(const P& ptr) noexcept {
-          return traits::Pointer<P>::template cast<To>(ptr);
-        }
-      };
-
-      template <typename T>
-      struct ArrayInfo;
-      template <typename T> requires( requires(T& value) {
-        {traits::DynamicArray<T>::data(value) };
-        { traits::DynamicArray<T>::size(value) } -> std::convertible_to<size_t>;
-      })
-      struct ArrayInfo<T> : public probe<Array::ElementType, T>{
-        inline constexpr static bool isDynamic = true;
-        inline constexpr static decltype(auto) getData(T& value) noexcept {
-          return traits::DynamicArray<T>::data(value);
-        }
-        inline constexpr static decltype(auto) getData(const T& value) noexcept {
-          return traits::DynamicArray<T>::data(value);
-        }
-        inline constexpr static decltype(auto) getSize(const T& value) noexcept {
-          return traits::DynamicArray<T>::size(value);
-        }
-      };
-      template <typename T> requires( requires(T& value) {
-        { traits::static_array<T>::data(value) };
-        { traits::static_array<T>::size } -> std::convertible_to<size_t>;
-      })
-      struct ArrayInfo<T> : public probe<Array::ElementType, T>{
-        inline constexpr static bool isDynamic = false;
-        inline constexpr static size_t size = traits::static_array<T>::size;
-        inline constexpr static decltype(auto) getData(T& value) noexcept {
-          return traits::static_array<T>::data(value);
-        }
-        inline constexpr static decltype(auto) getData(const T& value) noexcept {
-          return traits::static_array<T>::data(value);
-        }
-        inline constexpr static decltype(auto) getSize(const T& value) noexcept {
-          return traits::static_array<T>::size;
-        }
-      };
-      template <typename T> requires(requires { sizeof(ArrayInfo<T>); })
-      struct ArrayInfo<T&> : ArrayInfo<T>{};
-      template <typename T> requires(requires { sizeof(ArrayInfo<T>); })
-      struct ArrayInfo<T&&> : ArrayInfo<T>{};
-      template <typename T> requires(sizeof(traits::View<T>) > 0 && requires { sizeof(ArrayInfo<T>); })
-      struct ArrayInfo<const T> : ArrayInfo<T>{ };
-
-
-      template <typename E>
-      struct EnumInfo
-          : probe<Enum::Type, E>,
-            probe<Enum::UnderlyingType, E>,
-            probe<Enum::Values, E>,
-            probe<Enum::FlagType,  E>,
-            probe<Enum::IsStatusEnum, E>,
-            probe<Enum::StatusType, E>,
-            probe<Enum::status_domain, E>,
-            probe<Enum::StatusInfo, E>,
-            probe<Enum::ScopedName, E>,
-            probe<Enum::Name, E>{
-        //inline constexpr static bool isScoped = std::convertible_to<typename probe<Enum::Type, E>::enum_type, typename probe<Enum::UnderlyingType, E>::underlying_type>;
-        //inline constexpr static bool isBitFlag = VK_instantiable_with(traits::BitFlagEnum, E);
-      };
-
-
-
-      template <typename T>
-      struct PointerInfo :
-          probe<Pointer::ElementType, T>,
-          //PointerElementType<T>,
-          PointerRebind<T>,
-          probe<Pointer::Reference, T>,
-          //PointerReference<T>,
-          probe<Pointer::DifferenceType, T>,
-          //PointerDifferenceType<T>,
-          PointerToPointer<T>,
-          PointerToAddress<T>,
-          PointerCast<T>{};
-
-
-      template <typename S>
-      struct StringInfo;
-
-      template <typename I>
-      struct IteratorInfo;
-
-      template <typename A>
-      struct AllocatorInfo;
-
-      /*template <typename E>
-      struct StatusInfo;*/
-
-      template <typename E>
-      struct ContainerInfo;
-
-      template <typename D>
-      struct DomainInfo
-          : probe<Domain::DomainType, D>,
-            probe<Domain::StatusType, D>,
-            probe<Domain::ErrorType, D>,
-            probe<Domain::ValueType, D>,
-            probe<Domain::IsConstant, D>{};
-
-      template <typename C>
-      struct ClassInfo :
-          probe<Class::Name, C>,
-          probe<Class::Uuid, C>,
-          //probe<Class::Info, C>,
-          probe<Class::Size, C>,
-          probe<Class::Alignment, C>,
-          probe<Class::IsSingleton, C>/*,
-          probe<Class::Instance, C>*/{};
-
-
-      template <typename N>
-      struct NumericInfo
-          : probe<Numeric::IsIntegral, N>,
-            probe<Numeric::IsFloatingPoint, N>,
-            probe<Numeric::IsSigned, N>,
-            probe<Numeric::IsBounded, N>,
-            probe<Numeric::IsExact, N>,
-            probe<Numeric::Bits, N>{};
-
-      /*template <typename A>
-      struct AgentInfo
-          : probe<Agent::BaseType, A>,
-            probe<Agent::RootBaseType, A>,
-            probe<Agent::MessageType, A>,
-            probe<Agent::StatusType, A>{};*/
-    }
-  }
-  
-  inline namespace concepts{
-    template <typename P, typename T = const void>
-    concept pointer = raw_pointer<P> || (requires(P&& p){
-      typename traits::detail::PointerInfo<P>::element_type;
-      typename traits::detail::PointerInfo<P>::difference_type;
-      typename traits::detail::PointerInfo<P>::template rebind<void>;
-    } && (exact_same_as<T, const void> ||
-          requires(P& p){
-            { *p } -> exact_same_as<typename traits::detail::PointerInfo<P>::reference>;
-            { traits::detail::PointerInfo<P>::template cast<void>(p) };
-            { p.operator->() };
-          }));
-
-    template <typename P, typename T = const void>
-    concept pointer_fwd_ref = pointer<std::remove_reference_t<P>, T>;
-
-    template <typename P>
-    concept member_pointer = meta::is_a_member_pointer<P>::value;
-
-
-    template <typename T, typename U>
-    concept aliased_by = requires{
-      typename traits::Alias<U, T>;
-    } && requires(T* pTarget, U* pAliased){
-      { traits::Alias<U, T>::reify(pAliased) } -> exact_same_as<T*>;
-      { traits::Alias<U, T>::alias(pTarget) }  -> exact_same_as<U*>;
-    } && ((sizeof(T) % sizeof(U)) == 0);
-
-    template <typename P, typename T>
-    concept array_pointer = pointer<P> && aliased_by<typename traits::detail::PointerInfo<P>::element_type, T>;
-
-
-
-    template <typename T>
-    concept bitwise_movable = requires{
-      sizeof(traits::BitwiseMovable<T>);
-    };
-
-    template <typename T>
-    concept is_register_copyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
-
-    template <typename Rng, typename U = void>
-    concept contiguous_range = std::ranges::contiguous_range<Rng> &&
-                               (same_as<U, void> || std::convertible_to<std::ranges::range_reference_t<Rng>, U&>);
-
-    template <typename A, typename T = byte>
-    concept contiguous_range_type = requires(A&& a){
-      typename traits::detail::ArrayInfo<A>::element_type;
-      { traits::detail::ArrayInfo<A>::getData(std::forward<A>(a)) };
-      { traits::detail::ArrayInfo<A>::getSize(std::forward<A>(a)) } -> std::convertible_to<size_t>;
-    } && aliased_by<typename traits::detail::ArrayInfo<A>::element_type, T>;
-    template <typename A, typename T = byte>
-    concept dynamic_memory_span_type = contiguous_range_type<A, T> && traits::detail::ArrayInfo<A>::isDynamic;
-    template <typename A, typename T = byte>
-    concept static_memory_span_type = contiguous_range_type<A, T> && !traits::detail::ArrayInfo<A>::isDynamic
-                               && requires{
-      { traits::detail::ArrayInfo<A>::size } -> std::convertible_to<size_t>;
-    };
-
-    template <typename From, typename To>
-    concept bit_castable_to = sizeof(From) == sizeof(To) && bitwise_movable<To> && bitwise_movable<From>;
-
-
-    /*template <typename T>
-    concept Status = *//*VK_instantiable_with(traits::Status, T)*//*true;
-
-    template <typename T>
-    concept Error = *//*VK_instantiable_with(traits::Error, T)*//*true;*/
-
-    template <typename T>
-    concept status_enum_type = VK_instantiable_with(traits::StatusEnum, T) &&
-                         requires(const T& t){
-                           typename traits::detail::EnumInfo<T>::status_type;
-                           typename traits::detail::EnumInfo<T>::domain_type;
-                         };
-
-    template <typename C, typename T = void>
-    concept container_type = requires(C& lv, const C& clv){
-      typename traits::detail::ContainerInfo<C>;
-      typename traits::detail::ContainerInfo<C>::value_type;
-      typename traits::detail::ContainerInfo<C>::reference;
-      typename traits::detail::ContainerInfo<C>::const_reference;
-      typename traits::detail::ContainerInfo<C>::pointer;
-      typename traits::detail::ContainerInfo<C>::const_pointer;
-      typename traits::detail::ContainerInfo<C>::iterator;
-      typename traits::detail::ContainerInfo<C>::const_iterator;
-      { traits::detail::ContainerInfo<C>::isDynamic } -> same_as<bool>;
-    };
-
-    template <typename R, typename T = void>
-    concept range_type     = VK_instantiable_with(traits::DynamicArray, R) || VK_instantiable_with(traits::static_array, R);
-
-    template <typename S>
-    concept string_type    = VK_instantiable_with(traits::String, S);
-
-    template <typename I, typename T = void>
-    concept iterator_type  = VK_instantiable_with(traits::Iterator, I) && (exact_same_as<T, void> || (requires{ typename traits::detail::IteratorInfo<I>::reference_type; } && std::convertible_to<typename traits::detail::IteratorInfo<I>::reference_type, std::add_lvalue_reference_t<T>>));
-
-    template <typename A, typename T = void>
-    concept allocator_type = requires(A& alloc, size_t n){
-      { alloc.allocate(n) } -> pointer<T>;
-    } && requires(A& alloc, size_t n, decltype(alloc.allocate(n)) p){
-      { alloc.deallocate(p) };
-    };
-
-    template <typename T>
-    concept bitflag_enum_type = VK_instantiable_with(traits::BitFlagEnum, T) && enumerator<T>;
-
-    template <typename T>
-    concept class_type = std::is_class_v<T>;
-
-    /*template <typename T>
-    concept integral_type = requires{
-      { traits::detail::NumericInfo<T>::is_integral };
-    } && traits::detail::NumericInfo<T>::is_integral;*/
-    template <typename T>
-    concept integral_type = std::integral<T>;
-    template <typename T>
-    concept floating_point_type = std::floating_point<T>;
-/*    template <typename T>
-    concept floating_point_type = requires{
-      { traits::detail::NumericInfo<T>::is_floating_point };
-    } && traits::detail::NumericInfo<T>::is_floating_point;*/
-    template <typename T>
-    concept numeric_type = integral_type<T> || floating_point_type<T> || VK_instantiable_with(traits::Numeric, T);
-
-    template <typename From, typename To>
-    concept pointer_castable_to    = requires(From* from, To*& to){
-      to = static_cast<To*>(from);
-    };
-    template <typename From, typename To>
-    concept pointer_convertible_to = pointer_castable_to<From, To> && requires(From* from, To*& to){
-      to = from;
-    };
-
-    template <typename T>
-    concept Domain = true;/*requires{
-      //typename traits::detail::DomainInfo<T>::domain_type;
-      typename traits::detail::DomainInfo<T>::status_type;
-      //typename traits::detail::DomainInfo<T>::error_type;
-      typename traits::detail::DomainInfo<T>::value_type;
-      { traits::detail::DomainInfo<T>::is_constant } -> std::convertible_to<bool>;
-    };*/
-
-    template <typename T>
-    concept AgentLike = true;/*requires{
-      typename traits::detail::AgentInfo<T>::base_type;
-      typename traits::detail::AgentInfo<T>::root_base_type;
-      typename traits::detail::AgentInfo<T>::message_type;
-      typename traits::detail::AgentInfo<T>::status_type;
-    };*/
-    template <typename T, typename ...Args>
-    concept ConstructibleFrom = std::constructible_from<T, Args...> ||
-                               requires(Args&& ...args){
-                                 { T{ std::forward<Args>(args)... } };
-                               };
 
 
     template <typename Ext, typename Ind = size_t>
-    concept extent_type = same_as<Ext, dynamic_t> || std::convertible_to<Ind, Ext>;
+    concept extent_type = same_as<Ext, dynamic_t> || convertible_to<Ind, Ext>;
     template <typename Ext, typename Ind = size_t>
     concept strict_extent_type = same_as_one_of<Ext, dynamic_t, Ind> && extent_type<Ext, Ind>;
 
+
+
+
+    template <typename T>
+    concept is_register_copyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
   }
-  
-  template <container_type T>
-  using container_traits = traits::detail::ContainerInfo<T>;
-  template <range_type T>
-  using array_traits     = traits::detail::ArrayInfo<T>;
-  template <pointer T>
-  using pointer_traits   = traits::detail::PointerInfo<T>;
-  template <enumerator T>
-  using enum_traits      = traits::detail::EnumInfo<T>;
-  template <string_type T>
-  using string_traits    = traits::detail::StringInfo<T>;
-  template <iterator_type T>
-  using iterator_traits  = traits::detail::IteratorInfo<T>;/*
-  template <allocator_type T>
-  using allocator_traits = traits::detail::AllocatorInfo<T>;*/
-  template <class_type C>
-  using class_traits     = traits::detail::ClassInfo<C>;
-  template <numeric_type N>
-  using numeric_traits   = traits::detail::NumericInfo<N>;
-  template <Domain D>
-  using domain_traits    = traits::detail::DomainInfo<D>;
-  /*template <AgentLike A>
-  using agent_traits     = traits::detail::AgentInfo<A>;*/
 
 
   template <typename T>
-  using param_t = std::conditional_t<is_register_copyable<T>, T, const T&>;
+  using in_param_t = std::conditional_t<is_register_copyable<T>, T, const T&>;
   template <typename T>
-  using in_register_t = std::conditional_t<is_register_copyable<T>, T, const T&>;
+  using out_param_t = T&;
 
 
-  template <contiguous_range_type Rng>
-  inline constexpr static auto* rangeData(Rng&& rng) noexcept {
-    return array_traits<Rng>::getData(std::forward<Rng>(rng));
+  namespace traits{
+    template <typename T, typename U>
+    struct alias : meta::template_no_default{};
+
+    template <typename Ptr>
+    struct pointer : meta::template_no_default{};
+
+    template <typename E>
+    struct bitflag_enum : meta::template_no_default{};
+
+    template <typename E>
+    struct status_enum : meta::template_no_default{};
+
+    template <typename E>
+    struct enumerator : meta::template_no_default{};
+
+    template <typename E>
+    struct custom_status : meta::template_no_default{};
+
+    template <typename T>
+    struct bitwise_movable : meta::template_no_default{};
+
+    template <typename S>
+    struct string : meta::template_no_default{};
+
+    template <typename A>
+    struct allocator : meta::template_no_default{};
+
+    template <typename I>
+    struct iterator : meta::template_no_default{};
+
+    template <typename T>
+    struct serializable : meta::template_no_default{};
+
+    template <typename T>
+    struct container : meta::template_no_default{};
+
+    template <typename T>
+    struct range : meta::template_no_default{};
+
+    template <typename T>
+    struct singleton : meta::template_no_default{};
+
+    template <typename T>
+    struct klass : meta::template_no_default{};
+
+    template <typename T>
+    struct numeric : meta::template_no_default{};
+
+    template <typename T>
+    struct domain : meta::template_no_default{};
+
+    template <typename T>
+    struct graph : meta::template_no_default{
+      // using node_type = ...;
+      // using edge_type = ...;
+    };
+
+    template <typename T>
+    struct message : meta::template_no_default{};
+
+    template <typename T>
+    struct hash : meta::template_no_default{};
+
+
+    namespace detail{
+      namespace _inner{
+        template <typename To>
+        struct ref_cast_{
+          template <typename From>
+          inline To operator()(From&& from) const noexcept requires(requires{ static_cast<To>(std::forward<From>(from)); }) {
+            return static_cast<To>(std::forward<From>(from));
+          }
+        };
+        template <typename To>
+        struct ref_cast_<To&>{
+          VK_forceinline To& operator()(const To& to) const noexcept {
+            return const_cast<To&>(to);
+          }
+          template <typename From>
+          VK_forceinline To& operator()(const From& from) const noexcept requires(requires{ static_cast<To&>(const_cast<From&>(from)); }) {
+            return static_cast<To&>(const_cast<From&>(from));
+          }
+          template <typename From>
+          VK_forceinline To& operator()(From&& from) const noexcept requires(!requires{ static_cast<To&>(std::forward<From>(from)); } && requires{ (*this)(*from); }) {
+            return (*this)(*from);
+          }
+          template <typename From>
+          VK_forceinline To& operator()(From&& from) const noexcept requires(!std::is_lvalue_reference_v<From> && requires{ static_cast<To&>(std::move(from)); }){
+            return static_cast<To&>(std::move(from));
+          }
+        };
+        template <typename To>
+        struct ref_cast_<To*>{
+          VK_constant ref_cast_<To&> lvalue_cast{};
+        public:
+          template <pointer_castable_to<To> From>
+          VK_forceinline To* operator()(const From* from) const noexcept {
+            return static_cast<To*>(const_cast<From*>(from));
+          }
+          template <typename From>
+          VK_forceinline To* operator()(From&& from) const noexcept
+              requires(!raw_pointer<remove_ref_t<From>> && requires{ static_cast<To*>(std::forward<From>(from)); }){
+            return static_cast<To*>(std::forward<From>(from));
+          }
+          template <typename From>
+          VK_forceinline To* operator()(From&& from) const noexcept
+              requires(!requires{ static_cast<To*>(std::forward<From>(from)); } && requires{ lvalue_cast(std::forward<From>(from)); }){
+            return std::addressof(lvalue_cast(std::forward<From>(from)));
+          }
+        };
+      }
+
+      template <typename To>
+      VK_constant _inner::ref_cast_<To> ref_cast{};
+
+
+
+
+      template <typename T, template <typename> typename Trait>
+      concept has_specialized = !requires{
+        typename Trait<T>::invalid_specialization;
+      };
+
+#define VK_apply_if_nonempty(macro, ...) VK_if(VK_not(VK_pack_is_empty(__VA_ARGS__))(macro(__VA_ARGS__)))
+#define VK_trait_init(val_) template <typename T, int N = val_> struct trait : trait<T, N - 1>{}
+#define VK_trait_case(T, N, ...) template <typename T> VK_apply_if_nonempty(requires, __VA_ARGS__) struct trait<T, N>
+#define VK_trait_case_match(params, args, N, ...) template < VK_unwrap(params) > VK_apply_if_nonempty(requires, __VA_ARGS__) struct trait< VK_unwrap(args), N >
+#define VK_trait_fallback(T) VK_trait_case(T, 0)
+#define VK_trait_no_fallback VK_trait_fallback(T) { u64 trait_failure_ = 0; }
+
+
+      template <typename T>
+      struct deferred_string_view{
+        using type = string_view;
+      };
+
+      struct range{
+
+
+
+
+        struct typedef_value_type{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ typename traits::range<T>::value_type; }){
+            using value_type = typename traits::range<T>::value_type;
+          };
+          VK_trait_case(T, 1, requires{ typename std::ranges::range_value_t<T>; }) {
+            using value_type = typename std::ranges::range_value_t<T>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_iterator_category{
+          VK_trait_init(8);
+          VK_trait_case(Rng, 8, requires{ typename traits::range<Rng>::iterator_category; }){
+            using iterator_category = typename traits::range<Rng>::iterator_category;
+          };
+          VK_trait_case(Rng, 7, requires{ typename remove_cvref_t<Rng>::iterator_category; }){
+            using iterator_category = typename remove_cvref_t<Rng>::iterator_category;
+          };
+          VK_trait_case(Rng, 6, std::ranges::contiguous_range<Rng>){
+            using iterator_category = std::contiguous_iterator_tag;
+          };
+          VK_trait_case(Rng, 5, std::ranges::random_access_range<Rng>){
+            using iterator_category = std::random_access_iterator_tag;
+          };
+          VK_trait_case(Rng, 4, std::ranges::bidirectional_range<Rng>){
+            using iterator_category = std::bidirectional_iterator_tag;
+          };
+          VK_trait_case(Rng, 3, std::ranges::forward_range<Rng>){
+            using iterator_category = std::forward_iterator_tag;
+          };
+          VK_trait_case(Rng, 2, std::ranges::input_range<Rng>){
+            using iterator_category = std::input_iterator_tag;
+          };
+          VK_trait_case(Rng, 1, std::input_or_output_iterator<std::ranges::iterator_t<Rng>>){
+            using iterator_category = std::output_iterator_tag;
+          };
+
+          VK_trait_no_fallback;
+        };
+        struct typedef_iterator{
+          VK_trait_init(3);
+          VK_trait_case(Rng, 3, requires{ typename traits::range<Rng>::iterator; }){
+            using iterator = typename traits::range<Rng>::iterator;
+          };
+          VK_trait_case(Rng, 2, requires{ typename Rng::iterator; }){
+            using iterator = typename Rng::iterator;
+          };
+          VK_trait_case(Rng, 1, requires{ typename std::ranges::iterator_t<Rng>; }){
+            using iterator = typename std::ranges::iterator_t<Rng>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_const_iterator{
+          VK_trait_init(3);
+          VK_trait_case(Rng, 3, requires{ typename traits::range<Rng>::const_iterator; }){
+            using const_iterator = typename traits::range<Rng>::const_iterator;
+          };
+          VK_trait_case(Rng, 2, requires{ typename Rng::const_iterator; }){
+            using const_iterator = typename Rng::const_iterator;
+          };
+          VK_trait_case(Rng, 1, requires{ typename std::ranges::iterator_t<add_const_t<Rng>>; }){
+            using const_iterator = typename std::ranges::iterator_t<add_const_t<Rng>>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_sentinel{
+          VK_trait_init(3);
+          VK_trait_case(Rng, 3, requires{ typename traits::range<Rng>::sentinel; }){
+            using sentinel = typename traits::range<Rng>::sentinel;
+          };
+          VK_trait_case(Rng, 2, requires{ typename Rng::sentinel; }){
+            using sentinel = typename Rng::sentinel;
+          };
+          VK_trait_case(Rng, 1, requires{ typename std::ranges::sentinel_t<Rng>; }){
+            using sentinel = typename std::ranges::sentinel_t<Rng>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_const_sentinel{
+          VK_trait_init(3);
+          VK_trait_case(Rng, 3, requires{ typename traits::range<Rng>::const_sentinel; }){
+            using const_sentinel = typename traits::range<Rng>::const_sentinel;
+          };
+          VK_trait_case(Rng, 2, requires{ typename Rng::const_sentinel; }){
+            using const_sentinel = typename Rng::const_sentinel;
+          };
+          VK_trait_case(Rng, 1, requires{ typename std::ranges::sentinel_t<add_const_t<Rng>>; }){
+            using const_sentinel = typename std::ranges::sentinel_t<add_const_t<Rng>>;
+          };
+          VK_trait_no_fallback;
+        };
+
+
+        struct value_owns_elements{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::range<remove_cvref_t<T>>::owns_elements } -> same_as<bool>; }){
+            VK_constant bool owns_elements = traits::range<remove_cvref_t<T>>::owns_elements;
+          };
+          VK_trait_case(T, 1, std::ranges::viewable_range<remove_ref_t<T>>){
+            VK_constant bool owns_elements = false;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool owns_elements = true;
+          };
+        };
+        struct value_static_size{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ traits::range<T>::static_size; }) {
+            VK_constant auto static_size = traits::range<T>::static_size;
+            VK_constant bool is_dynamic  = same_as<decltype(static_size), dynamic_t>;
+          };
+          VK_trait_fallback(T) {
+            VK_constant auto static_size = dynamic_t{};
+            VK_constant bool is_dynamic  = true;
+          };
+        };
+
+        using trait_list = meta::list<typedef_value_type,
+                                     value_static_size,
+                                     typedef_iterator,
+                                     typedef_const_iterator,
+                                     typedef_sentinel,
+                                     typedef_const_sentinel,
+                                     typedef_iterator_category,
+                                     value_owns_elements>;
+      };
+      struct pointer{
+        // TODO: Add more pointer traits
+        
+        struct typedef_element_type{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::pointer<T>::element_type; }){
+            using element_type = typename traits::pointer<T>::element_type;
+          };
+          VK_trait_case(T, 2, requires{ typename T::element_type; }){
+            using element_type = typename T::element_type;
+          };
+          VK_trait_case(T, 1, requires{ typename std::pointer_traits<T>::element_type; }){
+            using element_type = typename std::pointer_traits<T>::element_type;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_pointer{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::pointer<T>::pointer; }){
+            using pointer = typename traits::pointer<T>::pointer;
+          };
+          VK_trait_case(T, 2, requires{ typename T::pointer; }){
+            using pointer = typename T::pointer;
+          };
+          VK_trait_case(T, 1, requires{ typename std::pointer_traits<T>::pointer; }){
+            using pointer = typename std::pointer_traits<T>::pointer;
+          };
+          VK_trait_fallback(T){
+            using pointer = T;
+          };
+        };
+        struct typedef_difference_type{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::pointer<T>::difference_type; }){
+            using difference_type = typename traits::pointer<T>::difference_type;
+          };
+          VK_trait_case(T, 2, requires{ typename T::difference_type; }){
+            using difference_type = typename T::difference_type;
+          };
+          VK_trait_case(T, 1, requires{ typename std::pointer_traits<T>::difference_type; }){
+            using difference_type = typename std::pointer_traits<T>::difference_type;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_rebind{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::pointer<T>::template rebind<void>; }){
+            template <typename U>
+            using rebind = typename traits::pointer<T>::template rebind<U>;
+          };
+          VK_trait_case(T, 2, requires{ typename T::template rebind<void>; }){
+            template <typename U>
+            using rebind = typename T::template rebind<U>;
+          };
+          VK_trait_case(T, 1, requires{ typename std::pointer_traits<T>::template rebind<void>; }){
+            template <typename U>
+            using rebind = typename std::pointer_traits<T>::template rebind<U>;
+          };
+          VK_trait_no_fallback;
+        };
+
+        // pointer(element_type*)
+        struct function_pointer_to{
+          VK_trait_init(4);
+          VK_trait_case(T, 4, requires(typename typedef_element_type::trait<T>::element_type* el){ { traits::pointer<T>::pointer_to(el) } -> same_as<T>; }){
+            VK_forceinline static T pointer_to(typename typedef_element_type::trait<T>::element_type* el) noexcept {
+              return valkyrie::traits::pointer<T>::pointer_to(el);
+            }
+          };
+          VK_trait_case(T, 3, requires(typename typedef_element_type::trait<T>::element_type* el){ { T::pointer_to(el) } -> same_as<T>; }){
+            VK_forceinline static T pointer_to(typename typedef_element_type::trait<T>::element_type* el) noexcept {
+              return T::pointer_to(el);
+            }
+          };
+          VK_trait_case(T, 2, requires(typename typedef_element_type::trait<T>::element_type* el){ { std::pointer_traits<T>::pointer_to(el) } -> same_as<T>; }){
+            VK_forceinline static T pointer_to(typename typedef_element_type::trait<T>::element_type* el) noexcept {
+              return std::pointer_traits<T>::pointer_to(el);
+            }
+          };
+          VK_trait_case_match(typename T, T*, 1){
+            VK_forceinline static T* pointer_to(T* p) noexcept {
+              return p;
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        // element_type*(const pointer&)
+        struct function_to_address{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires(const T& ptr){ { traits::pointer<T>::to_address(ptr) } -> same_as<typename typedef_element_type::trait<T>::element_type*>; }){
+            VK_forceinline static auto* to_address(const T& ptr) noexcept {
+              return traits::pointer<T>::to_address(ptr);
+            }
+          };
+          VK_trait_case(T, 2, requires(const T& ptr){ { T::to_address(ptr) } -> same_as<typename typedef_element_type::trait<T>::element_type*>; }){
+            VK_forceinline static auto* to_address(const T& ptr) noexcept {
+              return T::to_address(ptr);
+            }
+          };
+          VK_trait_case(T, 1, requires(const T& ptr){ { std::to_address(ptr) } -> same_as<typename typedef_element_type::trait<T>::element_type*>; }){
+            VK_forceinline static auto* to_address(const T& ptr) noexcept {
+              return std::to_address(ptr);
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+
+        struct integer_free_low_bits{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ { traits::pointer<T>::free_low_bits } -> std::integral; }){
+            VK_constant u32 free_low_bits = u32(traits::pointer<T>::free_low_bits);
+          };
+          VK_trait_case(T, 2, requires{ { T::free_low_bits } -> std::integral; }){
+            VK_constant u32 free_low_bits = u32(T::free_low_bits);
+          };
+          VK_trait_case_match(typename T, T*, 1){
+            VK_constant u32 free_low_bits = ilog2(alignof(T));
+          };
+          VK_trait_fallback(T){
+            VK_constant u32 free_low_bits = 0;
+          };
+        };
+
+        using trait_list = meta::list<typedef_element_type,
+                                     typedef_pointer,
+                                     typedef_difference_type,
+                                     typedef_rebind,
+                                     function_pointer_to,
+                                     function_to_address,
+                                     integer_free_low_bits>;
+      };
+      struct enumerator{
+        struct string_name{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ traits::enumerator<T>::name; }){
+            VK_constant typename deferred_string_view<T>::type name = traits::enumerator<T>::name;
+          };
+          VK_trait_case(T, 2, requires{ traits::status_enum<T>::name; }){
+            VK_constant typename deferred_string_view<T>::type name = traits::status_enum<T>::name;
+          };
+          VK_trait_case(T, 1, requires{ traits::bitflag_enum<T>::name; }){
+            VK_constant typename deferred_string_view<T>::type name = traits::bitflag_enum<T>::name;
+          };
+          VK_trait_fallback(T){
+            // TODO: automatic generation of type enum_traits<T>::name using VK_function_name hackery
+            VK_constant typename deferred_string_view<T>::type name = "automatic generation of enum_traits<T>::name is not yet implemented";
+          };
+        };
+        struct string_scoped_name{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ traits::enumerator<T>::scoped_name; }){
+            VK_constant typename deferred_string_view<T>::type scoped_name = traits::enumerator<T>::scoped_name;
+          };
+          VK_trait_case(T, 2, requires{ traits::status_enum<T>::scoped_name; }){
+            VK_constant typename deferred_string_view<T>::type scoped_name = traits::status_enum<T>::scoped_name;
+          };
+          VK_trait_case(T, 1, requires{ traits::bitflag_enum<T>::scoped_name; }){
+            VK_constant typename deferred_string_view<T>::type scoped_name = traits::bitflag_enum<T>::scoped_name;
+          };
+          VK_trait_fallback(T){
+            // TODO: automatic generation of type enum_traits<T>::scoped_name using VK_function_name hackery
+            VK_constant typename deferred_string_view<T>::type scoped_name = "automatic generation of class_traits<T>::scoped_name is not yet implemented";
+          };
+        };
+
+        struct bool_is_bitflag{
+          VK_trait_init(1);
+          VK_trait_case(E, 1, !requires{ typename traits::bitflag_enum<E>::invalid_specialization; }){
+            VK_constant bool is_bitflag = true;
+          };
+          VK_trait_fallback(E){
+            VK_constant bool is_bitflag = false;
+          };
+        };
+        struct bool_is_status_code{
+          VK_trait_init(1);
+          VK_trait_case(E, 1, !requires{ typename traits::status_enum<E>::invalid_specialization; }){
+            VK_constant bool is_status_code = true;
+          };
+          VK_trait_fallback(E){
+            VK_constant bool is_status_code = false;
+          };
+        };
+
+        struct array_values{
+          // TODO: Implement enum_traits<E>::values
+          VK_trait_init(1);
+          VK_trait_fallback(T){};
+        };
+        struct array_entries{
+          // TODO: Implement enum_traits<E>::entries
+          VK_trait_init(1);
+          VK_trait_fallback(T){};
+        };
+
+        struct typedef_underlying_type{
+          VK_trait_init(4);
+          VK_trait_case(E, 4, requires{ typename traits::enumerator<E>::underlying_type; }){
+            using underlying_type = typename traits::enumerator<E>::underlying_type;
+          };
+          VK_trait_case(E, 3, requires{ typename traits::status_enum<E>::underlying_type; }){
+            using underlying_type = typename traits::status_enum<E>::underlying_type;
+          };
+          VK_trait_case(E, 2, requires{ typename traits::bitflag_enum<E>::underlying_type; }){
+            using underlying_type = typename traits::bitflag_enum<E>::underlying_type;
+          };
+          VK_trait_case(E, 1, requires{ typename std::underlying_type<E>::type; }){
+            using underlying_type = std::underlying_type_t<E>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_status_domain{
+          // Only for status_enum types
+          VK_trait_init(2);
+          VK_trait_case(E, 2, requires{ typename traits::status_enum<E>::status_domain; }){
+            using status_domain = typename traits::status_enum<E>::status_domain;
+          };
+          VK_trait_case(E, 1, !requires{ typename traits::status_enum<E>::invalid_specialization; }){
+            using status_domain = status_enum_domain<E>;
+          };
+          VK_trait_fallback(E){};
+        };
+        struct typedef_flag_type{
+          // Only for bitflag types
+          VK_trait_init(2);
+          VK_trait_case(E, 2, requires{ typename traits::bitflag_enum<E>::flag_type; }){
+            using flag_type = typename traits::bitflag_enum<E>::flag_type;
+          };
+          VK_trait_case(E, 1, !requires{ typename traits::bitflag_enum<E>::invalid_specialization; }){
+            using flag_type = bitflag<E>;
+          };
+          VK_trait_fallback(E){};
+        };
+
+
+        using trait_list = meta::list<string_name,
+                                     string_scoped_name,
+                                     bool_is_bitflag,
+                                     bool_is_status_code,
+                                     array_values,
+                                     array_entries,
+                                     typedef_underlying_type,
+                                     typedef_status_domain,
+                                     typedef_flag_type>;
+      };
+      struct graph{
+
+        struct typedef_node_type{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::node_type; }){
+            using node_type = typename traits::graph<G>::node_type;
+          };
+          VK_trait_case(G, 1, requires{ typename G::node_type; }){
+            using node_type = typename G::node_type;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_node_ref{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires{ typename traits::graph<G>::node_ref; }){
+            using node_ref = typename traits::graph<G>::node_ref;
+          };
+          VK_trait_case(G, 2, requires{ typename G::node_ref; }){
+            using node_ref = typename G::node_ref;
+          };
+          VK_trait_case(G, 1, requires{ typename typedef_node_type::trait<G>::node_type; }){
+            using node_ref = typename typedef_node_type::trait<G>::node_type*;
+          };
+          VK_trait_no_fallback;
+        };
+
+        struct typedef_edge_type{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires{ typename traits::graph<G>::edge_type; }){
+            using edge_type = typename traits::graph<G>::edge_type;
+          };
+          VK_trait_case(G, 2, requires{ typename G::edge_type; }){
+            using edge_type = typename G::edge_type;
+          };
+          VK_trait_case(G, 1, requires{ typename typedef_node_type::trait<G>::node_type::edge_type; }){
+            using edge_type = typename typedef_node_type::trait<G>::node_type::edge_type;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_edge_ref{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires{ typename traits::graph<G>::edge_ref; }){
+            using edge_ref = typename traits::graph<G>::edge_ref;
+          };
+          VK_trait_case(G, 2, requires{ typename G::edge_ref; }){
+            using edge_ref = typename G::edge_ref;
+          };
+          VK_trait_case(G, 1, requires{ typename typedef_edge_type::trait<G>::edge_type; }){
+            using edge_ref = typename typedef_edge_type::trait<G>::edge_type*;
+          };
+          VK_trait_no_fallback;
+        };
+
+        struct typedef_nodes_iterator{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::nodes_iterator; }){
+            using nodes_iterator = typename traits::graph<G>::nodes_iterator;
+          };
+          VK_trait_case(G, 1, requires{ typename G::nodes_iterator; }){
+            using nodes_iterator = typename G::nodes_iterator;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_child_iterator{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::child_iterator; }){
+            using child_iterator = typename traits::graph<G>::child_iterator;
+          };
+          VK_trait_case(G, 1, requires{ typename G::child_iterator; }){
+            using child_iterator = typename G::child_iterator;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_child_edge_iterator{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::child_edge_iterator; }){
+            using child_edge_iterator = typename traits::graph<G>::child_edge_iterator;
+          };
+          VK_trait_case(G, 1, requires{ typename G::child_edge_iterator; }){
+            using child_edge_iterator = typename G::child_edge_iterator;
+          };
+          VK_trait_no_fallback;
+        };
+
+        struct typedef_nodes_sentinel{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::nodes_sentinel; }){
+            using nodes_sentinel = typename traits::graph<G>::nodes_sentinel;
+          };
+          VK_trait_case(G, 1, requires{ typename G::nodes_sentinel; }){
+            using nodes_sentinel = typename G::nodes_sentinel;
+          };
+          VK_trait_fallback(G){
+            using nodes_sentinel = typename typedef_nodes_iterator::trait<G>::nodes_iterator;
+          };
+        };
+        struct typedef_child_sentinel{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::child_sentinel; }){
+            using child_sentinel = typename traits::graph<G>::child_sentinel;
+          };
+          VK_trait_case(G, 1, requires{ typename G::child_sentinel; }){
+            using child_sentinel = typename G::child_sentinel;
+          };
+          VK_trait_fallback(G){
+            using child_sentinel = typename typedef_child_iterator::trait<G>::child_iterator;
+          };
+        };
+        struct typedef_child_edge_sentinel{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires{ typename traits::graph<G>::child_edge_sentinel; }){
+            using child_edge_sentinel = typename traits::graph<G>::child_edge_sentinel;
+          };
+          VK_trait_case(G, 1, requires{ typename G::child_edge_sentinel; }){
+            using child_edge_sentinel = typename G::child_edge_sentinel;
+          };
+          VK_trait_fallback(G){
+            using child_edge_sentinel = typename typedef_child_edge_iterator::trait<G>::child_edge_iterator;
+          };
+        };
+
+
+        // nodes_iterator(graph_type&)
+        struct function_nodes_begin{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires(G& graph){ traits::graph<G>::nodes_begin(graph); }){
+            inline static decltype(auto) nodes_begin(G& graph) noexcept {
+              using nodes_iterator = typename typedef_nodes_iterator::trait<G>::nodes_iterator;
+              return nodes_iterator(traits::graph<G>::nodes_begin(graph));
+            }
+          };
+          VK_trait_case(G, 1, requires(G& graph){ graph.nodes_begin(); }){
+            inline static decltype(auto) nodes_begin(G& graph) noexcept {
+              using nodes_iterator = typename typedef_nodes_iterator::trait<G>::nodes_iterator;
+              return nodes_iterator(graph.nodes_begin());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        // nodes_sentinel(graph_type&)
+        struct function_nodes_end{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires(G& graph){ traits::graph<G>::nodes_end(graph); }){
+            inline static decltype(auto) nodes_end(G& graph) noexcept {
+              using nodes_sentinel = typename typedef_nodes_sentinel::trait<G>::nodes_sentinel;
+              return nodes_sentinel(traits::graph<G>::nodes_end(graph));
+            }
+          };
+          VK_trait_case(G, 1, requires(G& graph){ graph.nodes_end(); }){
+            inline static decltype(auto) nodes_end(G& graph) noexcept {
+              using nodes_sentinel = typename typedef_nodes_sentinel::trait<G>::nodes_sentinel;
+              return nodes_sentinel(graph.nodes_end());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+
+        // child_iterator(node_ref)
+        struct function_child_begin{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires(typename typedef_node_ref::trait<G>::node_ref node){ traits::graph<G>::child_begin(node); }){
+            inline static decltype(auto) child_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_iterator = typename typedef_child_iterator::trait<G>::child_iterator;
+              return child_iterator(traits::graph<G>::child_begin(node));
+            }
+          };
+          VK_trait_case(G, 2, requires(typename typedef_node_ref::trait<G>::node_ref node){ node.child_begin(); }){
+            inline static decltype(auto) child_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_iterator = typename typedef_child_iterator::trait<G>::child_iterator;
+              return child_iterator(node.child_begin());
+            }
+          };
+          VK_trait_case(G, 1, requires(typename typedef_node_ref::trait<G>::node_ref node){ node->child_begin(); }){
+            inline static decltype(auto) child_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_iterator = typename typedef_child_iterator::trait<G>::child_iterator;
+              return child_iterator(node->child_begin());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        // child_sentinel(node_ref)
+        struct function_child_end{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires(typename typedef_node_ref::trait<G>::node_ref node){ traits::graph<G>::child_end(node); }){
+            inline static decltype(auto) child_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_sentinel = typename typedef_child_sentinel::trait<G>::child_sentinel;
+              return child_sentinel(traits::graph<G>::child_end(node));
+            }
+          };
+          VK_trait_case(G, 2, requires(typename typedef_node_ref::trait<G>::node_ref node){ node.child_end(); }){
+            inline static decltype(auto) child_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_sentinel = typename typedef_child_sentinel::trait<G>::child_sentinel;
+              return child_sentinel(node.child_end());
+            }
+          };
+          VK_trait_case(G, 1, requires(typename typedef_node_ref::trait<G>::node_ref node){ node->child_end(); }){
+            inline static decltype(auto) child_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_sentinel = typename typedef_child_sentinel::trait<G>::child_sentinel;
+              return child_sentinel(node->child_end());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+
+        // child_edge_iterator(node_ref)
+        struct function_child_edge_begin{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires(typename typedef_node_ref::trait<G>::node_ref node){ traits::graph<G>::child_edge_begin(node); }){
+            inline static decltype(auto) child_edge_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_iterator = typename typedef_child_edge_iterator::trait<G>::child_edge_iterator;
+              return child_edge_iterator(traits::graph<G>::child_edge_begin(node));
+            }
+          };
+          VK_trait_case(G, 2, requires(typename typedef_node_ref::trait<G>::node_ref node){ node.child_edge_begin(); }){
+            inline static decltype(auto) child_edge_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_iterator = typename typedef_child_edge_iterator::trait<G>::child_edge_iterator;
+              return child_edge_iterator(node.child_edge_begin());
+            }
+          };
+          VK_trait_case(G, 1, requires(typename typedef_node_ref::trait<G>::node_ref node){ node->child_edge_begin(); }){
+            inline static decltype(auto) child_edge_begin(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_iterator = typename typedef_child_edge_iterator::trait<G>::child_edge_iterator;
+              return child_edge_iterator(node->child_edge_begin());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        // child_edge_sentinel(node_ref)
+        struct function_child_edge_end{
+          VK_trait_init(3);
+          VK_trait_case(G, 3, requires(typename typedef_node_ref::trait<G>::node_ref node){ traits::graph<G>::child_edge_end(node); }){
+            inline static decltype(auto) child_edge_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_sentinel = typename typedef_child_edge_sentinel::trait<G>::child_edge_sentinel;
+              return child_edge_sentinel(traits::graph<G>::child_edge_end(node));
+            }
+          };
+          VK_trait_case(G, 2, requires(typename typedef_node_ref::trait<G>::node_ref node){ node.child_edge_end(); }){
+            inline static decltype(auto) child_edge_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_sentinel = typename typedef_child_edge_sentinel::trait<G>::child_edge_sentinel;
+              return child_edge_sentinel(node.child_edge_end());
+            }
+          };
+          VK_trait_case(G, 1, requires(typename typedef_node_ref::trait<G>::node_ref node){ node->child_edge_end(); }){
+            inline static decltype(auto) child_edge_end(typename typedef_node_ref::trait<G>::node_ref node) noexcept {
+              using child_edge_sentinel = typename typedef_child_edge_sentinel::trait<G>::child_edge_sentinel;
+              return child_edge_sentinel(node->child_edge_end());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+
+
+
+        // node_ref(const graph_type&)
+        struct function_get_entry_node{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires(const G& graph){ traits::graph<G>::get_entry_node(graph); }){
+            inline static decltype(auto) get_entry_node(const G& graph) noexcept {
+              using node_ref = typename typedef_node_ref::trait<G>::node_ref;
+              return ref_cast<node_ref>(valkyrie::traits::graph<G>::get_entry_node(graph));
+            }
+          };
+          VK_trait_case(G, 1, requires(const G& graph){ graph.entry_node(); }){
+            inline static decltype(auto) get_entry_node(const G& graph) noexcept {
+              using node_ref = typename typedef_node_ref::trait<G>::node_ref;
+              return ref_cast<node_ref>(graph.entry_node());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+        // node_ref(edge_ref)
+        struct function_edge_destination{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires(typename typedef_edge_ref::trait<G>::edge_ref edge){ traits::graph<G>::edge_destination(edge); }){
+            inline static decltype(auto) edge_destination(typename typedef_edge_ref::trait<G>::edge_ref edge) noexcept {
+              using node_ref = typename typedef_node_ref::trait<G>::node_ref;
+              return ref_cast<node_ref>(traits::graph<G>::edge_destination(edge));
+            }
+          };
+          VK_trait_case(G, 1, requires(typename typedef_edge_ref::trait<G>::edge_ref edge){ edge.destination(); }){
+            inline static decltype(auto) edge_destination(typename typedef_edge_ref::trait<G>::edge_ref edge) noexcept {
+              using node_ref = typename typedef_node_ref::trait<G>::node_ref;
+              return ref_cast<node_ref>(edge.destination());
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+        // u64(const graph_type&)
+        struct function_size{
+          VK_trait_init(2);
+          VK_trait_case(G, 2, requires(const G& graph){ traits::graph<G>::size(graph); }){
+            inline static u64 size(const G& graph) noexcept {
+              return valkyrie::traits::graph<G>::size(graph);
+            }
+          };
+          VK_trait_case(G, 1, requires(const G& graph){ graph.size(); }){
+            inline static u64 size(const G& graph) noexcept {
+              return graph.size();
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+
+        using trait_list = meta::list<typedef_node_type,
+                                     typedef_node_ref,
+                                     typedef_edge_type,
+                                     typedef_edge_ref,
+                                     typedef_nodes_iterator,
+                                     typedef_nodes_sentinel,
+                                     typedef_child_iterator,
+                                     typedef_child_sentinel,
+                                     typedef_child_edge_iterator,
+                                     typedef_child_edge_sentinel,
+
+                                     function_nodes_begin,
+                                     function_nodes_end,
+                                     function_child_begin,
+                                     function_child_end,
+                                     function_child_edge_begin,
+                                     function_child_edge_end,
+                                     function_edge_destination,
+                                     function_size>;
+      };
+      struct numeric{
+        struct bool_is_integral{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ { traits::graph<T>::integral } -> same_as<bool>; }){
+            VK_constant bool is_integral = traits::graph<T>::integral;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_integral = std::integral<T>;
+          };
+        };
+        struct bool_is_floating_point{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ { traits::graph<T>::floating_point } -> same_as<bool>; }){
+            VK_constant bool is_floating_point = traits::graph<T>::floating_point;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_floating_point = std::floating_point<T>;
+          };
+        };
+        struct bool_is_signed{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ { traits::graph<T>::is_signed } -> same_as<bool>; }){
+            VK_constant bool is_signed = traits::graph<T>::is_signed;
+          };
+          VK_trait_case(T, 2, bool_is_floating_point::trait<T>::is_floating_point){
+            VK_constant bool is_signed = true;
+          };
+          VK_trait_case(T, 1, bool_is_integral::trait<T>::is_integral){
+            VK_constant bool is_signed = std::signed_integral<T>;
+          };
+          VK_trait_no_fallback;
+        };
+        struct bool_is_bounded{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::numeric<T>::is_bounded } -> same_as<bool>; }){
+            VK_constant bool is_bounded = traits::numeric<T>::is_bounded;
+          };
+          VK_trait_case(T, 1, std::numeric_limits<T>::is_specialized){
+            VK_constant bool is_bounded = std::numeric_limits<T>::is_bounded;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_bounded = true;
+          };
+        };
+        struct bool_is_exact{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::numeric<T>::is_exact } -> same_as<bool>; }){
+            VK_constant bool is_exact = traits::numeric<T>::is_exact;
+          };
+          VK_trait_case(T, 1, std::numeric_limits<T>::is_specialized){
+            VK_constant bool is_exact = std::numeric_limits<T>::is_exact;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_bounded = bool_is_integral::trait<T>::is_integral;
+          };
+        };
+        struct size_bits{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ traits::numeric<T>::bits; }){
+            VK_constant decltype(auto) bits = traits::numeric<T>::bits;
+          };
+          VK_trait_fallback(T){
+            VK_constant u64 bits = sizeof(T) * CHAR_BIT;
+          };
+        };
+
+        using trait_list = meta::list<bool_is_integral,
+                                     bool_is_floating_point,
+                                     bool_is_signed,
+                                     bool_is_bounded,
+                                     bool_is_exact,
+                                     size_bits>;
+      };
+      struct singleton{
+        // const singleton_type&()
+
+        struct function_instance;
+
+        template <typename Trait, typename T>
+        struct detect_is_fallback{
+          using type = std::is_base_of<typename Trait::template fallback<T>, typename Trait::template trait<T>>;
+        };
+
+        struct bool_is_const{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ { traits::singleton<T>::is_const } -> same_as<bool>; }){
+            VK_constant bool is_const = traits::singleton<T>::is_const;
+          };
+          VK_trait_case(T, 2, requires{ { T::is_const } -> same_as<bool>; }){
+            VK_constant bool is_const = T::is_const;
+          };
+          VK_trait_case(T, 1, !detect_is_fallback<function_instance, T>::type::value);
+          VK_trait_fallback(T){
+            VK_constant bool is_const = false;
+          };
+        };
+
+        struct function_instance{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ { traits::singleton<T>::instance } -> same_as<T>; }){
+            VK_forceinline static decltype(auto) instance() noexcept {
+              return traits::singleton<T>::instance;
+            }
+          };
+          VK_trait_case(T, 2, requires{ { traits::singleton<T>::instance() } -> same_as<T>; }){
+            VK_forceinline static decltype(auto) instance() noexcept {
+              return traits::singleton<T>::instance();
+            }
+          };
+          VK_trait_case(T, 1, requires{ { T::get() } -> same_as<T>; }){
+            VK_forceinline static decltype(auto) instance() noexcept {
+              return T::get();
+            }
+          };
+
+          // A separate template is used so that the implementation of is_const can detect
+          // whether or not the fallback implementation of instance() is in use.
+          // note: This could also be accomplished with a static member variable called
+          //       something along the lines of is_fallback, but that would introduce
+          //       is_fallback as a static member variable of singleton_traits, which is
+          //       undesirable. While this issue could be avoided by giving is_fallback
+          //       private visibility and adding a friend declaration of bool_is_const to
+          //       every case of the trait class, I find this a more elegant solution.
+          template <typename T>
+          struct fallback{
+            // Fallback is NOT constexpr, to support all possible cases, as there is currently
+            // no way to check whether or not any given expression can be evaluated in a
+            // constant evaluated context
+            VK_forceinline static decltype(auto) instance() noexcept {
+              if constexpr ( bool_is_const::trait<T>::is_const ) {
+                const static T instance_{};
+                return static_cast<const T&>(instance_);
+              }
+              else {
+                static T instance_{};
+                return static_cast<T&>(instance_);
+              }
+            }
+          };
+          VK_trait_fallback(T) : fallback<T>{};
+        };
+
+        using trait_list = meta::list<function_instance,
+                                      bool_is_const>;
+      };
+
+      template <typename T> requires(!singleton::detect_is_fallback<singleton::function_instance, T>::type::value)
+      struct singleton::bool_is_const::trait<T, 1>{
+        VK_constant bool is_const = std::is_const_v<remove_ref_t<decltype(singleton::function_instance::trait<T>::instance())>>;
+      };
+
+      struct klass{
+        struct string_name{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ traits::klass<T>::name; }){
+            VK_constant typename deferred_string_view<T>::type name = traits::klass<T>::name;
+          };
+          VK_trait_case(T, 1, requires{ T::class_name; }){
+            VK_constant typename deferred_string_view<T>::type name = T::class_name;
+          };
+          VK_trait_fallback(T){
+            // TODO: automatic generation of type class_traits<T>::name using VK_function_name hackery
+            VK_constant typename deferred_string_view<T>::type name = "automatic generation of class_traits<T>::name is not yet implemented";
+          };
+        };
+        struct string_scoped_name{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ traits::klass<T>::scoped_name; }){
+            VK_constant typename deferred_string_view<T>::type scoped_name = traits::klass<T>::scoped_name;
+          };
+          VK_trait_case(T, 1, requires{ T::scoped_class_name; }){
+            VK_constant typename deferred_string_view<T>::type scoped_name = T::scoped_class_name;
+          };
+          VK_trait_fallback(T){
+            // TODO: automatic generation of class_traits<T>::scoped_name using VK_function_name hackery
+            VK_constant typename deferred_string_view<T>::type scoped_name = "automatic generation of class_traits<T>::scoped_name is not yet implemented";
+          };
+        };
+
+        struct uuid_id{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::klass<T>::id } -> same_as<uuid>; }){
+            VK_constant uuid id = traits::klass<T>::id;
+          };
+          VK_trait_case(T, 1, requires{ { T::class_id } -> same_as<uuid>; }){
+            VK_constant uuid id = T::class_id;
+          };
+          VK_trait_no_fallback;
+        };
+
+        struct value_size{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::klass<T>::size } -> extent_type; }){
+            VK_constant auto size = traits::klass<T>::size;
+            VK_constant bool has_variable_size = same_as<decltype(size), dynamic_t>;
+          };
+          VK_trait_case(T, 1, std::derived_from<T, variable_size>){
+            VK_constant auto size = dynamic_t{};
+            VK_constant bool has_variable_size = true;
+          };
+          VK_trait_fallback(T){
+            VK_constant u64 size               = sizeof(T);
+            VK_constant bool has_variable_size = false;
+          };
+        };
+
+        // u64(const klass&)
+        struct function_object_size{
+          VK_trait_init(4);
+          VK_trait_case(T, 4, requires(const T& obj){ { traits::klass<T>::object_size(obj) } -> convertible_to<u64>; }){
+            VK_forceinline static u64 object_size(const T& obj) noexcept {
+              return valkyrie::traits::klass<T>::object_size(obj);
+            }
+          };
+          VK_trait_case(T, 3, requires(const T& obj){ { T::object_size(obj) } -> convertible_to<u64>; }){
+            VK_forceinline static u64 object_size(const T& obj) noexcept {
+              return T::object_size(obj);
+            }
+          };
+          VK_trait_case(T, 2, requires(const T& obj){ { obj.object_size() } -> convertible_to<u64>; }){
+            VK_forceinline static u64 object_size(const T& obj) noexcept {
+              return obj.object_size();
+            }
+          };
+          VK_trait_case(T, 1, !value_size::trait<T>::has_variable_size ) {
+            VK_forceinline static u64 object_size(const T&) noexcept {
+              return value_size::trait<T>::size;
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+        struct integer_alignment{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ traits::klass<T>::alignment; }){
+            static_assert(numeric::bool_is_integral::trait<T>::is_integral,
+                          "traits::klass<T>::alignment must be an integral value convertible to u64");
+            VK_constant u64 alignment = traits::klass<T>::alignment;
+          };
+          VK_trait_fallback(T){
+            VK_constant u64 alignment = alignof(T);
+          };
+        };
+
+        struct typedef_supertype{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ typename traits::klass<T>::supertype; }){
+            using supertype = typename traits::klass<T>::supertype;
+          };
+          VK_trait_case(T, 1, requires{ typename T::supertype; }){
+            using supertype = typename T::supertype;
+          };
+          VK_trait_fallback(T){
+            using supertype = root;
+          };
+        };
+        struct bool_is_polymorphic{
+          VK_trait_init(2);
+          VK_trait_case(T, 2, requires{ { traits::klass<T>::is_polymorphic } -> same_as<bool>; }){
+            VK_constant bool is_polymorphic = traits::klass<T>::is_polymorphic;
+          };
+          VK_trait_case(T, 1, not_same_as<root, typename typedef_supertype::trait<T>::supertype>){
+            VK_constant bool is_polymorphic = trait<typename typedef_supertype::trait<T>::supertype>::is_polymorphic;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_polymorphic = std::is_polymorphic_v<T>;
+          };
+        };
+        struct bool_is_abstract{
+          VK_trait_init(1);
+          VK_trait_case(T, 1, requires{ { traits::klass<T>::is_abstract } -> same_as<bool>; }){
+            VK_constant bool is_abstract = traits::klass<T>::is_abstract;
+          };
+          VK_trait_fallback(T){
+            VK_constant bool is_abstract = std::is_abstract_v<T>;
+          };
+        };
+
+        using trait_list = meta::list<string_name,
+                                     string_scoped_name,
+                                     uuid_id,
+                                     function_object_size,
+                                     integer_alignment,
+                                     typedef_supertype,
+                                     bool_is_polymorphic,
+                                     bool_is_abstract>;
+      };
+
+      struct hash{
+        struct function_call64{
+          VK_trait_init(5);
+          VK_trait_case(T, 5, requires(const T& val){ { traits::hash<T>::call64(val) } -> convertible_to<u64>; }){
+            VK_constant u64 call64(in_param_t<T> val) noexcept {
+              return traits::hash<T>::call64(val);
+            }
+          };
+          VK_trait_case(T, 4, requires(const T& val){ { traits::hash<T>::call(val) } -> same_as<u64>; }){
+            VK_constant u64 call64(in_param_t<T> val) noexcept {
+              return traits::hash<T>::call(val);
+            }
+          };
+          VK_trait_case(T, 3, requires(const T& val){ { val.hash64() } -> convertible_to<u64>; }){
+            VK_constant u64 call64(in_param_t<T> val) noexcept {
+              return val.hash64();
+            }
+          };
+          VK_trait_case(T, 2, requires(const T& val){ { val.hash() } -> same_as<u64>; }){
+            VK_constant u64 call64(in_param_t<T> val) noexcept {
+              return val.hash();
+            }
+          };
+          VK_trait_case(T, 1, requires(const T& val, std::hash<T> h){ { h(val) } -> convertible_to<u64>; }){
+            VK_constant u64 call64(in_param_t<T> val) noexcept {
+              return std::hash<T>{}(val);
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        struct function_call32{
+          VK_trait_init(5);
+          VK_trait_case(T, 5, requires(const T& val){ { traits::hash<T>::call32(val) } -> convertible_to<u32>; }){
+            VK_constant u32 call32(in_param_t<T> val) noexcept {
+              return traits::hash<T>::call32(val);
+            }
+          };
+          VK_trait_case(T, 4, requires(const T& val){ { traits::hash<T>::call(val) } -> same_as<u32>; }){
+            VK_constant u32 call32(in_param_t<T> val) noexcept {
+              return traits::hash<T>::call(val);
+            }
+          };
+          VK_trait_case(T, 3, requires(const T& val){ { val.hash32() } -> convertible_to<u32>; }){
+            VK_constant u32 call32(in_param_t<T> val) noexcept {
+              return val.hash32();
+            }
+          };
+          VK_trait_case(T, 2, requires(const T& val){ { val.hash() } -> same_as<u32>; }){
+            VK_constant u32 call32(in_param_t<T> val) noexcept {
+              return val.hash();
+            }
+          };
+          VK_trait_case(T, 1, requires(const T& val){ function_call64::trait<T>::call64(val); }){
+            VK_constant u32 call32(in_param_t<T> val) noexcept {
+              u64 tmp = function_call64::trait<T>::call64(val);
+              return static_cast<u32>((tmp << 5) + tmp + (tmp >> 32));
+            }
+          };
+          VK_trait_no_fallback;
+        };
+
+        using trait_list = meta::set<function_call64,
+                                     function_call32>;
+      };
+
+
+      // TODO: Implement string traits_v2
+      struct string{
+
+        struct typedef_char_type{};
+
+
+        struct bool_is_null_terminated{};
+
+
+        // char_type*(const string&)
+        struct function_data{};
+        // u64(const string&)
+        struct function_length{};
+
+        using trait_list = meta::set<typedef_char_type,
+                                     bool_is_null_terminated,
+                                     function_data,
+                                     function_length>;
+      };
+      struct iterator{
+        struct typedef_pointer{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::iterator<T>::pointer; }){
+            using pointer = typename traits::iterator<T>::pointer;
+          };
+          VK_trait_case(T, 2, requires{ typename T::pointer; }){
+            using pointer = typename T::pointer;
+          };
+          VK_trait_case(T, 1, requires{ typename std::iterator_traits<T>::pointer; }){
+            using pointer = typename std::iterator_traits<T>::pointer;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_reference{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::iterator<T>::reference; }){
+            using reference = typename traits::iterator<T>::reference;
+          };
+          VK_trait_case(T, 2, requires{ typename T::reference; }){
+            using reference = typename T::reference;
+          };
+          VK_trait_case(T, 1, requires{ typename std::iterator_traits<T>::reference; }){
+            using reference = typename std::iterator_traits<T>::reference;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_value_type{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::iterator<T>::value_type; }){
+            using value_type = typename traits::iterator<T>::value_type;
+          };
+          VK_trait_case(T, 2, requires{ typename T::value_type; }){
+            using value_type = typename T::value_type;
+          };
+          VK_trait_case(T, 1, requires{ typename std::iterator_traits<T>::value_type; }){
+            using value_type = typename std::iterator_traits<T>::value_type;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_category{
+          VK_trait_init(5);
+          VK_trait_case(T, 5, requires{ typename traits::iterator<T>::category; }){
+            using category = typename traits::iterator<T>::category;
+          };
+          VK_trait_case(T, 4, requires{ typename T::iterator_concept; }){
+            using category = typename T::iterator_concept;
+          };
+          VK_trait_case(T, 3, requires{ typename T::iterator_category; }){
+            using category = typename T::iterator_category;
+          };
+          VK_trait_case(T, 2, requires{ typename std::iterator_traits<T>::iterator_concept; }){
+            using category = typename std::iterator_traits<T>::iterator_concept;
+          };
+          VK_trait_case(T, 1, requires{ typename std::iterator_traits<T>::iterator_category; }){
+            using category = typename std::iterator_traits<T>::iterator_category;
+          };
+          VK_trait_no_fallback;
+        };
+        struct typedef_difference_type{
+          VK_trait_init(3);
+          VK_trait_case(T, 3, requires{ typename traits::iterator<T>::difference_type; }){
+            using difference_type = typename traits::iterator<T>::difference_type;
+          };
+          VK_trait_case(T, 2, requires{ typename T::difference_type; }){
+            using difference_type = typename T::difference_type;
+          };
+          VK_trait_case(T, 1, requires{ typename std::iterator_traits<T>::difference_type; }){
+            using difference_type = typename std::iterator_traits<T>::difference_type;
+          };
+          VK_trait_fallback(T){
+            using difference_type = i64;
+          };
+        };
+
+        using trait_list = meta::set<typedef_pointer,
+                                     typedef_reference,
+                                     typedef_value_type,
+                                     typedef_category,
+                                     typedef_difference_type>;
+      };
+      // TODO: Implement allocator traits_v2
+
+      struct allocator{
+
+        struct typedef_allocator_type{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires{ typename traits::allocator<A>::allocator_type; }){
+            using allocator_type = typename traits::allocator<A>::allocator_type;
+          };
+          VK_trait_case(A, 2, requires{ typename A::template rebind<char>::other; }){
+            using allocator_type = std::decay_t<typename A::template rebind<char>::other>;
+          };
+          VK_trait_case_match((template <typename,typename...> typename Alloc, typename T, typename ...U),
+                              Alloc<T, U...>,
+                              1, requires{ typename Alloc<T, U...>::value_type; }){
+            using allocator_type = std::decay_t<typename Alloc<T, U...>::value_type>;
+          };
+          VK_trait_fallback(A){
+            using allocator_type = std::decay_t<A&>;
+          };
+        };
+
+        template <typename A>
+        using allocator_type_t = typename typedef_allocator_type::trait<A>::allocator_type;
+
+        struct function_allocate_node{
+          VK_trait_init(4);
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::allocate_node(alloc, n, n) } -> exact_same_as<void*>; }){
+            VK_nodiscard inline static void* allocate_node(allocator_type_t<A>& alloc, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::allocate_node(alloc, size, align);
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, u64 n){ { alloc.allocate_node(n, n) } -> exact_same_as<void*>; }){
+            VK_nodiscard inline static void* allocate_node(allocator_type_t<A>& alloc, u64 size, u64 align) noexcept {
+              return alloc.allocate_node(size, align);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ static_cast<void*>(alloc.allocate(n, n)); }){
+            VK_nodiscard inline static void* allocate_node(allocator_type_t<A>& alloc, u64 size, u64 align) noexcept {
+              return static_cast<void*>(alloc.allocate(size, align));
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, u64 n){ static_cast<void*>(alloc.allocate(n)); }){
+            VK_nodiscard inline static void* allocate_node(allocator_type_t<A>& alloc, u64 size, u64) noexcept {
+              return static_cast<void*>(alloc.allocate(size));
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        struct function_deallocate_node{
+          VK_trait_init(4);
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* p, u64 n){ traits::allocator<A>::deallocate_node(alloc, p, n, n); }){
+            inline static void deallocate_node(allocator_type_t<A>& alloc, void* p, u64 size, u64 align) noexcept {
+              traits::allocator<A>::deallocate_node(alloc, p, size, align);
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, void* p, u64 n){ alloc.deallocate_node(p, n, n); }){
+            inline static void deallocate_node(allocator_type_t<A>& alloc, void* p, u64 size, u64 align) noexcept {
+              alloc.deallocate_node(p, size, align);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, char* p, u64 n){ alloc.deallocate(p, n, n); }){
+            inline static void deallocate_node(allocator_type_t<A>& alloc, void* p, u64 size, u64 align) noexcept {
+              alloc.deallocate(static_cast<char*>(p), size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, char* p, u64 n){ alloc.deallocate(p, n); }){
+            inline static void deallocate_node(allocator_type_t<A>& alloc, void* p, u64 size, u64) noexcept {
+              alloc.deallocate(static_cast<char*>(p), size);
+            }
+          };
+          VK_trait_no_fallback;
+        };
+        struct function_allocate_array{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::allocate_array(alloc, n, n, n) } -> exact_same_as<void*>; }){
+            inline static void* allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::allocate_array(alloc, count, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, u64 n){ { alloc.allocate_array(n, n, n) } -> exact_same_as<void*>; }){
+            inline static void* allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return alloc.allocate_array(count, size, align);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static void*
+            allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return function_allocate_node::trait<A>::allocate_node(alloc, count * size, align);
+            }
+          };
+        };
+        struct function_deallocate_array{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* p, u64 n){ traits::allocator<A>::deallocate_array(alloc, p, n, n, n); }){
+            inline static void deallocate_array(allocator_type_t<A>& alloc, void* p, u64 count, u64 size, u64 align) noexcept {
+              traits::allocator<A>::deallocate_array(alloc, p, count, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* p, u64 n){ alloc.deallocate_array(p, n, n, n); }){
+            inline static void
+            deallocate_array(allocator_type_t<A>& alloc, void* p, u64 count, u64 size, u64 align) noexcept {
+              alloc.deallocate_array(p, count, size, align);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static void
+            deallocate_array(allocator_type_t<A>& alloc, void* p, u64 count, u64 size, u64 align) noexcept {
+              function_deallocate_node::trait<A>::deallocate_node(alloc, p, count * size, align);
+            }
+          };
+        };
+        struct function_try_allocate_node{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::try_allocate_node(alloc, n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_allocate_node(allocator_type_t<A>& alloc, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::try_allocate_node(alloc, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, u64 n){ { alloc.try_allocate_node(n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_allocate_node(allocator_type_t<A>& alloc, u64 size, u64 align) noexcept {
+              return alloc.try_allocate_node(size, align);
+            }
+          };
+          VK_trait_fallback(A){};
+        };
+        struct function_try_deallocate_node{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { traits::allocator<A>::try_deallocate_node(alloc, p, n, n) } noexcept -> exact_same_as<bool>; }){
+            inline static bool try_deallocate_node(allocator_type_t<A>& alloc, void* ptr, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::try_deallocate_node(alloc, ptr, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { alloc.try_deallocate_node(p, n, n) } noexcept -> exact_same_as<bool>; }){
+            inline static bool try_deallocate_node(allocator_type_t<A>& alloc, void* ptr, u64 size, u64 align) noexcept {
+              return alloc.try_deallocate_node(ptr, size, align);
+            }
+          };
+          VK_trait_fallback(A){};
+        };
+
+        struct bool_is_composable{
+          VK_trait_init(1);
+          VK_trait_case(A, 1, requires{
+                &function_try_allocate_node::trait<A>::try_allocate_node;
+                &function_try_deallocate_node::trait<A>::try_deallocate_node;
+          }){
+            VK_constant bool is_composable = true;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool is_composable = false;
+          };
+        };
+
+        struct function_try_allocate_array{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, !bool_is_composable::trait<A>::is_composable){}; // not provided if try_allocate_node and try_deallocate_node are not both provided.
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::try_allocate_array(alloc, n, n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::try_allocate_array(alloc, count, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, u64 n){ { alloc.try_allocate_array(n, n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return alloc.try_allocate_array(count, size, align);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static void* try_allocate_array(allocator_type_t<A>& alloc, u64 count, u64 size, u64 align) noexcept {
+              return function_try_allocate_node::trait<A>::try_allocate_node(alloc, count * size, align);
+            }
+          };
+        };
+        struct function_try_deallocate_array{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, !bool_is_composable::trait<A>::is_composable){}; // not provided if try_allocate_node and try_deallocate_node are not both provided.
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { traits::allocator<A>::try_deallocate_array(alloc, p, n, n, n) } noexcept -> exact_same_as<bool>; }){
+            inline static bool try_deallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 count, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::try_deallocate_array(alloc, ptr, count, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { alloc.try_deallocate_array(p, n, n, n) } noexcept -> exact_same_as<bool>; }){
+            inline static bool try_deallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 count, u64 size, u64 align) noexcept {
+              return alloc.try_deallocate_array(ptr, count, size, align);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static bool try_deallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 count, u64 size, u64 align) noexcept {
+              return function_try_deallocate_node::trait<A>::try_deallocate_node(alloc, ptr, count * size, align);
+            }
+          };
+        };
+
+        struct function_max_node_size{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_node_size(alloc) } -> convertible_to<u64>; }){
+            inline static u64 max_node_size(const allocator_type_t<A>& alloc) noexcept {
+              return traits::allocator<A>::max_node_size(alloc);
+            }
+          };
+          VK_trait_case(A, 2, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_node_size() } -> convertible_to<u64>; }){
+            inline static u64 max_node_size(const allocator_type_t<A>&) noexcept {
+              return traits::allocator<A>::max_node_size();
+            }
+          };
+          VK_trait_case(A, 1, requires(const allocator_type_t<A>& alloc){ { alloc.max_node_size() } -> convertible_to<u64>; }){
+            inline static u64 max_node_size(const allocator_type_t<A>& alloc) noexcept {
+              return alloc.max_node_size();
+            }
+          };
+          VK_trait_fallback(A){
+            inline static u64 max_node_size(const allocator_type_t<A>&) noexcept {
+              return static_cast<u64>(-1);
+            }
+          };
+        };
+        struct function_max_array_size{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_array_size(alloc) } -> convertible_to<u64>; }){
+            inline static u64 max_array_size(const allocator_type_t<A>& alloc) noexcept {
+              return traits::allocator<A>::max_array_size(alloc);
+            }
+          };
+          VK_trait_case(A, 2, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_array_size() } -> convertible_to<u64>; }){
+            inline static u64 max_array_size(const allocator_type_t<A>&) noexcept {
+              return traits::allocator<A>::max_array_size();
+            }
+          };
+          VK_trait_case(A, 1, requires(const allocator_type_t<A>& alloc){ { alloc.max_array_size() } -> convertible_to<u64>; }){
+            inline static u64 max_array_size(const allocator_type_t<A>& alloc) noexcept {
+              return alloc.max_array_size();
+            }
+          };
+          VK_trait_fallback(A){
+            inline static u64 max_array_size(const allocator_type_t<A>& alloc) noexcept {
+              return function_max_node_size::trait<A>::max_node_size(alloc);
+            }
+          };
+        };
+        struct function_max_alignment{
+          VK_trait_init(1);
+          VK_trait_case(A, 3, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_alignment(alloc) } -> convertible_to<u64>; }){
+            inline static u64 max_alignment(const allocator_type_t<A>& alloc) noexcept {
+              return traits::allocator<A>::max_alignment(alloc);
+            }
+          };
+          VK_trait_case(A, 2, requires(const allocator_type_t<A>& alloc){ { traits::allocator<A>::max_alignment() } -> convertible_to<u64>; }){
+            inline static u64 max_alignment(const allocator_type_t<A>&) noexcept {
+              return traits::allocator<A>::max_alignment();
+            }
+          };
+          VK_trait_case(A, 1, requires(const allocator_type_t<A>& alloc){
+            { alloc.max_alignment() } -> convertible_to<u64>;
+          }){
+            inline static u64 max_alignment(const allocator_type_t<A>& alloc) noexcept {
+              return alloc.max_alignment();
+            }
+          };
+          VK_trait_fallback(A){
+            inline static u64 max_alignment(const allocator_type_t<A>&) noexcept {
+              return alignof(std::max_align_t);
+            }
+          };
+        };
+
+        struct bool_is_stateful{
+          VK_trait_init(4);
+          VK_trait_case(A, 4, requires{ { traits::allocator<A>::is_stateful } -> same_as<bool>; }){
+            VK_constant bool is_stateful = traits::allocator<A>::is_stateful;
+          };
+          VK_trait_case(A, 3, requires{ { A::is_stateful } -> same_as<bool>; }){
+            VK_constant bool is_stateful = A::is_stateful;
+          };
+          VK_trait_case(A, 2, std::is_empty_v<allocator_type_t<A>> && std::is_default_constructible_v<allocator_type_t<A>>){
+            VK_constant bool is_stateful = false;
+          };
+          VK_trait_case(A, 1, !std::is_empty_v<allocator_type_t<A>>){
+            VK_constant bool is_stateful = true;
+          };
+          VK_trait_no_fallback;
+        };
+        struct bool_is_shared{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, !bool_is_stateful::trait<A>::is_stateful){
+            VK_constant bool is_shared = false;
+          };
+          VK_trait_case(A, 2, requires{ { traits::allocator<A>::is_shared } -> exact_same_as<bool>; }){
+            VK_constant bool is_shared = traits::allocator<A>::is_shared;
+          };
+          VK_trait_case(A, 1, requires{ { A::is_shared } -> exact_same_as<bool>; }){
+            VK_constant bool is_shared = A::is_shared;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool is_shared = false;
+          };
+        };
+        struct bool_is_thread_safe{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires{ { traits::allocator<A>::is_thread_safe } -> same_as<bool>; }){
+            VK_constant bool is_thread_safe = traits::allocator<A>::is_thread_safe;
+          };
+          VK_trait_case(A, 1, requires{ { A::is_thread_safe } -> same_as<bool>; }){
+            VK_constant bool is_thread_safe = A::is_thread_safe;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool is_thread_safe = !bool_is_stateful::trait<A>::is_stateful;
+          };
+        };
+
+
+        struct bool_propagate_on_container_copy_assignment{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires{ { traits::allocator<A>::propagate_on_container_copy_assignment } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_copy_assignment = traits::allocator<A>::propagate_on_container_copy_assignment;
+          };
+          VK_trait_case(A, 2, requires{ { A::propagate_on_container_copy_assignment } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_copy_assignment = A::propagate_on_container_copy_assignment;
+          };
+          VK_trait_case(A, 1, requires{ { A::propagate_on_container_copy_assignment::value } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_copy_assignment = A::propagate_on_container_copy_assignment::value;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool propagate_on_container_copy_assignment = bool_is_stateful::trait<A>::is_stateful;
+          };
+        };
+        struct bool_propagate_on_container_move_assignment{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires{ { traits::allocator<A>::propagate_on_container_move_assignment } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_move_assignment = traits::allocator<A>::propagate_on_container_move_assignment;
+          };
+          VK_trait_case(A, 2, requires{ { A::propagate_on_container_move_assignment } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_move_assignment = A::propagate_on_container_move_assignment;
+          };
+          VK_trait_case(A, 1, requires{ { A::propagate_on_container_move_assignment::value } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_move_assignment = A::propagate_on_container_move_assignment::value;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool propagate_on_container_move_assignment = bool_is_stateful::trait<A>::is_stateful;
+          };
+        };
+        struct bool_propagate_on_container_swap{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires{ { traits::allocator<A>::propagate_on_container_swap } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_swap = traits::allocator<A>::propagate_on_container_swap;
+          };
+          VK_trait_case(A, 2, requires{ { A::propagate_on_container_swap } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_swap = A::propagate_on_container_swap;
+          };
+          VK_trait_case(A, 1, requires{ { A::propagate_on_container_swap::value } -> same_as<bool>; }){
+            VK_constant bool propagate_on_container_swap = A::propagate_on_container_swap::value;
+          };
+          VK_trait_fallback(A){
+            VK_constant bool propagate_on_container_swap = bool_is_stateful::trait<A>::is_stateful;
+          };
+        };
+
+        struct function_select_on_container_copy_construction{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(const allocator_type_t<A>& alloc){
+            { traits::allocator<A>::select_on_container_copy_construction(alloc) } -> same_as<allocator_type_t<A>>;
+          }){
+            inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
+              return traits::allocator<A>::select_on_container_copy_construction(alloc);
+            }
+          };
+          VK_trait_case(A, 1, requires(const allocator_type_t<A>& alloc){
+            { alloc.select_on_container_copy_construction() } -> same_as<allocator_type_t<A>>;
+          }){
+            inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
+              return alloc.select_on_container_copy_construction();
+            }
+          };
+          VK_trait_fallback(A){
+            inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
+              return alloc;
+            }
+          };
+        };
+
+
+        using trait_list = meta::set<
+            typedef_allocator_type,
+
+            function_allocate_node,
+            function_deallocate_node,
+            function_allocate_array,
+            function_deallocate_array,
+
+            function_try_allocate_node,
+            function_try_deallocate_node,
+            bool_is_composable,
+            function_try_allocate_array,
+            function_try_deallocate_array,
+
+            function_max_node_size,
+            function_max_array_size,
+            function_max_alignment,
+
+            bool_is_stateful,
+            bool_is_shared,
+            bool_is_thread_safe,
+
+            bool_propagate_on_container_copy_assignment,
+            bool_propagate_on_container_move_assignment,
+            bool_propagate_on_container_swap,
+            function_select_on_container_copy_construction>;
+      };
+
+      // TODO: Implement container traits_v2
+      struct container{
+
+        struct typedef_element_type{};
+
+        using trait_list = meta::set<typedef_element_type>;
+      };
+      // TODO: Implement agent traits_v2
+      struct agent{
+        struct typeset_consumes{};
+        struct typeset_produces{};
+
+        using trait_list = meta::set<typeset_consumes,
+                                     typeset_produces>;
+      };
+      // TODO: Implement message traits_v2
+      struct message{
+        struct value_size{};
+
+        using trait_list = meta::set<value_size>;
+      };
+
+      /*struct serializable{
+        struct function_do_
+      };*/
+
+
+      template <typename SpecificTrait, typename T>
+      concept satisfied_by = std::is_empty_v<typename SpecificTrait::template trait<T>>;
+
+      struct success{};
+      struct no_more_traits{};
+
+      template <typename T, typename TraitList>
+      struct do_trait_lookup;
+
+      template <typename T, typename ...Traits>
+      struct do_trait_lookup<T, meta::list<Traits...>> : Traits::template trait<T>...{};
+
+      /*template <typename T, typelist List>
+      struct instantiate{
+        using type = success;
+      };
+      template <typename T, nonempty_typelist List>
+      struct instantiate<T, List> {
+        using type = typename meta::front_t<List>::template trait<T>;
+      };
+
+      template <typename T, typelist List>
+      struct next_trait{
+        using type = no_more_traits;
+      };
+      template <typename T, nonempty_typelist List>
+      struct next_trait<T, List>{
+        using type = do_trait_lookup<T, meta::pop_front_t<List>>;
+      };
+
+      template <typename T, typename TraitList>
+      struct do_trait_lookup : instantiate<T, TraitList>::type,
+                               next_trait<T, TraitList>::type{};*/
+
+      template <typename List>
+      struct trait_not_satisfied{ using failed_trait = meta::front_t<List>; };
+      template <>
+      struct trait_not_satisfied<meta::list<>>{ };
+
+      template <typename T, typename TraitList>
+      struct do_trait_concept_check;
+
+      template <typename T, not_same_as<meta::empty_list> TraitList>
+      requires(satisfied_by<meta::front_t<TraitList>, T>)
+      struct do_trait_concept_check<T, TraitList> : do_trait_concept_check<T, meta::pop_front_t<TraitList>>{};
+
+      template <typename T, typename TraitList>
+      struct do_trait_concept_check : trait_not_satisfied<TraitList>{};
+
+
+      template <typename TraitList>
+      struct each_trait;
+      template <typename ...Trait>
+      struct each_trait<meta::list<Trait...>>{
+        struct success{};
+        template <typename T>
+        struct failure{
+          using failed_trait = T;
+        };
+
+
+        template <typename T>
+        struct inherit : Trait::template trait<T> ... {};
+
+
+
+
+        template <typename T, typename ...List>
+        struct satisfied_;
+        template <typename T, satisfied_by<T> Head, typename ...Tail>
+        struct satisfied_<T, Head, Tail...> : satisfied_<T, Tail...>{};
+        template <typename T, typename Head, typename ...Tail>
+        struct satisfied_<T, Head, Tail...> : failure<Head>{};
+        template <typename T>
+        struct satisfied_<T>;
+
+        template <typename T>
+        using satisfied = satisfied_<T, Trait...>;
+      };
+
+      template <typename T, typename Trait>
+      struct traits_impl : do_trait_lookup<T, typename Trait::trait_list>{};
+
+      template <typename T, typename Trait>
+      concept satisfies_trait = !requires{
+        typename do_trait_concept_check<T, typename Trait::trait_list>::failed_trait;
+      };
+    }
   }
-  template <contiguous_range_type Rng>
-  inline constexpr static size_t rangeSize(Rng&& rng) noexcept {
-    return array_traits<Rng>::getSize(std::forward<Rng>(rng));
+
+  inline namespace concepts{
+    template <typename T>
+    concept range_c = traits::detail::satisfies_trait<T, traits::detail::range>;
+    template <typename T>
+    concept pointer_c = traits::detail::satisfies_trait<T, traits::detail::pointer>;
+    template <typename T>
+    concept enumerator_c = traits::detail::satisfies_trait<T, traits::detail::enumerator>;
+    template <typename T>
+    concept graph_c = traits::detail::satisfies_trait<T, traits::detail::graph>;
+    template <typename T>
+    concept numeric_c = traits::detail::satisfies_trait<T, traits::detail::numeric>;
+    template <typename T>
+    concept integral_c = numeric_c<T> && traits::detail::numeric::bool_is_integral::trait<T>::is_integral;
+    template <typename T>
+    concept signed_integral_c = integral_c<T> && traits::detail::numeric::bool_is_signed::trait<T>::is_signed;
+    template <typename T>
+    concept unsigned_integral_c = integral_c<T> && !traits::detail::numeric::bool_is_signed::trait<T>::is_signed;
+    template <typename T>
+    concept floating_point_c = numeric_c<T> && traits::detail::numeric::bool_is_floating_point::trait<T>::is_floating_point;
+    template <typename T>
+    concept allocator_c = traits::detail::satisfies_trait<T, traits::detail::allocator>;
+    template <typename T>
+    concept iterator_c  = traits::detail::satisfies_trait<T, traits::detail::iterator>;
+    template <typename T>
+    concept string_c    = traits::detail::satisfies_trait<T, traits::detail::string>;
+    template <typename T>
+    concept singleton_c = traits::detail::satisfies_trait<T, traits::detail::singleton>;
+    template <typename T>
+    concept hashable_c = traits::detail::satisfies_trait<T, traits::detail::hash>;
+
+    template <typename T>
+    concept bitwise_movable = !requires{
+      typename traits::bitwise_movable<T>::invalid_specialization;
+    };
+    template <typename From, typename To>
+    concept bit_castable_to = sizeof(From) == sizeof(To) && bitwise_movable<To> && bitwise_movable<From>;
   }
+
+
+  template <range_c R>
+  using range_traits     = traits::detail::traits_impl<R, traits::detail::range>;
+  template <pointer_c P>
+  using pointer_traits   = traits::detail::traits_impl<P, traits::detail::pointer>;
+  template <enumerator_c E>
+  using enum_traits      = traits::detail::traits_impl<E, traits::detail::enumerator>;
+  template <graph_c G>
+  using graph_traits     = traits::detail::traits_impl<G, traits::detail::graph>;
+  template <numeric_c N>
+  using numeric_traits   = traits::detail::traits_impl<N, traits::detail::numeric>;
+  template <allocator_c A>
+  using allocator_traits = traits::detail::traits_impl<A, traits::detail::allocator>;
+  template <iterator_c I>
+  using iterator_traits  = traits::detail::traits_impl<I, traits::detail::iterator>;
+  template <string_c S>
+  using string_traits    = traits::detail::traits_impl<S, traits::detail::string>;
+  template <singleton_c S>
+  using singleton_traits = traits::detail::traits_impl<S, traits::detail::singleton>;
+
+  template <hashable_c T>
+  using hashable_traits  = traits::detail::traits_impl<T, traits::detail::hash>;
+
+
+
+
+
+
+  namespace impl{
+    template <typename T>
+    struct protected_is_composable_test : T{
+      meta::true_type test_is_composable() const requires(requires{ { this->is_composable() } -> same_as<bool>; });
+      meta::false_type test_is_composable() const;
+    };
+  }
+
+
+
+
+
+
+  inline namespace concepts{
+    template <typename E>
+    concept status_enum_c = enumerator_c<E> && enum_traits<E>::is_status_code;
+    template <typename E>
+    concept bitflag_c     = enumerator_c<E> && enum_traits<E>::is_bitflag;
+
+    template <typename R>
+    concept forward_range_c = range_c<R> &&
+        std::derived_from<typename range_traits<R>::iterator_category, std::forward_iterator_tag>;
+    template <typename R>
+    concept bidirectional_range_c = forward_range_c<R> &&
+                              std::derived_from<typename range_traits<R>::iterator_category, std::bidirectional_iterator_tag>;
+    template <typename R>
+    concept random_access_range_c = bidirectional_range_c<R> &&
+                              std::derived_from<typename range_traits<R>::iterator_category, std::random_access_iterator_tag>;
+    template <typename R>
+    concept contiguous_range_c = random_access_range_c<R> &&
+                              std::derived_from<typename range_traits<R>::iterator_category, std::contiguous_iterator_tag>;
+
+
+
+    template <typename A>
+    concept composable_allocator_c = allocator_c<A> && allocator_traits<A>::is_composable;
+
+    template <typename T>
+    concept block_allocator_c = requires(T& alloc, const T& const_alloc, memory_block block){
+      { alloc.allocate_block() } -> same_as<memory_block>;
+      alloc.deallocate_block(block);
+      { const_alloc.next_block_size() } -> std::convertible_to<u64>;
+    };
+
+    template <typename T>
+    concept stateful_allocator_c = allocator_c<T> && allocator_traits<T>::is_stateful;
+    template <typename T>
+    concept stateless_allocator_c = allocator_c<T> && !allocator_traits<T>::is_stateful;
+    template <typename T>
+    concept shared_allocator_c = stateful_allocator_c<T> && allocator_traits<T>::is_shared;
+
+    template <typename T>
+    concept memory_storage_policy_c = requires(T& policy, const T& cpolicy, const impl::protected_is_composable_test<T>& tester){
+      typename T::allocator_type;
+      { policy.get_allocator() } -> std::convertible_to<typename T::allocator_type&>;
+      { cpolicy.get_allocator() } -> std::convertible_to<const typename T::allocator_type&>;
+      { tester.test_is_composable() } -> exact_same_as<meta::true_type>;
+    };
+    template <typename T>
+    concept segregatable_allocator_c = requires(T& seg, const T& cseg, u64 n){
+      typename T::allocator_type;
+      requires allocator_c<typename T::allocator_type>;
+      { seg.get_allocator() } -> exact_same_as<typename T::allocator_type&>;
+      { cseg.get_allocator() } -> exact_same_as<const typename T::allocator_type&>;
+      { cseg.use_allocate_node(n, n) } -> same_as<bool>;
+      { cseg.use_allocate_array(n, n, n) } -> same_as<bool>;
+    };
+    template <typename T>
+    concept memory_tracker_c      = requires(T& t, void* p, u64 count, u64 size, u64 align){
+      t.on_node_allocation(p, size, align);
+      t.on_array_allocation(p, count, size, align);
+      t.on_node_deallocation(p, size, align);
+      t.on_array_deallocation(p, count, size, align);
+    };
+    template <typename T>
+    concept memory_deep_tracker_c = memory_tracker_c<T> && requires(T& t, const memory_block& block){
+      t.on_allocator_growth(block);
+      t.on_allocator_shrinkage(block);
+    };
+  }
+
+
+
+
+  template <typename T, size_t N>
+  struct traits::range<T[N]>{
+    VK_constant auto static_size = N;
+  };
+  template <typename T, size_t N>
+  struct traits::range<std::array<T, N>>{
+    VK_constant auto static_size = N;
+  };
+
+  template <typename T> requires(
+      std::is_trivial_v<T> || 
+      std::is_standard_layout_v<T> ||
+      std::has_unique_object_representations_v<T>)
+  struct traits::bitwise_movable<T>{ };
+
+
+  template <>
+  struct traits::status_enum<code>{
+
+    VK_constant utf8 name[]        = u8"generic status code";
+    VK_constant utf8 scoped_name[] = u8"valkyrie::code";
+
+
+    using underlying_type = i32;
+    using status_domain   = generic_domain;
+  };
 }
 
 
-template <typename T>
-struct valkyrie::traits::Pointer<T*>{
-  using element_type = T;
-  using size_type = size_t;
-  using difference_type = ptrdiff_t;
-  template <typename U>
-  using rebind = copy_cv_t<U, T>*;
-};
+#define VK_extern_trait_instantiation(trait, ...) extern template struct ::valkyrie::traits::detail::traits_impl<__VA_ARGS__, ::valkyrie::traits::detail::trait>
+#define VK_trait_instantiation(trait, ...) template struct ::valkyrie::traits::detail::traits_impl<__VA_ARGS__, ::valkyrie::traits::detail::trait>
+#define VK_satisfies_subtrait(type, trait, subtrait) ::valkyrie::traits::detail::satisfied_by<::valkyrie::traits::detail:: trait :: subtrait, type>
 
-template <typename T> requires(std::is_trivially_copyable_v<T> && std::is_trivially_destructible_v<T>)
-struct valkyrie::traits::BitwiseMovable<T>{};
-
-
-#endif//VALKYRIE_TRAITS_HPP
+#endif  //VALKYRIE_TRAITS_HPP

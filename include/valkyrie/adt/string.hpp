@@ -55,7 +55,7 @@ namespace valkyrie{
 
   };*/
 
-  template <raw_allocator Alloc = default_allocator>
+  template <allocator_c Alloc = default_allocator>
   using basic_string = std::basic_string<utf8, std::char_traits<utf8>, std_allocator<utf8, Alloc>>;
 
   using string = basic_string<>;

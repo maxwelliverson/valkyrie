@@ -6,7 +6,7 @@
 #define VALKYRIE_MEMORY_JOINT_ALLOCATOR_HPP
 
 
-#include "detail/align.hpp"
+#include <valkyrie/utility/align.hpp>
 #include "detail/memory_stack.hpp"
 #include "detail/utility.hpp"
 #include "allocator_storage.hpp"

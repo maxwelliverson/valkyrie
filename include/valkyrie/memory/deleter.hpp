@@ -6,7 +6,7 @@
 #define VALKYRIE_MEMORY_DELETER_HPP
 
 #include "allocator_storage.hpp"
-#include "allocator_traits.hpp"
+#include <valkyrie/traits.hpp>
 
 namespace valkyrie {
   /// A deleter class that deallocates the memory through a specified \concept{concept_rawallocator,RawAllocator}.
