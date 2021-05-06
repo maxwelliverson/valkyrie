@@ -261,6 +261,201 @@ namespace valkyrie{
   template <typename Mtx, std::derived_from<impl::access_tag_t> Acc>
   lock(Mtx&, Acc, timeout) -> lock<Mtx, /*typename */impl::mutex_access<Acc>::template type>;
 
+
+  template <mutex_c Mtx>
+  class generic_lock{
+    using mutex_type = Mtx;
+
+    /*VK_nodiscard generic_lock(mutex_type& mut) noexcept {
+      do_write_lock(mut);
+    }*/
+
+    VK_nodiscard generic_lock(mutex_type& mut, impl::read_access_t) noexcept : is_write_(false){
+      do_read_lock(mut);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::write_access_t) noexcept {
+      do_write_lock(mut);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::upgrade_access_t) noexcept : is_write_(false){
+      do_write_lock(mut);
+    }
+
+    VK_nodiscard generic_lock(mutex_type& mut, impl::read_access_t, impl::non_blocking_t) noexcept : is_write_(false){
+      do_try_read_lock(mut);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::write_access_t, impl::non_blocking_t) noexcept {
+      do_try_write_lock(mut);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::upgrade_access_t, impl::non_blocking_t) noexcept : is_write_(false){
+      do_try_write_lock(mut);
+    }
+
+    VK_nodiscard generic_lock(mutex_type& mut, impl::read_access_t, deadline deadline_) noexcept : is_write_(false){
+      do_try_read_lock(mut, deadline_);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::write_access_t, deadline deadline_) noexcept {
+      do_try_write_lock(mut, deadline_);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::upgrade_access_t, deadline deadline_) noexcept : is_write_(false){
+      do_try_write_lock(mut, deadline_);
+    }
+
+    VK_nodiscard generic_lock(mutex_type& mut, impl::read_access_t, timeout timeout_) noexcept : is_write_(false){
+      do_try_read_lock(mut, timeout_);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::write_access_t, timeout timeout_) noexcept {
+      do_try_write_lock(mut, timeout_);
+    }
+    VK_nodiscard generic_lock(mutex_type& mut, impl::upgrade_access_t, timeout timeout_) noexcept : is_write_(false){
+      do_try_write_lock(mut, timeout_);
+    }
+
+    /*VK_nodiscard generic_lock(generic_lock&& other, impl::read_access_t) noexcept : is_write_(other.is_write_){
+      if ( other.mut_ ) {
+        do_read_lock(*std::exchange(other.mut_, nullptr));
+      }
+    }
+    VK_nodiscard generic_lock(generic_lock&& other, impl::write_access_t) noexcept : is_write_(other.is_write_){
+      if ( other.mut_ ) {
+        do_write_lock(*std::exchange(other.mut_, nullptr));
+      }
+    }
+    */
+
+    VK_nodiscard generic_lock(generic_lock&& other) noexcept
+        : mut_(std::exchange(other.mut_, nullptr)),
+          is_write_(other.is_write_){}
+
+
+    generic_lock(const generic_lock&) = delete;
+
+    ~generic_lock() {
+      do_unlock();
+    }
+
+
+
+
+    explicit operator bool() const noexcept {
+      return bool(mut_);
+    }
+
+
+    void unlock() noexcept {
+      do_unlock();
+      mut_ = nullptr;
+    }
+
+    mutex_type* take() noexcept {
+      do_unlock();
+      return release();
+    }
+    mutex_type* release() noexcept {
+      return std::exchange(mut_, nullptr);
+    }
+
+    void swap(generic_lock& other) noexcept {
+      std::swap(mut_, other.mut_);
+      std::swap(is_write_, other.is_write_);
+    }
+
+  private:
+
+    void do_write_lock(mutex_type& mutex) noexcept {
+      if ( is_write_ ) {
+        mutex.write_lock();
+      }
+      else {
+        mutex.upgrade_lock();
+        is_write_ = true;
+      }
+      mut_ = std::addressof(mutex);
+    }
+    void do_read_lock(mutex_type& mutex) noexcept {
+      if ( is_write_ )
+        return;
+      mutex.read_lock();
+      mut_ = std::addressof(mutex);
+    }
+
+    void do_try_write_lock(mutex_type& mutex) noexcept {
+      if ( is_write_ ) {
+        if ( !mutex.try_write_lock() )
+          return;
+      }
+      else {
+        if ( !mutex.try_upgrade_lock() )
+          return;
+        is_write_ = true;
+      }
+      mut_ = std::addressof(mutex);
+    }
+    void do_try_read_lock(mutex_type& mutex) noexcept {
+      if ( !is_write_ ) {
+        if ( !mutex.try_read_lock() )
+          return;
+      }
+      mut_ = std::addressof(mutex);
+    }
+
+    void do_try_write_lock(mutex_type& mutex, timeout t) noexcept {
+      if ( is_write_ ) {
+        if ( !mutex.try_write_lock(t) )
+          return;
+      }
+      else {
+        if ( !mutex.try_upgrade_lock(t) )
+          return;
+        is_write_ = true;
+      }
+      mut_ = std::addressof(mutex);
+    }
+    void do_try_read_lock(mutex_type& mutex, timeout t) noexcept {
+      if ( !is_write_ ) {
+        if ( !mutex.try_read_lock(t) )
+          return;
+      }
+      mut_ = std::addressof(mutex);
+    }
+
+    void do_try_write_lock(mutex_type& mutex, deadline d) noexcept {
+      if ( is_write_ ) {
+        if ( !mutex.try_write_lock(d) )
+          return;
+      }
+      else {
+        if ( !mutex.try_upgrade_lock(d) )
+          return;
+        is_write_ = true;
+      }
+      mut_ = std::addressof(mutex);
+    }
+    void do_try_read_lock(mutex_type& mutex, deadline d) noexcept {
+      if ( !is_write_ ) {
+        if ( !mutex.try_read_lock(d) )
+          return;
+      }
+      mut_ = std::addressof(mutex);
+    }
+
+    void do_unlock() noexcept {
+      if ( mut_ ) {
+        if ( is_write_ ) {
+          mut_->write_unlock();
+        }
+        else {
+          mut_->read_unlock();
+        }
+      }
+    }
+
+
+    mutex_type* mut_      = nullptr;
+    bool        is_write_ = true;
+  };
+
+
+
   class mutex{
     binary_semaphore sem_{1};
   public:
