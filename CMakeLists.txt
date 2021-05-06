@@ -118,7 +118,6 @@ add_object(valkyrie.adt.concurrent_list)
 add_object(valkyrie.adt.hazard_ptr)
 
 
-add_object(valkyrie.memory.detail.align)
 add_object(valkyrie.memory.detail.debug_helpers)
 add_object(valkyrie.memory.detail.free_list)
 add_object(valkyrie.memory.detail.free_list_array)
@@ -195,7 +194,7 @@ add_object(valkyrie.graphics.engine.obj)
 add_object(valkyrie.graphics.engine.resource)
 
 add_object_library(valkyrie.status OBJECTS error system)
-add_object_library(valkyrie.memory.detail OBJECTS align debug_helpers free_list free_list_array small_free_list)
+add_object_library(valkyrie.memory.detail OBJECTS debug_helpers free_list free_list_array small_free_list)
 add_object_library(valkyrie.memory OBJECTS detail debugging error heap_allocator iteration_allocator malloc_allocator memory_arena memory_pool memory_pool_collection memory_stack new_allocator static_allocator temporary_allocator virtual_memory)
 
 add_object_library(spirv OBJECTS SpirV Shader)
