@@ -6,12 +6,12 @@
 #define VALKYRIE_CONSTANTS_HPP
 
 #include "preprocessor.hpp"
+#include "primitives.hpp"
 
 namespace valkyrie{
   enum class dynamic_t : u32;
-
-
-
+  enum class nothing_t : u32;
+  VK_constant nothing_t nothing{1};
   VK_constant dynamic_t dynamic{};
 }
 
