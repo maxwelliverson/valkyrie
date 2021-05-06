@@ -6,8 +6,10 @@
 #define VALKYRIE_META_HPP
 
 #include <valkyrie/preprocessor.hpp>
+#include <valkyrie/primitives.hpp>
 
-#include <type_traits>
+#include <concepts>
+#include <bit>
 
 namespace valkyrie{
   
@@ -226,9 +228,18 @@ namespace valkyrie{
   template <typename T>
   using add_volatile_t = std::add_volatile_t<T>;
   template <typename T>
+  using add_cv_t = add_const_t<add_volatile_t<T>>;
+
+
+  template <typename T>
   using remove_const_t = std::remove_const_t<T>;
   template <typename T>
+  using remove_volatile_t = std::remove_volatile_t<T>;
+  template <typename T>
   using remove_cv_t = std::remove_cv_t<T>;
+
+  template <typename T>
+  using remove_ref_t = std::remove_reference_t<T>;
 
   template <typename T>
   using remove_cvref_t = std::remove_cvref_t<T>;
@@ -502,37 +513,84 @@ namespace valkyrie{
 
   namespace impl{
 
+    template <typename T>
+    struct strip_unbounded_array{
+      using type = T;
+    };
+    template <typename T>
+    struct strip_unbounded_array<T[]>{
+      using type = T;
+    };
+
     template <auto MemPtr>
     struct get_member_offset;
     template <typename Member, typename Class, Member Class::* MemPtr>
     struct get_member_offset<MemPtr>{
 
-      inline constexpr static size_t MemberArraySize = sizeof(Class) / sizeof(Member);
+      using member_type = std::conditional_t<std::is_unbounded_array_v<Member>, std::remove_extent_t<Member>, Member>;
+
+      // Multiply by two to allow for GCC style trailing array members
+      inline constexpr static size_t MemberArraySize = (sizeof(Class) / sizeof(member_type)) * 2;
 
       union{
-        char   init{};
-        Member member[MemberArraySize];
-        Class  object;
+        char        init{};
+        member_type member[MemberArraySize];
+        Class       object;
       };
 
+      constexpr get_member_offset() noexcept : init(0){}
+
       constexpr size_t calculate() const noexcept {
-        const auto result_addr = std::addressof(std::addressof(object)->*MemPtr);
+        const member_type* result_addr = nullptr;
+        if constexpr ( std::is_unbounded_array_v<Member> ) {
+          result_addr = std::addressof(object)->*MemPtr;
+        }
+        else {
+          result_addr = std::addressof(std::addressof(object)->*MemPtr);
+        }
         size_t I = 0;
         for (;I < MemberArraySize; ++I) {
           if (member + I == result_addr)
-            return I * sizeof(Member);
+            return I * sizeof(member_type);
         }
-        //return (std::addressof(std::addressof(object)->*MemPtr) - member) * sizeof(Member);
+
+        // should be unreachable
+        return size_t(-1);
       }
     };
   }
 
   template <auto Ptr>
   inline constexpr size_t offset_of() noexcept {
-    impl::get_member_offset<Ptr> str_;
+    /*using class_type         = member_pointer_class_t<decltype(Ptr)>;
+    using member_type        = member_pointer_pointee_t<decltype(Ptr)>;
+    using normal_member_type = std::conditional_t<std::is_unbounded_array_v<member_type>,
+                                                  std::remove_extent_t<member_type>,
+                                                  member_type>;
+
+    union{
+      char               init;
+      normal_member_type member_array[(sizeof(class_type) / sizeof(normal_member_type)) * 2];
+      class_type         object;
+    } u{ .init = 0 };
+
+    const normal_member_type* result_addr = nullptr;
+    if constexpr ( std::is_unbounded_array_v<member_type> ) {
+      result_addr = std::addressof(u.object)->*Ptr;
+    }
+    else {
+      result_addr = std::addressof(std::addressof(u.object)->*Ptr);
+    }
+    size_t I = 0;
+    for (; I < (sizeof(class_type) / sizeof(normal_member_type)) * 2; ++I) {
+      if (u.member_array + I == result_addr)
+        return I * sizeof(normal_member_type);
+    }
+
+    return u64(-1);*/
+    impl::get_member_offset<Ptr> str_{};
     return str_.calculate();
   }
-
 }
 
 #define VK_offsetof(type, member) ::valkyrie::offset_of<&type::member>()
