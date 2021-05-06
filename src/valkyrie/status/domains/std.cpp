@@ -3,7 +3,7 @@
 //
 
 #include <valkyrie/status/domains/std.hpp>
-#include <valkyrie/adt/symbol.hpp>
+#include <valkyrie/adt/dictionary.hpp>
 #include <valkyrie/adt/small_vector.hpp>
 
 #include <valkyrie/async/mutex.hpp>
@@ -12,7 +12,7 @@ using namespace valkyrie;
 
 
 namespace {
-  symbol_map<u32>                          id_map        {};
+  dictionary<u32>                          id_map        {};
   small_vector<const std::error_category*> id_to_category{};
 
   shared_mutex                             id_map_mutex{};

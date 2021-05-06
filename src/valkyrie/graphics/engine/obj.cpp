@@ -1204,7 +1204,7 @@ bool obj::parse_texture_name_and_option(string *texname,
   }
 }
 
-void obj::load_material(symbol_map<int> *material_map,
+void obj::load_material(dictionary<int> *material_map,
                         vector<material> *materials,
                         std::istream *inStream,
                         string *warning,
@@ -1600,7 +1600,7 @@ void obj::load_material(symbol_map<int> *material_map,
 
 bool obj::material_file_reader::load(string_view matId,
                                      vector<material> *mat,
-                                     symbol_map<int> *matMap,
+                                     dictionary<int> *matMap,
                                      string *warn,
                                      string *err){
   if (!m_mtlBaseDir.empty()) {
@@ -1660,7 +1660,7 @@ bool obj::material_file_reader::load(string_view matId,
 
 bool obj::material_stream_reader::load(string_view matId,
                                        vector<material> *mat,
-                                       symbol_map<int> *matMap,
+                                       dictionary<int> *matMap,
                                        string *warn,
                                        string *err){
   (void)err;

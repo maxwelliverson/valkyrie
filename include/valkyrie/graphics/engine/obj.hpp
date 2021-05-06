@@ -63,7 +63,7 @@ THE SOFTWARE.
 #include <valkyrie/adt/small_vector.hpp>
 #include <valkyrie/adt/string.hpp>
 #include <valkyrie/adt/array_ref.hpp>
-#include <valkyrie/adt/symbol.hpp>
+#include <valkyrie/adt/dictionary.hpp>
 
 #include <valkyrie/utility/filesystem.hpp>
 
@@ -269,7 +269,7 @@ typedef double real_t;
     texture_option emissive_texopt;
     texture_option normal_texopt;
 
-    symbol_map<string> unknown_parameter;
+    dictionary<string> unknown_parameter;
   };
   struct tag{
     string         name;
@@ -352,7 +352,7 @@ typedef double real_t;
 
     virtual bool load(string_view matId,
                       vector<material>* mat,
-                      symbol_map<int> *matMap,
+                      dictionary<int> *matMap,
                       string* warn,
                       string* err) = 0;
   };
@@ -363,7 +363,7 @@ typedef double real_t;
     explicit material_file_reader(const fs::path& mtl_basedir) : m_mtlBaseDir(mtl_basedir) {}
     bool load(string_view matId,
               vector<material>* mat,
-              symbol_map<int> *matMap,
+              dictionary<int> *matMap,
               string* warn,
               string* err) override;
 
@@ -377,7 +377,7 @@ typedef double real_t;
 
     bool load(string_view matId,
               vector<material>* mat,
-              symbol_map<int> *matMap,
+              dictionary<int> *matMap,
               string* warn,
               string* err) override;
 
@@ -594,7 +594,7 @@ typedef double real_t;
 
 
 /// Loads materials into std::map
-  void load_material(symbol_map<int> *material_map,
+  void load_material(dictionary<int> *material_map,
                      vector<material> *materials,
                      std::istream *inStream,
                      string *warning, 

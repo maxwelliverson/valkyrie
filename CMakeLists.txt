@@ -113,7 +113,7 @@ add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
 
-add_object(valkyrie.adt.symbol)
+add_object(valkyrie.adt.dictionary)
 add_object(valkyrie.adt.concurrent_list)
 add_object(valkyrie.adt.hazard_ptr)
 
