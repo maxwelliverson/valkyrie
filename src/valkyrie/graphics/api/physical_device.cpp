@@ -100,7 +100,7 @@ namespace valkyrie::graphics::api{
       vulkan_status lazyLoadExtensions(PhysicalDeviceImpl &impl) noexcept {
         VK_try {
           if (!impl.extensionsLoaded) {
-            DynamicArray<VkExtensionProperties> deviceExtensions;
+            vector<VkExtensionProperties> deviceExtensions;
             u32 extSize;
             VK_safe_call(make_status_code(impl.pInterface->enumerateDeviceExtensionProperties(impl.handle, nullptr, &extSize, nullptr)));
             deviceExtensions.resize(extSize);

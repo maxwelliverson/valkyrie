@@ -29,7 +29,7 @@ namespace valkyrie::graphics::engine{
     String            name;
     u32                     size;
     u32                     alignment;
-    DynamicArray<u32> implementedInterfaces;
+    vector<u32> implementedInterfaces;
   };
 
 

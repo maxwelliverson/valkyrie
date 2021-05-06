@@ -584,7 +584,7 @@ namespace valkyrie::graphics::api::Internal{
     mutable static_vector<QueueFamily, 8> queueFamilies;
     mutable flat_map<FlagBits::SampleCount, Extent2D<MaxU32>> sampleLocationMap;
     mutable static_vector<VkTimeDomainEXT, 4> timeDomains;
-    mutable DynamicArray<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
+    mutable vector<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
 
     mutable bool extensionsLoaded = false;
     mutable bool featuresLoaded = false;
