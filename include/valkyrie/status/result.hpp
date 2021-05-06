@@ -147,10 +147,10 @@ namespace valkyrie{
 
       union{
         struct {
-          u64        has_value_ : 1 = true;
+          u64        has_value_ : 1;
           u64                   : 63;
           union {
-            value_type value_{};
+            value_type value_;
             u8         default_init_;
           };
         };

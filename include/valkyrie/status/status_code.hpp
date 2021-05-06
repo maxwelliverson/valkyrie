@@ -240,6 +240,14 @@ namespace valkyrie{
     status_code(status_code<OtherDom>&& other) noexcept : status_code(std::move(other).value()){}*/
 
 
+    template <typename ...Args> requires(ConstantDomain && constructible_from<value_type, Args...>)
+    explicit status_code(std::in_place_t, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, Args...>)
+        : Base(std::in_place, std::addressof(domain_type::get()),  std::forward<Args>(args)...){}
+
+    template <typename T, typename ...Args> requires(ConstantDomain && constructible_from<value_type, std::initializer_list<T>, Args...>)
+    explicit status_code(std::in_place_t, std::initializer_list<T> Il, Args&& ...args) noexcept(std::is_nothrow_constructible_v<value_type, std::initializer_list<T>, Args...>)
+        : Base(std::in_place, std::addressof(domain_type::get()), Il, std::forward<Args>(args)...){}
+
     template <not_same_as_one_of<status_code, std::in_place_t> T, typename ...Args>
     status_code(T&& val, Args&& ...args) noexcept(noexcept(make_status_code((T&&)val, (Args&&)args...)))
         requires(requires{ { make_status_code(std::forward<T>(val), std::forward<Args>(args)...) } -> std::convertible_to<status_code>; })
@@ -272,6 +280,7 @@ namespace valkyrie{
 
     VK_nodiscard string_ref message() const noexcept { return this->Domain ? string_ref(this->Domain->do_message(*this)) : string_ref("(empty)"); }
   };
+
   template <typename ErasedType>
   class status_code<erased<ErasedType>> : public detail::StatusCodeBase<erased<ErasedType>>{
     using Base = detail::StatusCodeBase<erased<ErasedType>>;

@@ -8,16 +8,28 @@
 #include <valkyrie/status/status_code.hpp>
 
 namespace valkyrie{
-  template <typename StatusCode_>
+
+  template <typename Domain>
+  class indirect_domain;
+
+  template <typename Domain>
   class indirect_domain : public status_domain{
+
+    static_assert(singleton_c<Domain>, "Indirect domains must be singletons");
+
     template <typename> friend class status_code;
-    using Base_ = status_domain;
-    using domain_type = typename StatusCode_::domain_type;
+
+    using indirect_traits = singleton_traits<Domain>;
+
+    using base_type = status_domain;
+    using domain_type = Domain;
+    using indirect_value_type = typename domain_type::value_type;
+    using indirect_status_type = status_code<domain_type>;
+    using indirect_error_type  = error_code<domain_type>;
+
 
 
     inline constexpr static domain_type _domain{};
-
-
     using inner_value_type = typename StatusCode_::value_type;
 
     struct RefCountedStatus : StatusCode_{
@@ -40,9 +52,7 @@ namespace valkyrie{
     private:
       mutable std::atomic_uint32_t refCount_{0};
     };
-
-
-
+    
   public:
 
     inline constexpr static uuid class_id = uuid{"c557643b-40a4-4866-9ec8-61b4b744ff7b"} ^ class_traits<domain_type>::id;
@@ -130,7 +140,7 @@ namespace valkyrie{
 
     using value_type = RefCountedStatus*;
 
-    using Base_::string_ref;
+    using base_type::string_ref;
 
   private:
     using code_type = status_code<indirect_domain>;
@@ -185,17 +195,13 @@ namespace valkyrie{
       static_cast<code_type&>(code).~code_type();
     }
 
-    inline constexpr static const indirect_domain& get() noexcept;
+    inline static const indirect_domain& get() noexcept;
   };
 
-  namespace detail{
-    template <typename StatusCode_>
-    inline constexpr static indirect_domain<StatusCode_> indirectDomainInstance{};
-  }
-
   template <typename StatusCode_>
-  inline constexpr const indirect_domain<StatusCode_>& indirect_domain<StatusCode_>::get() noexcept {
-    return detail::indirectDomainInstance<StatusCode_>;
+  inline const indirect_domain<StatusCode_>& indirect_domain<StatusCode_>::get() noexcept {
+    constexpr static indirect_domain<StatusCode_> indirectDomainInstance{};
+    return indirectDomainInstance;
   }
 }
 

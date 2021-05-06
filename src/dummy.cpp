@@ -2,6 +2,8 @@
 // Created by Maxwell on 2020-11-21.
 //
 
+#include <valkyrie/utility/waymarking.hpp>
+
 #include <valkyrie/memory/aligned_allocator.hpp>
 #include <valkyrie/memory/allocator_storage.hpp>
 #include <valkyrie/memory/deleter.hpp>

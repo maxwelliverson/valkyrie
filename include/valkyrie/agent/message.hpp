@@ -47,12 +47,12 @@ namespace valkyrie{
     };
 
     struct message_info32{
-      u32 nextOffset        = 0;
-      message_state32 state = message_state32::invalid;
+      u32             nextOffset = 0;
+      message_state32 state      = message_state32::invalid;
     };
     struct message_info64{
-      u64 nextOffset        = 0;
-      message_state64 state = message_state64::invalid;
+      u64             nextOffset = 0;
+      message_state64 state      = message_state64::invalid;
     };
   }
 
@@ -65,6 +65,8 @@ namespace valkyrie{
     };
     message_id         messageId;
     agent_id           senderId;
+
+    message(message_id msgType, agent_id sender) noexcept : messageId(msgType), senderId(sender){}
   };
 }
 

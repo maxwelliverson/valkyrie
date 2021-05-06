@@ -226,6 +226,8 @@ valkyrie_test(valkyrie.GUI.DXGI)]]
 valkyrie_test(valkyrie.memory)
 valkyrie_test(valkyrie.graphics.api.swapchain)
 
+add_executable(test.valkyrie.utility.waymarking test/valkyrie/utility/waymarking.cpp)
+
 add_executable(test.Mailbox test/Mailbox.cpp)
 add_executable(test.VirtualFuncPtr test/VirtualFuncPtr.cpp)
 target_compile_options(test.Mailbox PUBLIC -EHsc)
@@ -251,7 +253,6 @@ add_executable(vulkan_example src/example.cpp)
 add_executable(clangd_debug debug_clangd.cpp)
 add_executable(tictactoe test/tictactoe.c)
 add_executable(better_ttt test/better_tictactoe.c)
-
 
 
 add_library(imgui STATIC IMPORTED)

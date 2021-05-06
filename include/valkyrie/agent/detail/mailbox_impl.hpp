@@ -5,7 +5,7 @@
 #ifndef VALKYRIE_AGENT_DETAIL_MAILBOX_IMPL_HPP
 #define VALKYRIE_AGENT_DETAIL_MAILBOX_IMPL_HPP
 
-#include <valkyrie/adt/tags.hpp>
+//#include <valkyrie/adt/tags.hpp>
 #include <valkyrie/async/atomic.hpp>
 #include <valkyrie/async/semaphore.hpp>
 #include <valkyrie/status/result.hpp>
@@ -106,7 +106,7 @@ namespace valkyrie::impl{
     class complete : public Base{
     public:
 
-      template <typename ...Args> requires std::constructible_from<Base, Args...>
+      template <typename ...Args>/* requires std::constructible_from<Base, Args...>*/
       complete(u64 maxWriters, u64 maxReaders, Args&& ...args) noexcept
           : Base(std::forward<Args>(args)...),
             writerSemaphore(maxWriters),
@@ -144,7 +144,15 @@ namespace valkyrie::impl{
     protected:
 
       dynamic_base() noexcept : msgQueue(nullptr), queueLength(0){}
-      dynamic_base(u64 length, system_status& status) noexcept;
+      dynamic_base(u64 length, status& status) noexcept;
+      template <raw_allocator Alloc>
+      dynamic_base(u64 length, Alloc&& allocator, status& status){
+        status = code::invalid_argument;
+      }
+      template <raw_allocator Alloc>
+      dynamic_base(Alloc&& allocator, status& status){
+        status = code::invalid_argument;
+      }
       dynamic_base(const dynamic_base&) = delete;
       dynamic_base(dynamic_base&& ) noexcept;
 
@@ -216,12 +224,15 @@ namespace valkyrie::impl{
           msgQueue = static_cast<byte*>(queueAllocator.allocate_array(queueCapacity, message_size, alignof(message)));
         }
         catch(std::exception& e) {
-          // TODO: Idk
-          status_ = detail::ou
+          // TODO: Assign a properly typed status code once the memory error types are properly implemented.
+          status_ = code::out_of_memory;
         }
 #else
+        msgQueue = static_cast<byte*>(queueAllocator.allocate_array(queueCapacity, message_size, alignof(message)));
+        if ( !msgQueue ) {
+
+        }
 #endif
-        if
       }
 
       template <composable_allocator Alloc>
@@ -229,7 +240,10 @@ namespace valkyrie::impl{
           : queueAllocator(make_any_allocator_reference(std::forward<Alloc>(allocator))),
             queueCapacity(capacity),
             msgQueue(static_cast<byte*>(
-                queueAllocator.try_allocate_array(queueCapacity,message_size, alignof(message)))){ }
+                queueAllocator.try_allocate_array(queueCapacity,message_size, alignof(message)))){
+        // TODO: Replace with non-generic codes once memory errors are implemented.
+        status_ = msgQueue == nullptr ? code::out_of_memory : code::success;
+      }
 
       static_base(const static_base&) = delete;
 
@@ -336,8 +350,12 @@ namespace valkyrie::impl{
     template <typename Base, typename Storage>
     class private_impl : public Base, public Storage{
       VK_constant bool dynamic_message_sizes = exact_same_as<Base, dynamic_base>;
+
+    protected:
+      template <typename ...Args>
+      explicit private_impl(Args&& ...args) noexcept : Base(std::forward<Args>(args)...){ }
     public:
-      using Base::Base;
+
 
       inline void*    do_begin_write(u64 size,     u64& nextOffset) noexcept {
 
@@ -478,6 +496,10 @@ namespace valkyrie::impl{
                                               "be called in dynamically sized message code");
         return atomic_load<memory_order::relaxed>(this->msgCount) != this->queueCapacity;
       }
+
+    protected:
+      template <typename ...Args>
+      explicit inbox_impl(Args&& ...args) noexcept : Base(std::forward<Args>(args)...){ }
 
     public:
       using Base::Base;

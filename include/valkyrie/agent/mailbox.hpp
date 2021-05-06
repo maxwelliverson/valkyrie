@@ -9,6 +9,8 @@
 #include "detail/mailbox_impl.hpp"
 #include "detail/mailbox_traits.hpp"
 
+
+#include <valkyrie/adt/tags.hpp>
 #include <valkyrie/status/result.hpp>
 #include <valkyrie/memory/literals.hpp>
 
@@ -112,26 +114,26 @@ namespace valkyrie{
     };
 
 
-    explicit basic_mailbox(u64 size, system_status& status) noexcept
+    explicit basic_mailbox(u64 size, status& status) noexcept
         : base(max_writers, max_readers, size, status){ }
 
     template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
-    basic_mailbox(Alloc&& allocator, u64 size) noexcept
-        : base(max_writers, max_readers, std::forward<Alloc>(allocator), size){}
+    basic_mailbox(u64 size, Alloc&& allocator, status& status) noexcept
+        : base(max_writers, max_readers, size, std::forward<Alloc>(allocator), status){}
     template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
-    explicit basic_mailbox(Alloc&& allocator) noexcept
-        : base(max_writers, max_readers, std::forward<Alloc>(allocator)){}
+    explicit basic_mailbox(Alloc&& allocator, status& status) noexcept
+        : base(max_writers, max_readers, std::forward<Alloc>(allocator), status){}
 
   public:
 
     basic_mailbox() : base(max_writers, max_readers){ }
     basic_mailbox(const basic_mailbox&) = delete;
 
-    basic_mailbox(basic_mailbox&& other) noexcept = default;
+    basic_mailbox(basic_mailbox&& other) noexcept;
 
 
     static result<basic_mailbox> open(u64 size) noexcept {
-      system_status status;
+      status status;
       basic_mailbox mailbox(size, status);
       if ( status.failure() )
         return std::move(status);
@@ -282,6 +284,34 @@ namespace valkyrie{
   }*/
 
 
+  enum class log_level{
+    debug,
+    info,
+    warning,
+    error
+  };
+  struct log_message : message, variable_size {
+    log_level level;
+    u32       message_length;
+    utf8      string[];
+
+    VK_constant uuid class_id{"24434bef-f3ea-4bc7-a0ec-96f57753a15d"};
+    VK_constant message_id message_id{to_integer(class_id)};
+
+
+    log_message(agent_id sender_id, log_level level, string_view str) noexcept
+        : message(message_id, sender_id),
+          level(level),
+          message_length(narrow_cast<u32>(str.length())) {
+      std::memcpy(string, str.data(), message_length);
+    }
+
+    inline static u64 object_size(const log_message& msg) noexcept {
+      return align_to<alignof(message)>(offsetof(log_message, string) + msg.message_length);
+    }
+  };
+
+
   void hello() {
 
     using namespace memory_literals;
@@ -290,8 +320,15 @@ namespace valkyrie{
     using chunk_inbox   = inbox<128>;
 
 
-    dynamic_inbox thisInbox{dynamic_inbox::open(64_KiB)};
-    chunk_inbox   chunkInbox{chunk_inbox::open(32)};
+    dynamic_inbox thisInbox{dynamic_inbox::open(64_KiB).value()};
+    chunk_inbox   chunkInbox{chunk_inbox::open(32).value()};
+
+    agent_id a{1}, b{2}, c{3}, d{4};
+
+
+    auto&& [ sender, reader ] = thisInbox.open_pipe(a, b);
+
+    //sender.write();
   }
 }
 
