@@ -6,6 +6,8 @@
 #define VALKYRIE_ADT_DIRECTED_GRAPH_HPP
 
 #include "flat_set.hpp"
+#include "iterator.hpp"
+
 #include <memory>
 
 namespace valkyrie{
@@ -13,57 +15,54 @@ namespace valkyrie{
 
   // code borrowed from LLVM directed_graph implementation. For details see <llvm/adt/directed_graph.h> and <llvm/adt/GraphTraits.h>
 
-  template<class GraphType>
-  struct graph_traits {
-    // Elements to provide:
 
-    using graph_type = GraphType;
-    
-    
-    
-    // typedef NodeRef           - Type of Node token in the graph, which should
-    //                             be cheap to copy.
-    // typedef ChildIteratorType - Type used to iterate over children in graph,
-    //                             dereference to a NodeRef.
+  template <typename G>
+  struct inverse_graph{
+    const G& graph;
 
-    // static NodeRef getEntryNode(const GraphType &)
-    //    Return the entry node of the graph
-
-    // static ChildIteratorType child_begin(NodeRef)
-    // static ChildIteratorType child_end  (NodeRef)
-    //    Return iterators that point to the beginning and ending of the child
-    //    node list for the specified node.
-
-    // typedef  ...iterator nodes_iterator; - dereference to a NodeRef
-    // static nodes_iterator nodes_begin(GraphType *G)
-    // static nodes_iterator nodes_end  (GraphType *G)
-    //    nodes_iterator/begin/end - Allow iteration over all nodes in the graph
-
-    // typedef EdgeRef           - Type of Edge token in the graph, which should
-    //                             be cheap to copy.
-    // typedef ChildEdgeIteratorType - Type used to iterate over children edges in
-    //                             graph, dereference to a EdgeRef.
-
-    // static ChildEdgeIteratorType child_edge_begin(NodeRef)
-    // static ChildEdgeIteratorType child_edge_end(NodeRef)
-    //     Return iterators that point to the beginning and ending of the
-    //     edge list for the given callgraph node.
-    //
-    // static NodeRef edge_dest(EdgeRef)
-    //     Return the destination node of an edge.
-
-    // static unsigned       size       (GraphType *G)
-    //    Return total number of nodes in the graph
-
-    // If anyone tries to use this class without having an appropriate
-    // specialization, make an error.  If you get this error, it's because you
-    // need to include the appropriate specialization of GraphTraits<> for your
-    // graph, or you need to define it for a new graph type. Either that or
-    // your argument to XXX_begin(...) is unknown or needs to have the proper .h
-    // file #include'd.
-    using node_ref_type = typename GraphType::UnknownGraphTypeError;
+    inline inverse_graph(const G& graph) noexcept : graph(graph){}
   };
 
+  template <graph_c G>
+  struct traits::graph<inverse_graph<inverse_graph<G>>> : traits::graph<G>{};
+
+
+  template <graph_c G>
+  range_view<typename graph_traits<G>::nodes_iterator,
+             typename graph_traits<G>::nodes_sentinel>
+  nodes(const G& graph) noexcept {
+    return { graph_traits<G>::nodes_begin(graph), graph_traits<G>::nodes_end(graph) };
+  }
+
+  template <graph_c G>
+  range_view<typename graph_traits<inverse_graph<G>>::nodes_iterator,
+             typename graph_traits<inverse_graph<G>>::nodes_sentinel>
+  inverse_nodes(const G& graph) noexcept {
+    return { graph_traits<inverse_graph<G>>::nodes_begin(graph),
+             graph_traits<inverse_graph<G>>::nodes_end(graph) };
+  }
+
+  template <graph_c G>
+  range_view<typename graph_traits<G>::child_iterator,
+             typename graph_traits<G>::child_sentinel>
+  children(typename graph_traits<G>::node_ref node) noexcept {
+    return { graph_traits<G>::child_begin(node), graph_traits<G>::child_end(node) };
+  }
+
+  template <graph_c G>
+  range_view<typename graph_traits<inverse_graph<G>>::child_iterator,
+             typename graph_traits<inverse_graph<G>>::child_sentinel>
+  inverse_children(typename graph_traits<G>::node_ref node) noexcept {
+    return { graph_traits<inverse_graph<G>>::child_begin(node),
+             graph_traits<inverse_graph<G>>::child_end(node) };
+  }
+
+  template <graph_c G>
+  range_view<typename graph_traits<G>::child_edge_iterator,
+             typename graph_traits<G>::child_edge_sentinel>
+  children_edges(typename graph_traits<G>::node_ref node) noexcept {
+    return { graph_traits<G>::child_edge_begin(node), graph_traits<G>::child_edge_end(node) };
+  }
 
 
 

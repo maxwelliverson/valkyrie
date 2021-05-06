@@ -34,6 +34,35 @@ namespace valkyrie{
     bool empty() const { return begin_iterator == end_iterator; }
   };
 
+  template <typename Iterator, typename Sentinel = Iterator>
+  class range_view{
+    Iterator begin_;
+    Sentinel end_;
+  public:
+    using iterator = Iterator;
+    using sentinel = Sentinel;
+
+    template <std::ranges::range Rng>
+    range_view(Rng&& rng) noexcept
+        : begin_(std::ranges::begin(rng)),
+          end_(std::ranges::end(rng)){}
+
+    range_view(iterator b, sentinel e) noexcept : begin_(b), end_(e){}
+
+    VK_nodiscard iterator begin() const noexcept {
+      return begin_;
+    }
+    VK_nodiscard sentinel end() const noexcept {
+      return end_;
+    }
+    VK_nodiscard bool     empty() const noexcept {
+      return begin_ == end_;
+    }
+  };
+
+  template <std::ranges::range Rng>
+  range_view(Rng&&) -> range_view<std::ranges::iterator_t<remove_ref_t<Rng>>, std::ranges::sentinel_t<remove_ref_t<Rng>>>;
+
 /// Convenience function for iterating over sub-ranges.
 ///
 /// This provides a bit of syntactic sugar to make using sub-ranges
