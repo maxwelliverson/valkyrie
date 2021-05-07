@@ -401,7 +401,7 @@ class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type {
     memory_block allocate_block()
     {
       auto memory =
-          traits::allocate_array(get_allocator(), block_size_, 1, detail::max_alignment);
+          traits::allocate_array(get_allocator(), block_size_, 1, max_alignment);
       memory_block block(memory, block_size_);
       block_size_ = u64(block_size_ * growth_factor());
       return block;
@@ -413,7 +413,7 @@ class growing_block_allocator : allocator_traits<RawAllocator>::allocator_type {
     void deallocate_block(memory_block block) noexcept
     {
       traits::deallocate_array(get_allocator(), block.memory, block.size, 1,
-                               detail::max_alignment);
+                               max_alignment);
     }
 
     /// \returns The size of the memory block returned by the next call to \ref allocate_block().
@@ -470,7 +470,7 @@ class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type {
           if (block_size_)
           {
             auto         mem = traits::allocate_array(get_allocator(), block_size_, 1,
-                                                      detail::max_alignment);
+                                                      max_alignment);
             memory_block block(mem, block_size_);
             block_size_ = 0u;
             return block;
@@ -487,7 +487,7 @@ class fixed_block_allocator : allocator_traits<RawAllocator>::allocator_type {
           detail::debug_check_pointer([&] { return block_size_ == 0u; }, info(),
                                       block.memory);
           traits::deallocate_array(get_allocator(), block.memory, block.size, 1,
-                                   detail::max_alignment);
+                                   max_alignment);
           block_size_ = block.size;
         }
 
@@ -529,13 +529,27 @@ namespace detail
   }
 } // namespace detail
 
+
+namespace impl{
+  template <typename T, template <typename...> typename Wrapper>
+  struct make_block_allocator;
+  template <block_allocator_c A, template <typename...> typename Wrapper>
+  struct make_block_allocator<A, Wrapper>{
+    using type = A;
+  };
+  template <allocator_c A, template <typename...> typename Wrapper>
+  struct make_block_allocator<A, Wrapper>{
+    using type = Wrapper<A>;
+  };
+}
+
 /// Takes either a \concept{concept_blockallocator,BlockAllocator} or a \concept{concept_rawallocator,RawAllocator}.
 /// In the first case simply aliases the type unchanged, in the second to \ref growing_block_allocator (or the template in `BlockAllocator`) with the \concept{concept_rawallocator,RawAllocator}.
 /// Using this allows passing normal \concept{concept_rawallocator,RawAllocators} as \concept{concept_blockallocator,BlockAllocators}.
 /// \ingroup core
-template <class BlockOrRawAllocator,
-    template <typename...> class BlockAllocator = detail::default_block_wrapper>
-using make_block_allocator_t = std::conditional_t<block_allocator_c<BlockOrRawAllocator>, BlockOrRawAllocator, BlockAllocator<BlockOrRawAllocator>>;
+template <typename BlockOrRawAllocator,
+          template <typename...> typename BlockAllocator = detail::default_block_wrapper>
+using make_block_allocator_t = typename impl::make_block_allocator<BlockOrRawAllocator, BlockAllocator>::type;
 
 /// @{
 /// Helper function make a \concept{concept_blockallocator,BlockAllocator}.

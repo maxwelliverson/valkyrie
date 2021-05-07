@@ -22,11 +22,11 @@ namespace valkyrie{
   template <u64 Size>
   struct static_allocator_storage
   {
-    alignas(detail::max_alignment) char storage[Size];
+    alignas(max_alignment) char storage[Size];
   };
 
   static_assert(sizeof(static_allocator_storage<1024>) == 1024, "");
-  static_assert(alignof(static_allocator_storage<1024>) == detail::max_alignment, "");
+  static_assert(alignof(static_allocator_storage<1024>) == max_alignment, "");
 
   struct allocator_info;
 

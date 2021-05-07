@@ -98,7 +98,7 @@ namespace valkyrie{
           void* allocate(u64 size, u64 alignment)
           {
             auto fence  = detail::debug_fence_size;
-            auto offset = detail::align_offset(stack_.top() + fence, alignment);
+            auto offset = align_offset(stack_.top() + fence, alignment);
 
             if (!stack_.top()
                 || fence + offset + size + fence > u64(block_end() - stack_.top()))
@@ -108,10 +108,10 @@ namespace valkyrie{
               stack_     = detail::fixed_memory_stack(block.memory);
 
               // new alignment required for over-aligned types
-              offset = detail::align_offset(stack_.top() + fence, alignment);
+              offset = align_offset(stack_.top() + fence, alignment);
 
               auto needed = fence + offset + size + fence;
-              detail::check_allocation_size<bad_allocation_size>(needed, block.size, info());
+              impl::check_allocation_size<bad_allocation_size>(needed, block.size, info());
             }
 
             return stack_.allocate_unchecked(size, offset);

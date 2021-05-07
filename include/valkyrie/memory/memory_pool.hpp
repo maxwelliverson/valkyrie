@@ -8,6 +8,7 @@
 
 #include <valkyrie/utility/align.hpp>
 #include "detail/debug_helpers.hpp"
+#include "error.hpp"
 #include "memory_arena.hpp"
 #include "memory_pool_type.hpp"
 
@@ -53,7 +54,7 @@ namespace valkyrie{
             return detail::memory_block_stack::implementation_offset()
                    + number_of_nodes
                      * (((node_size > min_node_size) ? node_size : min_node_size)
-                        + (detail::debug_fence_size ? 2 * detail::max_alignment : 0));
+                        + (detail::debug_fence_size ? 2 * max_alignment : 0));
           }
 
           /// \effects Creates it by specifying the size each \concept{concept_node,node} will have,
@@ -126,7 +127,7 @@ namespace valkyrie{
           /// \requires \c n must be valid \concept{concept_array,array count}.
           void* allocate_array(u64 n)
           {
-            detail::check_allocation_size<bad_array_size>(
+            impl::check_allocation_size<bad_array_size>(
                 n * node_size(), [&] { return pool_type::value ? next_capacity() : 0; },
                 info());
             return allocate_array(n, node_size());
@@ -251,8 +252,7 @@ namespace valkyrie{
           memory_arena<allocator_type, false> arena_;
           free_list                           free_list_;
 
-          friend allocator_traits<memory_pool<PoolType, BlockOrRawAllocator>>;
-          friend composable_allocator_traits<memory_pool<PoolType, BlockOrRawAllocator>>;
+          friend traits::allocator<memory_pool<PoolType, BlockOrRawAllocator>>;
       };
 
 
@@ -269,22 +269,19 @@ namespace valkyrie{
   /// i.e. \ref memory_pool::allocate_node() and this \c allocate_node().
   /// \ingroup allocator
   template <typename PoolType, class ImplRawAllocator>
-  class allocator_traits<memory_pool<PoolType, ImplRawAllocator>>
+  class traits::allocator<memory_pool<PoolType, ImplRawAllocator>>
   {
   public:
     using allocator_type = memory_pool<PoolType, ImplRawAllocator>;
-    using is_stateful    = std::true_type;
+    VK_constant bool is_stateful = true;
+    VK_constant bool is_composable = true;
 
     /// \returns The result of \ref memory_pool::allocate_node().
     /// \throws Anything thrown by the pool allocation function
     /// or a \ref bad_allocation_size exception.
-    static void* allocate_node(allocator_type& state, u64 size,
-                               u64 alignment)
-    {
-      detail::check_allocation_size<bad_node_size>(size, max_node_size(state),
-                                                   state.info());
-      detail::check_allocation_size<bad_alignment>(
-          alignment, [&] { return max_alignment(state); }, state.info());
+    static void* allocate_node(allocator_type& state, u64 size, u64 alignment) {
+      impl::check_allocation_size<bad_node_size>(size, max_node_size(state), state.info());
+      impl::check_allocation_size<bad_alignment>(alignment, [&] { return max_alignment(state); }, state.info());
       auto mem = state.allocate_node();
       state.on_allocate(size);
       return mem;
@@ -296,14 +293,13 @@ namespace valkyrie{
     /// \returns A \concept{concept_array,array} with specified properties.
     /// \requires The \ref memory_pool has to support array allocations.
     /// \throws Anything thrown by the pool allocation function.
-    static void* allocate_array(allocator_type& state, u64 count, u64 size,
-                                u64 alignment)
+    static void* allocate_array(allocator_type& state, u64 count, u64 size, u64 alignment)
     {
-      detail::check_allocation_size<bad_node_size>(size, max_node_size(state),
+      impl::check_allocation_size<bad_node_size>(size, max_node_size(state),
                                                    state.info());
-      detail::check_allocation_size<bad_alignment>(
+      impl::check_allocation_size<bad_alignment>(
           alignment, [&] { return max_alignment(state); }, state.info());
-      detail::check_allocation_size<bad_array_size>(count * size, max_array_size(state),
+      impl::check_allocation_size<bad_array_size>(count * size, max_array_size(state),
                                                     state.info());
       auto mem = state.allocate_array(count, size);
       state.on_allocate(count * size);
@@ -311,108 +307,65 @@ namespace valkyrie{
     }
 
     /// \effects Just forwards to \ref memory_pool::deallocate_node().
-    static void deallocate_node(allocator_type& state, void* node, u64 size,
-                                u64) noexcept
-    {
+    static void deallocate_node(allocator_type& state, void* node, u64 size, u64) noexcept {
       state.deallocate_node(node);
       state.on_deallocate(size);
     }
 
     /// \effects Forwards to \ref memory_pool::deallocate_array() with the same size adjustment.
-    static void deallocate_array(allocator_type& state, void* array, u64 count,
-                                 u64 size, u64) noexcept
-    {
+    static void deallocate_array(allocator_type& state, void* array, u64 count, u64 size, u64) noexcept {
       state.free_list_.deallocate(array, count * size);
       state.on_deallocate(count * size);
     }
 
+
+    static void* try_allocate_node(allocator_type& state, u64 size, u64 alignment) noexcept {
+      if (size > max_node_size(state) || alignment > max_alignment(state))
+        return nullptr;
+      return state.try_allocate_node();
+    }
+    static void* try_allocate_array(allocator_type& state, u64 count, u64 size, u64 alignment) noexcept {
+      if (size > max_node_size(state)
+          || count * size > max_array_size(state)
+          || alignment > max_alignment(state))
+        return nullptr;
+      return state.try_allocate_array(count, size);
+    }
+    static bool try_deallocate_node(allocator_type& state, void* node, u64 size, u64 alignment) noexcept {
+      if (size > max_node_size(state) || alignment > max_alignment(state))
+        return false;
+      return state.try_deallocate_node(node);
+    }
+    static bool try_deallocate_array(allocator_type& state, void* array, u64 count, u64 size, u64 alignment) noexcept {
+      if (size > max_node_size(state)
+          || count * size > max_array_size(state)
+          || alignment > max_alignment(state))
+        return false;
+      return state.try_deallocate_array(array, count, size);
+    }
+
+
     /// \returns The maximum size of each node which is \ref memory_pool::node_size().
-    static u64 max_node_size(const allocator_type& state) noexcept
-    {
+    static u64 max_node_size(const allocator_type& state) noexcept {
       return state.node_size();
     }
 
     /// \returns An upper bound on the maximum array size which is \ref memory_pool::next_capacity().
-    static u64 max_array_size(const allocator_type& state) noexcept
-    {
+    static u64 max_array_size(const allocator_type& state) noexcept {
       return state.next_capacity();
     }
 
     /// \returns The maximum alignment which is the next bigger power of two if less than \c alignof(std::max_align_t)
     /// or the maximum alignment itself otherwise.
-    static u64 max_alignment(const allocator_type& state) noexcept
-    {
+    static u64 max_alignment(const allocator_type& state) noexcept {
       return state.free_list_.alignment();
     }
   };
 
-  /// Specialization of the \ref composable_allocator_traits for \ref memory_pool classes.
-  /// \ingroup allocator
-  template <typename PoolType, class BlockOrRawAllocator>
-  class composable_allocator_traits<memory_pool<PoolType, BlockOrRawAllocator>>
-  {
-    using traits = allocator_traits<memory_pool<PoolType, BlockOrRawAllocator>>;
 
-  public:
-    using allocator_type = memory_pool<PoolType, BlockOrRawAllocator>;
-
-    /// \returns The result of \ref memory_pool::try_allocate_node()
-    /// or `nullptr` if the allocation size was too big.
-    static void* try_allocate_node(allocator_type& state, u64 size,
-                                   u64 alignment) noexcept
-    {
-      if (size > traits::max_node_size(state) || alignment > traits::max_alignment(state))
-        return nullptr;
-      return state.try_allocate_node();
-    }
-
-    /// \effects Forwards to \ref memory_pool::try_allocate_array()
-    /// with the number of nodes adjusted to be the minimum,
-    /// if the \c size is less than the \ref memory_pool::node_size().
-    /// \returns A \concept{concept_array,array} with specified properties
-    /// or `nullptr` if it was unable to allocate.
-    static void* try_allocate_array(allocator_type& state, u64 count,
-                                    u64 size, u64 alignment) noexcept
-    {
-      if (size > traits::max_node_size(state)
-          || count * size > traits::max_array_size(state)
-          || alignment > traits::max_alignment(state))
-        return nullptr;
-      return state.try_allocate_array(count, size);
-    }
-
-    /// \effects Just forwards to \ref memory_pool::try_deallocate_node().
-    /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
-                                    u64 alignment) noexcept
-    {
-      if (size > traits::max_node_size(state) || alignment > traits::max_alignment(state))
-        return false;
-      return state.try_deallocate_node(node);
-    }
-
-    /// \effects Forwards to \ref memory_pool::deallocate_array() with the same size adjustment.
-    /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
-                                     u64 size, u64 alignment) noexcept
-    {
-      if (size > traits::max_node_size(state)
-          || count * size > traits::max_array_size(state)
-          || alignment > traits::max_alignment(state))
-        return false;
-      return state.try_deallocate_array(array, count, size);
-    }
-  };
-
-
-  extern template class allocator_traits<memory_pool<node_pool>>;
-  extern template class allocator_traits<memory_pool<array_pool>>;
-  extern template class allocator_traits<memory_pool<small_node_pool>>;
-
-  extern template class composable_allocator_traits<memory_pool<node_pool>>;
-  extern template class composable_allocator_traits<memory_pool<array_pool>>;
-  extern template class composable_allocator_traits<memory_pool<small_node_pool>>;
-
+  VK_extern_trait_instantiation(allocator, memory_pool<node_pool>);
+  VK_extern_trait_instantiation(allocator, memory_pool<array_pool>);
+  VK_extern_trait_instantiation(allocator, memory_pool<small_node_pool>);
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_POOL_HPP

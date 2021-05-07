@@ -116,7 +116,7 @@ namespace valkyrie{
           /// \throws Anything thrown by the \concept{concept_blockallocator,BlockAllocator} if a growth is needed or a \ref bad_node_size exception if the node size is too big.
           void* allocate_node(u64 node_size)
           {
-            detail::check_allocation_size<bad_node_size>(
+            impl::check_allocation_size<bad_node_size>(
                 node_size, [&] { return max_node_size(); }, info());
             auto& pool = pools_.get(node_size);
             if (pool.empty())
@@ -160,7 +160,7 @@ namespace valkyrie{
           /// \c node_size must be valid \concept{concept_node,node size}.
           void* allocate_array(u64 count, u64 node_size)
           {
-            detail::check_allocation_size<bad_node_size>(
+            impl::check_allocation_size<bad_node_size>(
                 node_size, [&] { return max_node_size(); }, info());
 
             auto& pool = pools_.get(node_size);
@@ -178,7 +178,7 @@ namespace valkyrie{
               if (!mem)
               {
                 // reserve more then the default capacity if that didn't work either
-                detail::check_allocation_size<bad_array_size>(
+                impl::check_allocation_size<bad_array_size>(
                     count * node_size,
                     [&] { return next_capacity() - pool.alignment() + 1; }, info());
 
@@ -333,7 +333,7 @@ namespace valkyrie{
           {
             if (auto remaining = u64(block_end() - stack_.top()))
             {
-              auto offset = detail::align_offset(stack_.top(), detail::max_alignment);
+              auto offset = align_offset(stack_.top(), max_alignment);
               if (offset < remaining)
               {
                 detail::debug_fill(stack_.top(), offset, debug_magic::alignment_memory);
@@ -347,7 +347,7 @@ namespace valkyrie{
 
           void try_reserve_memory(typename pool_type::type& pool, u64 capacity) noexcept
           {
-            auto mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
+            auto mem = stack_.allocate(block_end(), capacity, max_alignment);
             if (!mem)
               insert_rest(pool);
             else
@@ -356,7 +356,7 @@ namespace valkyrie{
 
           memory_block reserve_memory(typename pool_type::type& pool, u64 capacity)
           {
-            auto mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
+            auto mem = stack_.allocate(block_end(), capacity, max_alignment);
             if (!mem)
             {
               insert_rest(pool);
@@ -364,7 +364,7 @@ namespace valkyrie{
               stack_ = allocate_block();
 
               // allocate ensuring alignment
-              mem = stack_.allocate(block_end(), capacity, detail::max_alignment);
+              mem = stack_.allocate(block_end(), capacity, max_alignment);
               VK_assert(mem);
             }
             return {mem, capacity};
@@ -374,7 +374,7 @@ namespace valkyrie{
           detail::fixed_memory_stack          stack_;
           free_list_array                     pools_;
 
-          friend allocator_traits<memory_pool_collection>;
+          friend traits::allocator<memory_pool_collection>;
       };
 
 
@@ -393,19 +393,17 @@ namespace valkyrie{
   template <class PoolType = node_pool, class ImplAllocator = default_allocator>
   using bucket_allocator = memory_pool_collection<PoolType, identity_buckets, ImplAllocator>;
 
-  template <class Allocator>
-  class allocator_traits;
 
   /// Specialization of the \ref allocator_traits for \ref memory_pool_collection classes.
   /// \note It is not allowed to mix calls through the specialization and through the member functions,
   /// i.e. \ref memory_pool_collection::allocate_node() and this \c allocate_node().
   /// \ingroup allocator
   template <class Pool, class BucketDist, class RawAllocator>
-  class allocator_traits<memory_pool_collection<Pool, BucketDist, RawAllocator>>
+  class traits::allocator<memory_pool_collection<Pool, BucketDist, RawAllocator>>
   {
   public:
     using allocator_type = memory_pool_collection<Pool, BucketDist, RawAllocator>;
-    using is_stateful    = std::true_type;
+    VK_constant bool is_stateful = true;
 
     /// \returns The result of \ref memory_pool_collection::allocate_node().
     /// \throws Anything thrown by the pool allocation function
@@ -415,8 +413,8 @@ namespace valkyrie{
                                u64 alignment)
     {
       // node already checked
-      detail::check_allocation_size<bad_alignment>(
-          alignment, [&] { return detail::alignment_for(size); }, state.info());
+      impl::check_allocation_size<bad_alignment>(
+          alignment, [&] { return alignment_for(size); }, state.info());
       auto mem = state.allocate_node(size);
       state.on_allocate(size);
       return mem;
@@ -429,8 +427,8 @@ namespace valkyrie{
                                 u64 alignment)
     {
       // node and array already checked
-      detail::check_allocation_size<bad_alignment>(
-          alignment, [&] { return detail::alignment_for(size); }, state.info());
+      impl::check_allocation_size<bad_alignment>(
+          alignment, [&] { return alignment_for(size); }, state.info());
       auto mem = state.allocate_array(count, size);
       state.on_allocate(count * size);
       return mem;
@@ -453,6 +451,51 @@ namespace valkyrie{
       state.on_deallocate(count * size);
     }
 
+    /// \returns The result of \ref memory_pool_collection::try_allocate_node()
+    /// or `nullptr` if the allocation size was too big.
+    static void* try_allocate_node(allocator_type& state, u64 size,
+                                   u64 alignment) noexcept
+    {
+      if (alignment > max_alignment(state))
+        return nullptr;
+      return state.try_allocate_node(size);
+    }
+
+    /// \returns The result of \ref memory_pool_collection::try_allocate_array()
+    /// or `nullptr` if the allocation size was too big.
+    static void* try_allocate_array(allocator_type& state, u64 count,
+                                    u64 size, u64 alignment) noexcept
+    {
+      if (count * size > max_array_size(state)
+          || alignment > max_alignment(state))
+        return nullptr;
+      return state.try_allocate_array(count, size);
+    }
+
+    /// \effects Just forwards to \ref memory_pool_collection::try_deallocate_node().
+    /// \returns Whether the deallocation was successful.
+    static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
+                                    u64 alignment) noexcept
+    {
+      if (alignment > max_alignment(state))
+        return false;
+      return state.try_deallocate_node(node, size);
+    }
+
+    /// \effects Forwards to \ref memory_pool_collection::deallocate_array().
+    /// \returns Whether the deallocation was successful.
+    static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
+                                     u64 size, u64 alignment) noexcept
+    {
+      if (count * size > max_array_size(state)
+          || alignment > max_alignment(state))
+        return false;
+      return state.try_deallocate_array(array, count, size);
+    }
+
+
+
+
     /// \returns The maximum size of each node which is \ref memory_pool_collection::max_node_size().
     static u64 max_node_size(const allocator_type& state) noexcept
     {
@@ -469,79 +512,18 @@ namespace valkyrie{
     /// the nodes must not be over-aligned.
     static u64 max_alignment(const allocator_type&) noexcept
     {
-      return detail::max_alignment;
-    }
-  };
-
-  /// Specialization of the \ref composable_allocator_traits for \ref memory_pool_collection classes.
-  /// \ingroup allocator
-  template <class Pool, class BucketDist, class RawAllocator>
-  class composable_allocator_traits<memory_pool_collection<Pool, BucketDist, RawAllocator>>
-  {
-    using traits = allocator_traits<memory_pool_collection<Pool, BucketDist, RawAllocator>>;
-
-  public:
-    using allocator_type = memory_pool_collection<Pool, BucketDist, RawAllocator>;
-
-    /// \returns The result of \ref memory_pool_collection::try_allocate_node()
-    /// or `nullptr` if the allocation size was too big.
-    static void* try_allocate_node(allocator_type& state, u64 size,
-                                   u64 alignment) noexcept
-    {
-      if (alignment > traits::max_alignment(state))
-        return nullptr;
-      return state.try_allocate_node(size);
-    }
-
-    /// \returns The result of \ref memory_pool_collection::try_allocate_array()
-    /// or `nullptr` if the allocation size was too big.
-    static void* try_allocate_array(allocator_type& state, u64 count,
-                                    u64 size, u64 alignment) noexcept
-    {
-      if (count * size > traits::max_array_size(state)
-          || alignment > traits::max_alignment(state))
-        return nullptr;
-      return state.try_allocate_array(count, size);
-    }
-
-    /// \effects Just forwards to \ref memory_pool_collection::try_deallocate_node().
-    /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_node(allocator_type& state, void* node, u64 size,
-                                    u64 alignment) noexcept
-    {
-      if (alignment > traits::max_alignment(state))
-        return false;
-      return state.try_deallocate_node(node, size);
-    }
-
-    /// \effects Forwards to \ref memory_pool_collection::deallocate_array().
-    /// \returns Whether the deallocation was successful.
-    static bool try_deallocate_array(allocator_type& state, void* array, u64 count,
-                                     u64 size, u64 alignment) noexcept
-    {
-      if (count * size > traits::max_array_size(state)
-          || alignment > traits::max_alignment(state))
-        return false;
-      return state.try_deallocate_array(array, count, size);
+      return max_alignment;
     }
   };
 
 
-  extern template class allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
-  extern template class allocator_traits<memory_pool_collection<array_pool, identity_buckets>>;
-  extern template class allocator_traits<memory_pool_collection<small_node_pool, identity_buckets>>;
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<node_pool, identity_buckets>);
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<array_pool, identity_buckets>);
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<small_node_pool, identity_buckets>);
 
-  extern template class allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
-  extern template class allocator_traits<memory_pool_collection<array_pool, log2_buckets>>;
-  extern template class allocator_traits<memory_pool_collection<small_node_pool, log2_buckets>>;
-
-  extern template class composable_allocator_traits<memory_pool_collection<node_pool, identity_buckets>>;
-  extern template class composable_allocator_traits<memory_pool_collection<array_pool, identity_buckets>>;
-  extern template class composable_allocator_traits<memory_pool_collection<small_node_pool, identity_buckets>>;
-
-  extern template class composable_allocator_traits<memory_pool_collection<node_pool, log2_buckets>>;
-  extern template class composable_allocator_traits<memory_pool_collection<array_pool, log2_buckets>>;
-  extern template class composable_allocator_traits<memory_pool_collection<small_node_pool, log2_buckets>>;
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<node_pool, log2_buckets>);
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<array_pool, log2_buckets>);
+  VK_extern_trait_instantiation(allocator, memory_pool_collection<small_node_pool, log2_buckets>);
 }
 
 #endif//VALKYRIE_MEMORY_MEMORY_POOL_COLLECTION_HPP

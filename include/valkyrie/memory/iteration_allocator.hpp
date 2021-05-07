@@ -93,7 +93,7 @@ namespace valkyrie{
             auto& stack = stacks_[cur_];
 
             auto fence  = detail::debug_fence_size;
-            auto offset = detail::align_offset(stack.top() + fence, alignment);
+            auto offset = align_offset(stack.top() + fence, alignment);
             if (!stack.top()
                 || (fence + offset + size + fence > u64(block_end(cur_) - stack.top())))
               //FOONATHAN_THROW(out_of_fixed_memory(info(), size));
@@ -179,8 +179,7 @@ namespace valkyrie{
           memory_block               block_;
           u64                cur_;
 
-          friend allocator_traits<iteration_allocator<N, BlockOrRawAllocator>>;
-          friend composable_allocator_traits<iteration_allocator<N, BlockOrRawAllocator>>;
+          friend traits::allocator<iteration_allocator<N, BlockOrRawAllocator>>;
       };
 
   /// An alias for \ref iteration_allocator for two iterations.
@@ -197,11 +196,12 @@ namespace valkyrie{
   /// i.e. \ref memory_stack::allocate() and this \c allocate_node().
   /// \ingroup allocator
   template <u64 N, class BlockAllocator>
-  class allocator_traits<iteration_allocator<N, BlockAllocator>>
+  class traits::allocator<iteration_allocator<N, BlockAllocator>>
   {
   public:
     using allocator_type = iteration_allocator<N, BlockAllocator>;
-    using is_stateful    = std::true_type;
+    VK_constant bool is_stateful = true;
+    VK_constant bool is_composable = true;
 
     /// \returns The result of \ref iteration_allocator::allocate().
     static void* allocate_node(allocator_type& state, u64 size,
@@ -229,35 +229,6 @@ namespace valkyrie{
     {
     }
     /// @}
-
-    /// @{
-    /// \returns The maximum size which is \ref iteration_allocator::capacity_left().
-    static u64 max_node_size(const allocator_type& state) noexcept
-    {
-      return state.capacity_left();
-    }
-
-    static u64 max_array_size(const allocator_type& state) noexcept
-    {
-      return state.capacity_left();
-    }
-    /// @}
-
-    /// \returns The maximum possible value since there is no alignment restriction
-    /// (except indirectly through \ref memory_stack::next_capacity()).
-    static u64 max_alignment(const allocator_type&) noexcept
-    {
-      return u64(-1);
-    }
-  };
-
-  /// Specialization of the \ref composable_allocator_traits for \ref iteration_allocator classes.
-  /// \ingroup allocator
-  template <u64 N, class BlockAllocator>
-  class composable_allocator_traits<iteration_allocator<N, BlockAllocator>>
-  {
-  public:
-    using allocator_type = iteration_allocator<N, BlockAllocator>;
 
     /// \returns The result of \ref memory_stack::try_allocate().
     static void* try_allocate_node(allocator_type& state, u64 size,
@@ -287,12 +258,31 @@ namespace valkyrie{
     {
       return try_deallocate_node(state, ptr, count * size, alignment);
     }
+
+    /// @{
+    /// \returns The maximum size which is \ref iteration_allocator::capacity_left().
+    static u64 max_node_size(const allocator_type& state) noexcept
+    {
+      return state.capacity_left();
+    }
+
+    static u64 max_array_size(const allocator_type& state) noexcept
+    {
+      return state.capacity_left();
+    }
     /// @}
+
+    /// \returns The maximum possible value since there is no alignment restriction
+    /// (except indirectly through \ref memory_stack::next_capacity()).
+    static u64 max_alignment(const allocator_type&) noexcept
+    {
+      return u64(-1);
+    }
   };
 
 
-  extern template class allocator_traits<iteration_allocator<2>>;
-  extern template class composable_allocator_traits<iteration_allocator<2>>;
+
+  VK_extern_trait_instantiation(allocator, iteration_allocator<2>);
 
 }
 

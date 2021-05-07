@@ -85,7 +85,7 @@ struct valkyrie::detail::chunk : chunk_base {
   }
 };
 
-const u64 chunk::memory_offset = sizeof(chunk) % detail::max_alignment == 0 ? sizeof(chunk) : (sizeof(chunk) / detail::max_alignment + 1) * detail::max_alignment;
+const u64 chunk::memory_offset = sizeof(chunk) % max_alignment == 0 ? sizeof(chunk) : (sizeof(chunk) / max_alignment + 1) * max_alignment;
 const u64 chunk::max_nodes = std::numeric_limits<unsigned char>::max();
 
 namespace {

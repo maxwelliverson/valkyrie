@@ -185,8 +185,7 @@ namespace valkyrie{
   /// this function can create the temporary stack.
   /// But if there is no \ref temporary_stack_initializer, it won't be destroyed.
   /// \relatesalso temporary_stack
-  temporary_stack& get_temporary_stack(
-      u64 initial_size = temporary_stack_initializer::default_stack_size);
+  temporary_stack& get_temporary_stack(u64 initial_size = temporary_stack_initializer::default_stack_size);
 
   /// A stateful \concept{concept_rawallocator,RawAllocator} that handles temporary allocations.
   /// It works similar to \c alloca() but uses a seperate \ref memory_stack for the allocations,
@@ -240,25 +239,24 @@ namespace valkyrie{
     bool                                      shrink_to_fit_;
   };
 
-  template <class Allocator>
-  class allocator_traits;
 
   /// Specialization of the \ref allocator_traits for \ref temporary_allocator classes.
   /// \note It is not allowed to mix calls through the specialization and through the member functions,
   /// i.e. \ref temporary_allocator::allocate() and this \c allocate_node().
   /// \ingroup allocator
   template <>
-  class allocator_traits<temporary_allocator>
+  class traits::allocator<temporary_allocator>
   {
   public:
     using allocator_type = temporary_allocator;
-    using is_stateful    = std::true_type;
+    VK_constant bool is_stateful = true;
+    VK_constant bool is_composable = false;
 
     /// \returns The result of \ref temporary_allocator::allocate().
     static void* allocate_node(allocator_type& state, u64 size,
                                u64 alignment)
     {
-      detail::check_allocation_size<bad_node_size>(size,
+      impl::check_allocation_size<bad_node_size>(size,
                                                    [&] { return max_node_size(state); },
                                                    { "valkyrie::temporary_allocator",
                                                        &state});

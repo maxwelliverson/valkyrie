@@ -65,13 +65,13 @@ namespace valkyrie{
       VK_constant auto allocate_table_fn = [](u64 size, void* state) noexcept {
         using traits         = allocator_traits<Alloc>;
         using allocator_type = typename traits::allocator_type;
-        return static_cast<dictionary_entry_base**>(traits::allocate_array(*static_cast<allocator_type*>(state), size + 1, sizeof(void*) + sizeof(u32), detail::max_alignment));
+        return static_cast<dictionary_entry_base**>(traits::allocate_array(*static_cast<allocator_type*>(state), size + 1, sizeof(void*) + sizeof(u32), max_alignment));
       };
       template <raw_allocator Alloc>
       VK_constant auto deallocate_table_fn = [](dictionary_entry_base** table, u64 size, void* state) noexcept {
         using traits         = allocator_traits<Alloc>;
         using allocator_type = typename traits::allocator_type;
-        traits::deallocate_array(*static_cast<allocator_type*>(state), table, size + 1, sizeof(void*) + sizeof(u32), detail::max_alignment);
+        traits::deallocate_array(*static_cast<allocator_type*>(state), table, size + 1, sizeof(void*) + sizeof(u32), max_alignment);
       };
 
 

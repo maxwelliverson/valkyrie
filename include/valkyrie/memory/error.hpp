@@ -493,7 +493,7 @@ namespace valkyrie{
 
 
 
-  namespace detail
+  namespace impl
   {
     template <class Ex, typename Func>
     void check_allocation_size(u64 passed, Func f, const allocator_info& info)

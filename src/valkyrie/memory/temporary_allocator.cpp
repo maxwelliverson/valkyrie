@@ -33,7 +33,7 @@ detail::temporary_block_allocator::growth_tracker detail::temporary_block_alloca
 memory_block detail::temporary_block_allocator::allocate_block() {
   auto alloc = temporary_impl_allocator();
   auto memory = temporary_impl_allocator_traits::allocate_array(alloc, block_size_, 1,
-                                                                detail::max_alignment);
+                                                                max_alignment);
   auto block = memory_block(memory, block_size_);
   block_size_ = u64(block_size_ * growing_block_allocator<temporary_impl_allocator>::growth_factor());
   return block;
@@ -42,7 +42,7 @@ memory_block detail::temporary_block_allocator::allocate_block() {
 void detail::temporary_block_allocator::deallocate_block(memory_block block) {
   auto alloc = temporary_impl_allocator();
   temporary_impl_allocator_traits::deallocate_array(alloc, block.memory, block.size, 1,
-                                                    detail::max_alignment);
+                                                    max_alignment);
 }
 
 
