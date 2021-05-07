@@ -156,7 +156,6 @@ add_object(valkyrie.async.semaphore)
 add_object(valkyrie.async.agent)
 add_object(valkyrie.async.task)
 
-add_object(valkyrie.utility)
 
 add_object(valkyrie.status.domains.std)
 
@@ -171,6 +170,8 @@ add_object(valkyrie.utility.random)
 add_object(valkyrie.utility.library)
 add_object(valkyrie.utility.components)
 add_object(valkyrie.utility.reflect)
+add_object(valkyrie.utility.simd)
+add_object(valkyrie.utility.uuid)
 
 add_object(valkyrie.graphics.api.instance)
 add_object(valkyrie.graphics.api.physical_device)

@@ -11,6 +11,11 @@
 #include <tuple>
 
 namespace valkyrie{
+
+  // TODO: Merge with adt/iterator.hpp
+  // TODO: Update PascalCase to snake_case
+
+
   using InputIterator = std::input_iterator_tag;
   using OutputIterator = std::output_iterator_tag;
   using ForwardIterator = std::forward_iterator_tag;

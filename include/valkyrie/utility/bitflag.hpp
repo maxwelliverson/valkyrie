@@ -229,6 +229,7 @@ namespace valkyrie{
 
     template <typename E>
     class bitflag_const_iterator{
+      template <enumerator_c>
       friend class bitflags;
       using underlying_type = typename enum_traits<E>::underlying_type;
       using enum_type       = E;
@@ -280,6 +281,7 @@ namespace valkyrie{
     };
     template <typename E>
     class bitflag_iterator{
+      template <enumerator_c>
       friend class bitflags;
       using underlying_type = typename enum_traits<E>::underlying_type;
 
@@ -296,7 +298,7 @@ namespace valkyrie{
       constexpr explicit bitflag_iterator(underlying_type* pBits) noexcept
           : pBits(pBits){}
 
-      constexpr bitflag_reference operator*() const noexcept {
+      constexpr bitflag_reference<E> operator*() const noexcept {
         return { pBits, mask & -mask };
       }
       constexpr bitflag_iterator& operator++() noexcept {
@@ -315,14 +317,14 @@ namespace valkyrie{
       }
 
 
-      constexpr bool operator==(bitflag_sentinel) const noexcept {
+      constexpr bool operator==(bitflag_sentinel<E>) const noexcept {
         return !mask;
       }
       friend constexpr bool operator==(bitflag_iterator A, bitflag_iterator B) noexcept {
         return A.pBits == B.pBits && A.mask == B.mask;
       }
 
-      constexpr std::partial_ordering operator<=>(bitflag_sentinel S) const noexcept {
+      constexpr std::partial_ordering operator<=>(bitflag_sentinel<E> S) const noexcept {
         if (pBits != S.pBits)
           return std::partial_ordering::unordered;
         return static_cast<underlying_type>(0) <=> mask;
