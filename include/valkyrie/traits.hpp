@@ -1824,6 +1824,71 @@ namespace valkyrie{
           };
         };
 
+        struct tmp{
+          int a;
+          float b;
+        };
+
+        struct function_construct_object{
+
+
+
+
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::construct_object(alloc, p, 1, -2.3); }){
+            template <typename T, typename ...Args> requires constructible_from<T, Args...>
+            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
+              traits::allocator<A>::construct_object(alloc, ptr, std::forward<Args>(args)...);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.construct_object(p, 1, -2.3); }){
+            template <typename T, typename ...Args> requires constructible_from<T, Args...>
+            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
+              alloc.construct_object(ptr, std::forward<Args>(args)...);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.construct(p, 1, -2.3); }){
+            template <typename T, typename ...Args> requires constructible_from<T, Args...>
+            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
+              alloc.construct(ptr, std::forward<Args>(args)...);
+            }
+          };
+          VK_trait_fallback(A){
+            template <typename T, typename ...Args> requires constructible_from<T, Args...>
+            inline static void construct_object(allocator_type_t<A>&, T* ptr, Args&& ...args) noexcept {
+              new(ptr) T{ std::forward<Args>(args)... };
+            }
+          };
+        };
+        struct function_destroy_object{
+
+          VK_trait_init(3);
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::destroy_object(alloc, p); }){
+            template <typename T>
+            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
+              traits::allocator<A>::destroy_object(alloc, ptr);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.destroy_object(p); }){
+            template <typename T>
+            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
+              alloc.destroy_object(ptr);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.destroy(p); }){
+            template <typename T>
+            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
+              alloc.destroy(ptr);
+            }
+          };
+          VK_trait_fallback(A){
+            template <typename T>
+            inline static void destroy_object(allocator_type_t<A>&, T* VK_param(nonnull) ptr) noexcept {
+              ptr->~T();
+            }
+          };
+        };
+
 
         using trait_list = meta::set<
             typedef_allocator_type,
@@ -1850,7 +1915,10 @@ namespace valkyrie{
             bool_propagate_on_container_copy_assignment,
             bool_propagate_on_container_move_assignment,
             bool_propagate_on_container_swap,
-            function_select_on_container_copy_construction>;
+            function_select_on_container_copy_construction,
+
+            function_construct_object,
+            function_destroy_object>;
       };
 
       // TODO: Implement container traits_v2
