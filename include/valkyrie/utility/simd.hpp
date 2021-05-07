@@ -6,12 +6,13 @@
 #define VALKYRIE_ADT_SIMD_HPP
 
 #include <valkyrie/preprocessor.hpp>
-
+#include <valkyrie/primitives.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cfloat>
+#include <new>
 
 #if !defined(_WIN32)
 // strcasecmp, strncasecmp
@@ -19,18 +20,363 @@
 #endif
 
 #include <intrin.h>
+#include <mmintrin.h>
 #include <immintrin.h>
 
 
 namespace valkyrie{
 
-  template <typename T>
-  class simd8;
+  namespace simd{
+    namespace impl{
+
+
+      struct cpu_info{
+        bool has_mmx;
+        bool has_sse;
+        bool has_sse2;
+        bool has_sse3;
+        bool has_ssse3;
+        bool has_sse4_1;
+        bool has_sse4_2;
+        bool has_avx;
+        bool has_avx2;
+        bool has_avx512;
+        bool has_avx512f;
+        bool has_avx512bw;
+        bool has_avx512cd;
+        bool has_avx512dq;
+        bool has_avx512er;
+        bool has_avx512ifma52;
+        bool has_avx512pf;
+        bool has_avx512vl;
+        bool has_avx512vpopcntdq;
+        bool has_avx512_4fmaps;
+        bool has_avx512_4vnniw;
+        bool has_avx512_f;
+        bool has_avx512_bf16;
+        bool has_avx512_bitalg;
+        bool has_avx512_vbmi;
+        bool has_avx512_vbmi2;
+        bool has_avx512_vnni;
+        bool has_avx512_vp2intersect;
+      };
+
+      extern const cpu_info cpu alignas(std::hardware_destructive_interference_size);
+
+#define VK_scalar_binary_op(name, bits, type, func) \
+  VK_forceinline base##bits name(base##bits a, base##bits b) noexcept { \
+    return { . type##reg = func(a. type##reg, b. type##reg) };          \
+  }
+
+/*#define VK_simd_binary_x2_op(name, bits, type, flag, intrin) \
+  VK_forceinline base##bits name(const base##bits& a, const base##bits& b) noexcept { \
+    if ( cpu.has_##flag )                                                                       \
+      return { . type##reg = intrin ( a. type##reg, b. type##reg ) };                           \
+    return { .reg_lo = name(a.reg_lo, b.reg_lo), .reg_hi = name(a.reg_hi, b.reg_hi) };          \
+  }*/
+#define VK_simd_binary_bit_op(name, bits, type, flag, intrin) \
+  VK_forceinline base##bits name(const base##bits& a, const base##bits& b) noexcept { \
+    if ( cpu.has_##flag )                                                                       \
+      return { . type##reg = intrin ( a. type##reg, b. type##reg ) };                           \
+    return { .reg_lo = name(a.reg_lo, b.reg_lo), .reg_hi = name(a.reg_hi, b.reg_hi) };          \
+  }
+#define VK_binary_operator_alias(name, op) \
+  template <typename T>        \
+  VK_forceinline auto name(T a, T b) noexcept {      \
+    if constexpr ( std::is_same_v<decltype(a op b), bool> ) \
+      return a op b;                         \
+    else return T(a op b); \
+  }
+
+
+
+      struct base16{
+        union{
+          u16 freg; // TODO: replace with f16 type when implemented
+          u16 ureg;
+          i16 ireg;
+        };
+      };
+      struct base32{
+        union{
+          f32 freg;
+          u32 ureg;
+          i32 ireg;
+        };
+      };
+      struct base64{
+        union{
+          f64 freg;
+          u64 ureg;
+          i64 ireg;
+          struct {
+            i32 ireg_lo;
+            i32 ireg_hi;
+          };
+          struct {
+            u32 ureg_lo;
+            u32 ureg_hi;
+          };
+          struct {
+            f32 freg_lo;
+            f32 freg_hi;
+          };
+        };
+      };
+      struct base128{
+        union{
+          __m128  freg;
+          __m128i ireg;
+          __m128d dreg;
+
+          struct {
+            base64 reg_lo;
+            base64 reg_hi;
+          };
+        };
+
+      };
+      struct base256{
+        union{
+          __m256  freg;
+          __m256i ireg;
+          __m256d dreg;
+
+          struct {
+            base128 reg_lo;
+            base128 reg_hi;
+          };
+        };
+
+      };
+      struct base512{
+        union{
+          __m512  freg;
+          __m512i ireg;
+          __m512d dreg;
+          struct {
+            base256 reg_lo;
+            base256 reg_hi;
+          };
+        };
+
+      };
+
+      VK_binary_operator_alias(_bitand, &)
+      VK_binary_operator_alias(_bitor, |)
+      VK_binary_operator_alias(_xor, ^)
+      VK_binary_operator_alias(_and, &&)
+      VK_binary_operator_alias(_or, ||)
+      VK_binary_operator_alias(_plus, +)
+      VK_binary_operator_alias(_sub, -)
+      VK_binary_operator_alias(_mul, *)
+      VK_binary_operator_alias(_div, /)
+      VK_binary_operator_alias(_mod, %)
+      VK_binary_operator_alias(_eq,  ==)
+      VK_binary_operator_alias(_neq, !=)
+      VK_binary_operator_alias(_lt, <)
+      VK_binary_operator_alias(_gt, >)
+      VK_binary_operator_alias(_lt_eq, <=)
+      VK_binary_operator_alias(_gt_eq, >=)
+      VK_binary_operator_alias(_lshift, <<)
+      VK_binary_operator_alias(_rshift, >>)
+
+
+
+      VK_scalar_binary_op(bit_and, 16, i, _bitand)
+      VK_scalar_binary_op(bit_and, 32, i, _bitand)
+      VK_scalar_binary_op(bit_and, 64, i, _bitand)
+      VK_simd_binary_bit_op(bit_and, 128, i, sse2, _mm_and_si128)
+      VK_simd_binary_bit_op(bit_and, 256, i, avx2, _mm256_and_si256)
+      VK_simd_binary_bit_op(bit_and, 512, i, avx512f, _mm512_and_si512)
+
+      VK_scalar_binary_op(bit_or, 16,  i, _bitor)
+      VK_scalar_binary_op(bit_or, 32,  i, _bitor)
+      VK_scalar_binary_op(bit_or, 64,  i, _bitor)
+      VK_simd_binary_bit_op(bit_or,   128, i, sse2, _mm_or_si128)
+      VK_simd_binary_bit_op(bit_or,   256, i, avx2, _mm256_or_si256)
+      VK_simd_binary_bit_op(bit_or,   512, i, avx512f, _mm512_or_si512)
+
+      VK_scalar_binary_op(bit_xor, 16, i, _bitor)
+      VK_scalar_binary_op(bit_xor, 32, i, _bitor)
+      VK_scalar_binary_op(bit_xor, 64, i, _bitor)
+      VK_simd_binary_bit_op(bit_xor, 128, i, sse2, _mm_or_si128)
+      VK_simd_binary_bit_op(bit_xor, 256, i, avx2, _mm256_or_si256)
+      VK_simd_binary_bit_op(bit_xor, 512, i, avx512f, _mm512_or_si512)
+          
+      
+      VK_simd_binary_bit_op(iadd_x2, 128, i, sse2, _mm_add_epi64)
+          
+
+
+      template <size_t N>
+      struct select_base;
+      template <>
+      struct select_base<2>{
+        using type = base16;
+      };
+      template <>
+      struct select_base<4>{
+        using type = base32;
+      };
+      template <>
+      struct select_base<8>{
+        using type = base64;
+      };
+      template <>
+      struct select_base<16>{
+        using type = base128;
+      };
+      template <>
+      struct select_base<32>{
+        using type = base256;
+      };
+      template <>
+      struct select_base<64>{
+        using type = base512;
+      };
+
+      template <typename T, size_t N>
+      using select_base_t = typename select_base<sizeof(T) * N>::type;
+
+      template <typename T>
+      class x2  : select_base_t<T, 2>{
+        using base = select_base_t<T, 2>;
+      public:
+
+      };
+      template <typename T>
+      class x4  : select_base_t<T, 4>{};
+      template <typename T>
+      class x8  : select_base_t<T, 4>{};
+      template <typename T>
+      class x16 : select_base_t<T, 4>{};
+      template <typename T>
+      class x32 : select_base_t<T, 4>{};
+      template <typename T>
+      class x64 : select_base_t<T, 4>{};
+    }
+
+    using boolx2  = impl::x2<bool>;
+    using boolx4  = impl::x4<bool>;
+    using boolx8  = impl::x8<bool>;
+    using boolx16 = impl::x16<bool>;
+    using boolx32 = impl::x32<bool>;
+    using boolx64 = impl::x64<bool>;
+
+    using charx2  = impl::x2<char>;
+    using charx4  = impl::x4<char>;
+    using charx8  = impl::x8<char>;
+    using charx16 = impl::x16<char>;
+    using charx32 = impl::x32<char>;
+    using charx64 = impl::x64<char>;
+
+    using utf8x2  = impl::x2<utf8>;
+    using utf8x4  = impl::x4<utf8>;
+    using utf8x8  = impl::x8<utf8>;
+    using utf8x16 = impl::x16<utf8>;
+    using utf8x32 = impl::x32<utf8>;
+    using utf8x64 = impl::x64<utf8>;
+
+    using i8x2  = impl::x2<i8>;
+    using i8x4  = impl::x4<i8>;
+    using i8x8  = impl::x8<i8>;
+    using i8x16 = impl::x16<i8>;
+    using i8x32 = impl::x32<i8>;
+    using i8x64 = impl::x64<i8>;
+
+    using u8x2  = impl::x2<u8>;
+    using u8x4  = impl::x4<u8>;
+    using u8x8  = impl::x8<u8>;
+    using u8x16 = impl::x16<u8>;
+    using u8x32 = impl::x32<u8>;
+    using u8x64 = impl::x64<u8>;
+
+
+    // TODO: Implement f16 (half) floating point type
+#if 0
+    using f16x2  = impl::x2<f16>;
+    using f16x4  = impl::x4<f16>;
+    using f16x8  = impl::x8<f16>;
+    using f16x16 = impl::x16<f16>;
+    using f16x32 = impl::x32<f16>;
+#endif
+
+    using i16x2  = impl::x2<i16>;
+    using i16x4  = impl::x4<i16>;
+    using i16x8  = impl::x8<i16>;
+    using i16x16 = impl::x16<i16>;
+    using i16x32 = impl::x32<i16>;
+
+    using u16x2  = impl::x2<u16>;
+    using u16x4  = impl::x4<u16>;
+    using u16x8  = impl::x8<u16>;
+    using u16x16 = impl::x16<u16>;
+    using u16x32 = impl::x32<u16>;
+
+    using utf16x2  = impl::x2<utf16>;
+    using utf16x4  = impl::x4<utf16>;
+    using utf16x8  = impl::x8<utf16>;
+    using utf16x16 = impl::x16<utf16>;
+    using utf16x32 = impl::x32<utf16>;
+
+
+    using wcharx2  = impl::x2<wchar_t>;
+    using wcharx4  = impl::x4<wchar_t>;
+    using wcharx8  = impl::x8<wchar_t>;
+    using wcharx16 = impl::x16<wchar_t>;
+#if VK_system_windows
+    using wcharx32 = impl::x32<wchar_t>;
+#endif
+
+
+
+    using i32x2  = impl::x2<i32>;
+    using i32x4  = impl::x4<i32>;
+    using i32x8  = impl::x8<i32>;
+    using i32x16 = impl::x16<i32>;
+
+    using u32x2  = impl::x2<u32>;
+    using u32x4  = impl::x4<u32>;
+    using u32x8  = impl::x8<u32>;
+    using u32x16 = impl::x16<u32>;
+
+    using utf32x2  = impl::x2<utf32>;
+    using utf32x4  = impl::x4<utf32>;
+    using utf32x8  = impl::x8<utf32>;
+    using utf32x16 = impl::x16<utf32>;
+
+    using f32x2  = impl::x2<f32>;
+    using f32x4  = impl::x4<f32>;
+    using f32x8  = impl::x8<f32>;
+    using f32x16 = impl::x16<f32>;
+
+
+
+    using i64x2  = impl::x2<i64>;
+    using i64x4  = impl::x4<i64>;
+    using i64x8  = impl::x8<i64>;
+
+    using u64x2  = impl::x2<u64>;
+    using u64x4  = impl::x4<u64>;
+    using u64x8  = impl::x8<u64>;
+
+    using f64x2  = impl::x2<f64>;
+    using f64x4  = impl::x4<f64>;
+    using f64x8  = impl::x8<f64>;
+
+  }
+
+
+
+
+
+
 
 
   namespace impl{
     template<typename Child>
-    struct base {
+    struct base256 {
       __m256i value;
 
 // Zero constructor
@@ -48,6 +394,29 @@ namespace valkyrie{
       VK_forceinline Child operator&(const Child other) const { return _mm256_and_si256(*this, other); }
       VK_forceinline Child operator^(const Child other) const { return _mm256_xor_si256(*this, other); }
       VK_forceinline Child bit_andnot(const Child other) const { return _mm256_andnot_si256(other, *this); }
+      VK_forceinline Child& operator|=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast | other; return *this_cast; }
+      VK_forceinline Child& operator&=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast & other; return *this_cast; }
+      VK_forceinline Child& operator^=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast ^ other; return *this_cast; }
+    };
+    template<typename Child>
+    struct base128 {
+      __m128i value;
+
+// Zero constructor
+      VK_forceinline base() : value{__m256i()} {}
+
+// Conversion from SIMD register
+      VK_forceinline base(const __m256i _value) : value(_value) {}
+
+// Conversion to SIMD register
+      VK_forceinline operator const __m256i&() const { return this->value; }
+      VK_forceinline operator __m256i&() { return this->value; }
+
+// Bit operations
+      VK_forceinline Child operator|(const Child other) const { return _mm_or_si128(*this, other); }
+      VK_forceinline Child operator&(const Child other) const { return _mm_and_si128(*this, other); }
+      VK_forceinline Child operator^(const Child other) const { return _mm_xor_si128(*this, other); }
+      VK_forceinline Child bit_andnot(const Child other) const { return _mm_andnot_si128(other, *this); }
       VK_forceinline Child& operator|=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast | other; return *this_cast; }
       VK_forceinline Child& operator&=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast & other; return *this_cast; }
       VK_forceinline Child& operator^=(const Child other) { auto this_cast = static_cast<Child*>(this); *this_cast = *this_cast ^ other; return *this_cast; }
