@@ -116,6 +116,7 @@ add_object(spirv.Shader)
 add_object(valkyrie.adt.dictionary)
 add_object(valkyrie.adt.concurrent_list)
 add_object(valkyrie.adt.hazard_ptr)
+add_object(valkyrie.adt.rb_tree)
 
 
 add_object(valkyrie.memory.detail.debug_helpers)
