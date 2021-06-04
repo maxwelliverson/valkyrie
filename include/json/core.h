@@ -185,20 +185,7 @@ typedef _Bool              json_bool_t;
 
 typedef json_u32_t         json_size_t;
 typedef json_u32_t         json_flags_t;
-
-typedef struct json_utf8 {
-  union {
-    struct {
-      unsigned char                 : 3;
-      unsigned char invalid_4_bytes : 1;
-      unsigned char not_3_bytes     : 1;
-      unsigned char not_2_bytes     : 1;
-      unsigned char is_initial_byte : 1;
-      unsigned char is_multibyte    : 1;
-    }  meta;
-    json_byte_t   byte;
-  };
-} json_utf8_t;
+typedef json_u64_t         json_flags64_t;
 
 
 
@@ -238,7 +225,111 @@ typedef enum json_status{
   JSON_ERROR_POOL_TOO_FRAGMENTED,
   JSON_ERROR_COLLECTION_IS_EMPTY,
   JSON_ERROR_COLLECTION_IS_FULL
-} json_status_t;
+}     json_status_t;
+typedef enum json_command_id{
+
+  /* [ Context API ] */
+
+  JSON_API_CTX_CREATE,
+  JSON_API_CTX_RETAIN,
+  JSON_API_CTX_RELEASE,
+  JSON_API_CTX_TIDY_SYMBOLS,
+  JSON_API_CTX_NEXT_TASK,
+
+
+  /* [ Stream API ] */
+
+  JSON_API_STREAM_CREATE,
+  JSON_API_STREAM_DESTROY,
+  JSON_API_STREAM_GET_FLAGS,
+
+
+  /* [ Document API ] */
+
+  JSON_API_DOCUMENT_CREATE,
+  JSON_API_DOCUMENT_DESTROY,
+
+
+  /* [ File API ] */
+
+  JSON_API_FILE_OPEN,
+  JSON_API_FILE_CLOSE,
+  JSON_API_FILE_GET_FLAGS,
+
+
+  /* [ Task API ] */
+
+  JSON_API_TASK_WAIT,
+  JSON_API_TASK_IS_COMPLETE,
+  JSON_API_TASK_FULFILL,
+  JSON_API_TASK_DISCARD,
+
+
+  /* [ Parser API ] */
+
+  JSON_API_PARSER_CREATE,
+  JSON_API_PARSER_DESTROY,
+  JSON_API_PARSER_RESET,
+  JSON_API_PARSE,
+
+
+  /* [ Value API ] */
+
+  JSON_API_VALUE_IS_TYPE,
+  JSON_API_VALUE_SET_VALUE,
+  JSON_API_VALUE_SET_OBJECT,
+  JSON_API_VALUE_SET_ARRAY,
+  JSON_API_VALUE_SET_INT,
+  JSON_API_VALUE_SET_UINT,
+  JSON_API_VALUE_SET_FLOAT,
+  JSON_API_VALUE_SET_STRING,
+  JSON_API_VALUE_SET_BOOLEAN,
+  JSON_API_VALUE_SET_TRUE,
+  JSON_API_VALUE_SET_FALSE,
+  JSON_API_VALUE_SET_NULL,
+  JSON_API_VALUE_GET_OBJECT,
+  JSON_API_VALUE_GET_ARRAY,
+  JSON_API_VALUE_GET_STRING,
+  JSON_API_VALUE_GET_INT,
+  JSON_API_VALUE_GET_UINT,
+  JSON_API_VALUE_GET_FLOAT,
+  JSON_API_VALUE_GET_BOOLEAN,
+
+
+  /* [ PRIVATE APIS ] */
+
+  /* [ Memory API ] */
+
+
+  JSON_PRIVATE_API_ALLOCATE,
+  JSON_PRIVATE_API_REALLOCATE,
+  JSON_PRIVATE_API_DEALLOCATE,
+
+
+  /* [ Symbol API ] */
+
+  JSON_PRIVATE_API_SYMBOL_LOOKUP,
+  JSON_PRIVATE_API_SYMBOL_RETAIN,
+  JSON_PRIVATE_API_SYMBOL_RELEASE,
+
+
+
+} json_command_id_t;
+typedef enum json_signal_id{
+  JSON_CMD_NULL,
+  JSON_CMD_BOOL,
+  JSON_CMD_INT,
+  JSON_CMD_UINT,
+  JSON_CMD_DOUBLE,
+  JSON_CMD_RAW_NUMBER,
+  JSON_CMD_STRING,
+  JSON_CMD_OBJECT_START,
+  JSON_CMD_KEY,
+  JSON_CMD_OBJECT_END,
+  JSON_CMD_ARRAY_START,
+  JSON_CMD_ARRAY_END
+}  json_signal_id_t;
+
 
 
 
@@ -265,8 +356,6 @@ typedef struct json_value*    json_value_t;
 
 
 
-
-
 typedef struct json_callbacks{
   json_bool_t (* onNull)(void*);
   json_bool_t (* onBool)(void*, json_bool_t b);
@@ -285,11 +374,13 @@ typedef struct json_callbacks{
 } json_callbacks_t;
 
 
+/* =================[ Core Function Declarations ]================= */
 
-/*typedef struct json_buffer{
-  json_address_t address;
-  json_u64_t     size;
-} json_buffer_t;*/
+const json_char_t* json_status_description(json_status_t status);
+const json_char_t* json_command_name(json_command_id_t commandId);
+
+
+
 
 JSON_END_C_NAMESPACE
 

@@ -17,10 +17,10 @@ struct json_big_integer{
 struct json_big_float{
   union{
     struct {
-      json_u64_t : 0;
-      json_u64_t : 0;
-      json_u64_t : 0;
-      json_u64_t : 0;
+      json_u64_t : 64;
+      json_u64_t : 64;
+      json_u64_t : 64;
+      json_u64_t : 64;
     } bits;
     struct {
       json_u64_t frac_lo_bits[3];

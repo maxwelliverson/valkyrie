@@ -9,7 +9,7 @@ if (RUBY_EXECUTABLE)
     OUTPUT ${generated_files}
     DEPENDS ${template_files}
     COMMAND ${RUBY_EXECUTABLE} genfeaturejson.rb ${CMAKE_CURRENT_BINARY_DIR}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY .
   )
   add_custom_target(generated-data DEPENDS ${generated_files})
 else (RUBY_EXECUTABLE)

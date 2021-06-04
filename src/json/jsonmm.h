@@ -46,7 +46,7 @@
  *       24  |   224 |    32 || 256       | 64
  *       25  |   240 |    16 || 256       | 64
  *       26  |   256 |     0 || 256       | 64
- *       27  |   288 |   224 || 512       | 128
+ *       27  |   288 |   224 || 512       | 128    // 128
  *       28  |   320 |   192 || 512       | 128
  *       29  |   352 |   160 || 512       | 128
  *       30  |   384 |   128 || 512       | 128
@@ -54,7 +54,7 @@
  *       32  |   448 |    64 || 512       | 128
  *       33  |   480 |    32 || 512       | 128
  *       34  |   512 |     0 || 512       | 128
- *       35  |   576 |   448 || 1024      | 256
+ *       35  |   576 |   448 || 1024      | 256    // 64
  *       36  |   640 |   384 || 1024      | 256
  *       37  |   704 |   320 || 1024      | 256
  *       38  |   768 |   256 || 1024      | 256
@@ -62,7 +62,7 @@
  *       40  |   896 |   128 || 1024      | 256
  *       41  |   960 |    64 || 1024      | 256
  *       42  |  1024 |     0 || 1024      | 256
- *       43  |  1152 |   896 || 2048      | 512
+ *       43  |  1152 |   896 || 2048      | 512    // 32
  *       44  |  1280 |   768 || 2048      | 512
  *       45  |  1408 |   640 || 2048      | 512
  *       46  |  1536 |   512 || 2048      | 512
@@ -70,7 +70,7 @@
  *       48  |  1792 |   256 || 2048      | 512
  *       49  |  1920 |   128 || 2048      | 512
  *       50  |  2048 |     0 || 2048      | 512
- *       51  |  2304 |  1792 || 4096      | 1024
+ *       51  |  2304 |  1792 || 4096      | 1024   // 16
  *       52  |  2560 |  1536 || 4096      | 1024
  *       53  |  2816 |  1280 || 4096      | 1024
  *       54  |  3072 |  1024 || 4096      | 1024
@@ -97,29 +97,38 @@
 JSON_BEGIN_C_NAMESPACE
 
 
-typedef struct json_internal_allocator*       json_internal_allocator_t;
+
 typedef struct json_fixed_size_allocator*     json_fixed_size_allocator_t;
 
 
 
-json_status_t  json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);
-json_status_t  json_internal_allocator_cleanup(json_internal_allocator_t allocator);
-
-void*          json_alloc(json_status_t* pStatus, json_u64_t size, json_internal_allocator_t allocator);
-void           json_free(void* address, json_u64_t size, json_internal_allocator_t allocator);
-
-void*          json_alloc_dynamic(json_status_t* pStatus, json_u64_t sizePerObject, json_u64_t count, json_internal_allocator_t allocator);
-void*          json_realloc_dynamic(json_status_t* pStatus, void* address, json_u64_t size, json_u64_t newCount, json_u64_t oldCount, json_internal_allocator_t allocator);
-void           json_free_dynamic(void* address, json_u64_t sizePerObject, json_u64_t count, json_internal_allocator_t allocator);
+/*json_status_t  json_internal_allocator_init(json_internal_allocator_t allocator, json_size_t minSize, json_size_t maxSize, json_size_t blocksPerChunk);
+json_status_t  json_internal_allocator_cleanup(json_internal_allocator_t allocator);*/
 
 
 
+void*          json_alloc__(json_u64_t size, json_ctx_t context);
+void           json_free__(void* address, json_u64_t size, json_ctx_t context);
 
-json_status_t  json_fixed_allocator_init(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t blockSize);
+
+void*          json_alloc_array__(json_u64_t count, json_u64_t sizePerObject, json_ctx_t context);
+void*          json_realloc_array__(void* address, json_u64_t newCount, json_u64_t oldCount, json_u64_t size, json_ctx_t context);
+void           json_free_array__(void* address, json_u64_t count, json_u64_t sizePerObject, json_ctx_t context);
+
+
+json_status_t  json_get_fixed_allocator__(json_fixed_size_allocator_t* pAllocator, json_u64_t size, json_ctx_t context);
+void*          json_fixed_alloc__(json_fixed_size_allocator_t allocator);
+void           json_fixed_free__(void* p, json_fixed_size_allocator_t allocator);
+
+
+
+
+
+/*json_status_t  json_fixed_allocator_init(json_fixed_size_allocator_t fixed, json_internal_allocator_t allocator, json_u32_t blockSize);
 void           json_fixed_allocator_cleanup(json_fixed_size_allocator_t fixed);
 
 void*          json_fixed_size_alloc(json_fixed_size_allocator_t allocator);
-void           json_fixed_size_dealloc(void* address, json_fixed_size_allocator_t allocator);
+void           json_fixed_size_dealloc(void* address, json_fixed_size_allocator_t allocator);*/
 
 
 

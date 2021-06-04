@@ -29,8 +29,19 @@
 
 
 
+#if defined(__GNUC__) || defined(__clang__)
+# define JSON_assume_aligned(p, align) __builtin_assume_aligned(p, align)
+#else
+# define JSON_assume_aligned(p, align) p
+#endif
 
-#define JSON_FIXED_SIZE_ALLOCATOR_COUNT 17
+
+
+
+
+
+
+#define JSON_FIXED_SIZE_ALLOCATOR_COUNT 59
 #define JSON_SMALL_OBJECT_MAX_SIZE      (UCHAR_MAX + 1)
 
 
@@ -74,11 +85,14 @@
 
 
 #define JSON_GENERIC_VALUE_SIZE (8 + sizeof(void*))
+#define JSON_GENERIC_VALUE_ALIGNMENT 16
 #define JSON_INLINE_STRING_MAX_LENGTH (JSON_GENERIC_VALUE_SIZE - 2)
+
 
 #define JSON_BIG_INTEGER_BIT_COUNT 3328
 #define JSON_BIG_INTEGER_CAPACITY (JSON_BIG_INTEGER_BIT_COUNT / sizeof(json_u64_t))
 #define JSON_BIG_INTEGER_TYPE_BIT (sizeof(json_u64_t) * 8)
+
 
 #define JSON_BIG_FLOAT_EXPONENT_SIZE 20
 #define JSON_BIG_FLOAT_FRACTION_SIZE 236

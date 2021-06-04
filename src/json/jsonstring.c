@@ -50,7 +50,7 @@ inline static json_status_t json_symbol_registry_init__(json_symbol_registry_t r
   registry->numItems = 0;
   registry->numTombstones = 0;
 
-  registry->symbolTable = json_alloc_dynamic(&result, sizeof(json_symbol_t), newNumBuckets + 1, allocator);
+  registry->symbolTable = json_alloc_array(&result, sizeof(json_symbol_t), newNumBuckets + 1, allocator);
 
   if (JSON_likely( result == JSON_SUCCESS )) {
     registry->numBuckets = newNumBuckets;
@@ -105,7 +105,7 @@ inline static json_u32_t symbol_registry_rehash__(json_symbol_registry_t registr
   unsigned newBucketNo = bucketNo;
   // Allocate one extra bucket which will always be non-empty.  This allows the
   // iterators to stop at end.
-  json_symbol_t* newTable = json_alloc_dynamic(&status, JSON_HASHTABLE_ELEMENT_SIZE, newBucketNo + 1, registry->allocator);
+  json_symbol_t* newTable = json_alloc_array(&status, JSON_HASHTABLE_ELEMENT_SIZE, newBucketNo + 1, registry->allocator);
 
   unsigned *newHashArray = (json_u32_t *)(newTable + newSize + 1);
   newTable[newSize] = (json_symbol_t)2;
@@ -140,7 +140,7 @@ inline static json_u32_t symbol_registry_rehash__(json_symbol_registry_t registr
     }
   }
 
-  json_free_dynamic(registry->symbolTable, JSON_HASHTABLE_ELEMENT_SIZE, oldSize, registry->allocator);
+  json_free_array(registry->symbolTable, JSON_HASHTABLE_ELEMENT_SIZE, oldSize, registry->allocator);
 
   registry->symbolTable   = newTable;
   registry->numBuckets    = newSize;
@@ -362,8 +362,8 @@ void          symbol_registry_cleanup(json_symbol_registry_t registry) {
       }
     }
   }
-  json_free_dynamic(registry->symbolTable,
-                    2 * sizeof(void*),
-                    registry->numBuckets + 1,
-                    registry->allocator);
+  json_free_array(registry->symbolTable,
+                  2 * sizeof(void *),
+                  registry->numBuckets + 1,
+                  registry->allocator);
 }

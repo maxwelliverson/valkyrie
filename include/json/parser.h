@@ -41,10 +41,6 @@ typedef enum json_parse_status{
 typedef struct json_parser*               json_parser_t;
 
 
-
-
-
-
 enum json_create_parser_flag_bits{
   JSON_CREATE_PARSER_DEFAULT_FLAGS      = 0x0,
   JSON_CREATE_PARSER_IN_PLACE           = 0x1,
@@ -60,6 +56,22 @@ enum json_create_parser_flag_bits{
 };
 typedef json_flags_t json_create_parser_flags_t;
 
+
+/*typedef json_u32_t json_automata_state_t;
+typedef json_u8_t  json_automata_input_t;
+
+typedef struct json_automata_state_info{
+  json_automata_state_t(* pfnNextStatus)(void* pUserData, const json_automata_input_t* input, json_size_t inputLength);
+  json_parse_status_t status;
+} json_automata_state_info_t;
+
+typedef struct json_automata{
+  json_automata_state_info_t* pStates;
+  json_size_t                 stateCount;
+  void*                       pUserData;
+} json_automata_t;*/
+
+
 typedef struct json_create_parser_params{
   json_create_parser_flags_t flags;
   json_ctx_t                 context;
@@ -68,11 +80,14 @@ typedef struct json_create_parser_params{
 } json_create_parser_params_t;
 
 
-json_status_t json_create_parser(json_parser_t* pResultParser, const json_create_parser_params_t* pParams);
-void          json_destroy_parser(json_parser_t parser);
+json_status_t json_parser_create(json_parser_t* pResultParser, const json_create_parser_params_t* pParams);
+void          json_parser_destroy(json_parser_t parser);
 
+
+json_status_t json_parser_reset(json_parser_t parser);
 
 json_parse_status_t json_parse(json_parser_t parser);
+json_parse_status_t json_parse_stream(json_parser_t parser, json_stream_t stream);
 
 
 

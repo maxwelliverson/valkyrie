@@ -53,11 +53,11 @@ typedef struct json_array_ref{
 
 typedef struct json_value_ref{
   json_value_t   value;
-  json_ctx_t ctx;
+  json_ctx_t     ctx;
 }  json_value_ref_t;
 typedef struct json_object_ref{
   json_object_t  object;
-  json_ctx_t ctx;
+  json_ctx_t     ctx;
 } json_object_ref_t;
 
 
@@ -80,13 +80,13 @@ void              json_value_set_false(json_value_ref_t value);
 void              json_value_set_null(json_value_ref_t value);
 
 
-json_status_t     json_value_get_object(json_object_ref_t* pObjectRef, json_value_ref_t value);
-json_status_t     json_value_get_array(json_array_ref_t* arrayRef,     json_value_ref_t value);
-json_status_t     json_value_get_string(json_string_ref_t* string,     json_value_ref_t value);
-json_status_t     json_value_get_uint(json_u64_t* u64,                 json_value_ref_t value);
-json_status_t     json_value_get_int(json_i64_t* i64,                  json_value_ref_t value);
-json_status_t     json_value_get_float(json_f64_t* f64,                json_value_ref_t value);
-json_status_t     json_value_get_boolean(json_bool_t* boolValue,       json_value_ref_t value);
+json_status_t     json_value_get_object(json_object_t* pObject,    json_value_ref_t value);
+json_status_t     json_value_get_array(json_array_ref_t* arrayRef, json_value_ref_t value);
+json_status_t     json_value_get_string(json_string_ref_t* string, json_value_ref_t value);
+json_status_t     json_value_get_uint(json_u64_t* u64,             json_value_ref_t value);
+json_status_t     json_value_get_int(json_i64_t* i64,              json_value_ref_t value);
+json_status_t     json_value_get_float(json_f64_t* f64,            json_value_ref_t value);
+json_status_t     json_value_get_boolean(json_bool_t* boolValue,   json_value_ref_t value);
 
 
 

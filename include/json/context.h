@@ -17,14 +17,15 @@ JSON_BEGIN_C_NAMESPACE
 
 
 enum json_ctx_flag_bits {
-  JSON_CONTEXT_ASYNCHRONOUS  = 0x1 /**< Context is internally synchronized, and all library calls made within this context are thread safe. When a synchronous library function is called, its asynchronous counterpart is called internally and subsequently waited on.    */,
-  JSON_CONTEXT_LOGGED        = 0x2,
-  JSON_CONTEXT_TRACED_MEMORY = 0x4
+  JSON_CTX_THREAD_SAFE  = 0x0001,
+  JSON_CTX_ASYNCHRONOUS = 0x0002 /**< Context is internally synchronized, and all library calls made within this context are thread safe. When a synchronous library function is called, its asynchronous counterpart is called internally and subsequently waited on.    */,
+  JSON_CTX_LOGGED       = 0x0004,
+  JSON_CTX_DEBUG_MEMORY = 0x0008 /**< Enabled memory tracing, guard buffers, leak detection, and double free detection on internal allocations. */
 };
 enum json_create_ctx_flag_bits{
-  JSON_CREATE_CONTEXT_DEFAULT_FLAGS = 0x0,
-  JSON_CREATE_CONTEXT_ASYNCHRONOUS  = 0x1 /**< Indicates that the created context will be asynchronous. */,
-  JSON_CREATE_CONTEXT_DEBUG_MEMORY  = 0x2 /**< Enabled guard buffers, leak detection, and double free detection on internal allocations. */
+  JSON_CREATE_CTX_DEFAULT_FLAGS = 0x0,
+  JSON_CREATE_CTX_THREAD_SAFE   = 0x1,
+  JSON_CREATE_CTX_ASYNCHRONOUS  = 0x2 /**< Indicates that the created context will be asynchronous. */
 };
 
 
@@ -36,20 +37,37 @@ typedef json_flags_t json_create_ctx_flags_t;
 
 
 
-typedef struct json_ctx_allocation_callbacks{
+typedef struct json_ctx_memory_callbacks{
   void(* pfnOnAlloc)(void* pUserData, void* returnAddr, json_u64_t size);
   void(* pfnOnRealloc)(void* pUserData, void* returnAddr, void* originalAddr, json_u64_t newSize, json_u64_t originalSize);
   void(* pfnOnFree)(void* pUserData, void* addr, json_u64_t size);
-  void*                         pUserData;
-} json_ctx_allocation_callbacks_t;
+  void(* pfnOverflowHandler)(void* pUserData, void* allocationAddress, json_u64_t size, json_u64_t guardPageSize, json_u8_t expectedPattern);
+  void(* pfnUnderflowHandler)(void* pUserData, void* allocationAddress, json_u64_t size, json_u64_t guardPageSize, json_u8_t expectedPattern);
+  void(* pfnLeakHandler)(void* pUserData, void* leakedAddress, json_u64_t allocationSize);
+  void(* pfnDoubleFreeHandler)(void* pUserData, void* doubleFreedAddress, json_u64_t allocationSize);
+  void*  pUserData;
+} json_ctx_memory_callbacks_t;
 
-typedef struct json_ctx_setup_params{
-  json_create_ctx_flags_t                flags;
-  const json_ctx_allocation_callbacks_t* allocationCallbacks;
-  json_stream_t                          opLog;
-  json_stream_t                          errorLog;
-  json_u64_t                             virtualAddressSpaceSize;
-} json_ctx_setup_params_t;
+typedef struct json_ctx_allocator_info{
+  const json_ctx_memory_callbacks_t* pCallbacks;
+  json_u64_t                         guardPageSize;
+  json_u64_t                         virtualAddressSpaceSize;
+} json_ctx_allocator_info_t;
+
+typedef struct json_ctx_log_handlers{
+  void(* pfnLogTraceMsg)(void* pUserData, json_command_id_t apiCallId, ...);
+  void(* pfnLogErrorMsg)(void* pUserData, json_status_t code, json_string_ref_t message, ...);
+  void* pUserData;
+} json_ctx_log_handlers_t;
+
+
+typedef struct json_ctx_create_info{
+  json_create_ctx_flags_t          flags;
+  const json_ctx_allocator_info_t* pAllocatorInfo;
+  const json_ctx_log_handlers_t*   pLogHandlers;
+} json_ctx_create_info_t;
+
+extern const json_ctx_log_handlers_t* const json_standard_log_handlers;
 
 
 
@@ -64,8 +82,8 @@ typedef struct json_ctx_setup_params{
  * \pre  pContext must not point to a valid Context object.
  * \post pContext will point to a valid Context object if and only if JSON_SUCCESS is returned.
  * */
-json_status_t json_create_ctx(json_ctx_t* pContext                   /**< [out] Return address of the new Context object */,
-                                  const json_ctx_setup_params_t* pParams /**< [in]  Optional pointer to parameters to control context creation. If null, default parameters are used. */);
+json_status_t json_ctx_create(json_ctx_t* pContext                /**< [out] Return address of the new Context object */,
+                              const json_ctx_create_info_t* pInfo /**< [in]  Optional pointer to parameters to control context creation. If null, default parameters are used. */);
 
 /**
  * Retains a Context handle.
@@ -84,7 +102,6 @@ void          json_ctx_release(json_ctx_t context);
 
 
 json_status_t json_ctx_next_task(json_task_t* pOperation, json_ctx_t ctx);
-
 json_status_t json_ctx_tidy_symbols(json_ctx_t ctx);
 
 

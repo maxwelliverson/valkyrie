@@ -46,6 +46,9 @@ typedef struct json_stream_interface{
   // Writes a single character
   void         (* put)(void* pUserData, json_char_t c);
 
+  // Writes many characters
+  void         (* puts)(void* pUserData, const json_char_t* string, json_u64_t length);
+
   // Flushes the buffer
   void         (* flush)(void* pUserData);
 
@@ -65,30 +68,43 @@ enum json_stream_flag_bits{
 enum json_create_stream_flag_bits{
   JSON_CREATE_STREAM_FROM_FILE   = 0x1,
   JSON_CREATE_STREAM_FROM_BUFFER = 0x2,
-  JSON_CREATE_STREAM_WRITE_ONLY  = 0x4,
-  JSON_CREATE_STREAM_READ_ONLY   = 0x8
+  JSON_CREATE_STREAM_FROM_STDIO  = 0x4,
+  JSON_CREATE_STREAM_WRITE       = 0x8,
+  JSON_CREATE_STREAM_READ        = 0x10
 };
 
 typedef json_flags_t json_stream_flags_t;
 typedef json_flags_t json_create_stream_flags_t;
 
 
-
-typedef struct json_create_stream_params{
-  json_create_stream_flags_t     flags;
-  json_ctx_t                     context;
-  json_file_t                    file;
-  json_buffer_t                  buffer;
-  const json_stream_interface_t* customInterface;
-} json_create_stream_params_t;
+typedef struct json_stream_buffering_info{
+  json_size_t bufferSize;         /**<            Size in bytes of buffers to be used. If ppExternalBuffers is nonnull, each address in the array must refer to a location in memory to which this many bytes can be written. */
+  json_size_t bufferCount;        /**<            Number of buffers to be used. If ppExternalBuffers is nonnull, this is the length of that array. */
+  void**      ppExternalBuffers;  /**< [optional] Array of bufferCount buffers, each bufferSize bytes long. If null, internal buffers will be allocated by the context for use. Otherwise, the external buffers must remain valid for the entire lifetime of the stream. */
+} json_stream_buffering_info_t;
 
 
+typedef struct json_stream_create_info{
+  json_ctx_t                          context;
+  json_create_stream_flags_t          flags;
+  const json_stream_buffering_info_t* pBuffering;
+  const json_stream_interface_t*      pInterface;
+  union{
+    json_file_t  file;
+    struct {
+      void*      address;
+      json_u64_t size;
+    } buffer;
+  };
+} json_stream_create_info_t;
 
 
 
 
-json_status_t       json_create_stream(json_stream_t* pResultStream, const json_create_stream_params_t* pParams);
-void                json_destroy_stream(json_stream_t stream);
+
+
+json_status_t       json_stream_create(json_stream_t* pResultStream, const json_stream_create_info_t* pParams);
+void                json_stream_destroy(json_stream_t stream);
 
 
 json_stream_flags_t json_stream_get_flags(json_stream_t stream);

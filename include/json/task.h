@@ -14,7 +14,8 @@ JSON_BEGIN_C_NAMESPACE
 
 typedef enum json_task_status{
   JSON_TASK_COMPLETE,
-  JSON_TASK_NOT_READY
+  JSON_TASK_NOT_READY,
+  JSON_TASK_BUSY
 } json_task_status_t;
 
 
@@ -24,7 +25,6 @@ typedef enum json_task_status{
  * */
 json_status_t      json_task_wait(json_task_t task, json_u64_t timeout);
 json_bool_t        json_task_is_complete(json_task_t task);
-//json_task_status_t json_task_get_status(json_task_t task);
 
 
 /**
@@ -46,8 +46,9 @@ json_bool_t        json_task_is_complete(json_task_t task);
 json_status_t      json_task_result(json_address_t* pReturnValue, json_u64_t* returnValueBufferSize, json_task_t task);
 
 
-json_status_t      json_task_discard(json_task_t task);
 json_task_status_t json_task_fulfill(json_task_t task);
+json_status_t      json_task_discard(json_task_t task);
+
 
 
 JSON_END_C_NAMESPACE

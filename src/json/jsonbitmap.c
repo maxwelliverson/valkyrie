@@ -45,79 +45,16 @@ inline static json_bool_t json_bitmap_is_claimedx(json_bitmap_t bitmap, size_t b
   return ((field & mask) == mask);
 }
 
-/**
- *
- *
- *
- * DeBruijn 0x03147259A7ABB7E1
- * 03   14    72   59   A7   AB   B7   E1
- * ## | 0000001100010100011100100101100110100111101010111011011111100001
- * 00 | 0         000000
- * 01 | 1          000001
- * 03 | 2  000011
- * 06 | 3   000110
- * 12 | 4    001100
- * 24 | 5     011000
- * 49 | 6      110001
- * 34 | 7       100010
- * 05 | 8        000101
- * 10 | 9         001010
- * 20 | 10          010100
- * 40 | 11          101000
- * 17 | 12           010001
- * 35 | 13            100011
- * 07 | 14             000111
- * 14 | 15              001110
- * 28 | 16               011100
- * 57 | 17                111001
- * 50 | 18                 110010
- * 36 | 19                  100100
- * 09 | 20                   001001
- * 18 | 21                   010010
- * 37 | 22                    100101
- * 11 | 23                     001011
- * 22 | 24                      010110
- * 44 | 25                       101100
- * 25 | 26                        011001
- * 51 | 27                         110011
- * 38 | 28                          100110
- * 13 | 29                           001101
- * 26 | 30                            011010
- * 52 | 31                             110100
- * 41 | 32                              101001
- * 19 | 33                               010011
- * 39 | 34                                100111
- * 15 | 35                                 001111
- * 30 | 36                                  011110
- * 61 | 37                                   111101
- * 58 | 38                                    111010
- * 53 | 39                                     110101
- * 42 | 40                                      101010
- * 21 | 41                                       010101
- * 43 | 42                                        101011
- * 23 | 43                                         010111
- * 46 | 44                                          101110
- * 29 | 45                                           011101
- * 59 | 46                                            111011
- * 54 | 47                                             110110
- * 45 | 48                                              101101
- * 27 | 49                                               011011
- * 55 | 50                                                110111
- * 47 | 51                                                 101111
- * 31 | 52                                                  011111
- * 63 | 53                                                   111111
- * 62 | 54                                                    111110
- * 60 | 55                                                     111100
- * 56 | 56                                                      111000
- * 48 | 57                                                       110000
- * 33 | 58                                                        100001
- * 02 | 59                                                         000010
- * 04 | 60                                                          000100
- * 08 | 61                                                           001000
- * 16 | 62                                                            010000
- * 32 | 63                                                             100000
- *
- * */
+#if defined (JSON_HAVE_FAST_BITSCAN)
+inline static json_u64_t json_initial_bit__(json_u64_t map) {
+  return json_ctz(~map);
+}
+#else
+inline static json_u64_t json_initial_bit__(json_u64_t) {
+  return 0;
+}
+#endif
+
 
 
 json_bool_t json_bitmap_try_find_claim_field(json_bitmap_t bitmap, size_t idx, const size_t count, json_bitmap_index_t* bitmap_idx) {
@@ -132,11 +69,8 @@ json_bool_t json_bitmap_try_find_claim_field(json_bitmap_t bitmap, size_t idx, c
   const uintptr_t mask = json_bitmap_mask(count, 0);
   const size_t    bitidx_max = JSON_BITMAP_BITS_PER_FIELD - count;
 
-#ifdef JSON_HAVE_FAST_BITSCAN
-  size_t bitidx = json_ctz(~map);    // quickly find the first zero bit if possible
-#else
-  size_t bitidx = 0;               // otherwise start at 0
-#endif
+
+  size_t bitidx = json_initial_bit__(map);
   uintptr_t m = (mask << bitidx);     // invariant: m == mask shifted by bitidx
 
   // scan linearly for a free range of zero bits

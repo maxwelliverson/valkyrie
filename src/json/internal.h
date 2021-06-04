@@ -14,11 +14,41 @@
 #include <immintrin.h>
 
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
+#define JSON_compiler_msvc true
+#else
+#define JSON_compiler_msvc false
+#endif
+
+
+#if defined(__clang__)
+#define JSON_compiler_clang true
+#else
+#define JSON_compiler_clang false
+#endif
+#if defined(__GNUC__)
+#define JSON_compiler_gcc true
+#else
+#define JSON_compiler_gcc false
+#endif
+
+
+#if JSON_compiler_msvc
 #pragma intrinsic(__lzcnt, __lzcnt64)
 #pragma warning(disable:4214) // bitfield is not int
 #endif
 
+
+
+
+
+#if JSON_compiler_gcc || JSON_compiler_clang
+# define JSON_cpu_dispatch(...) __attribute__((cpu_dispatch(__VA_ARGS__)))
+# define JSON_cpu_specific(...) __attribute__((cpu_specific(__VA_ARGS__)))
+#else
+# define JSON_cpu_dispatch(...) __declspec(cpu_dispatch(__VA_ARGS__))
+# define JSON_cpu_specific(...) __declspec(cpu_specific(__VA_ARGS__))
+#endif
 
 
 // Minimal alignment necessary. On most platforms 16 bytes are needed
@@ -167,13 +197,13 @@ static inline json_bool_t json_mul_overflow(size_t count, size_t size, size_t* t
 #endif
 
 // Safe multiply `count*size` into `total`; return `true` on overflow.
-static inline json_bool_t json_count_size_overflow(size_t count, size_t size, size_t* total) {
+static inline json_bool_t json_count_size_overflow(json_ctx_t ctx, size_t count, size_t size, size_t* total) {
   if (count==1) {  // quick check for the case where count is one (common for C++ allocators)
     *total = size;
     return false;
   }
   else if (JSON_unlikely(json_mul_overflow(count, size, total))) {
-    json_error_message(EOVERFLOW, "allocation request is too large (%zu * %zu bytes)\n", count, size);
+    //json_error_message(EOVERFLOW, "allocation request is too large (%zu * %zu bytes)\n", count, size);
     *total = SIZE_MAX;
     return true;
   }
@@ -298,6 +328,13 @@ static inline json_u32_t json_bsr(uintptr_t x) {
 
 static inline json_u64_t json_bit_ceil(json_u64_t x) {
   return 0x1 << (json_bsr(x - 1) + 1);
+}
+
+static inline json_u32_t json_popcnt64(json_u64_t x) {
+  return _mm_popcnt_u64(x);
+}
+static inline json_u32_t json_popcnt32(json_u32_t x) {
+  return _mm_popcnt_u32(x);
 }
 
 
