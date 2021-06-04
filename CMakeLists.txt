@@ -113,10 +113,12 @@ add_object(spirv.SpirV)
 add_object(spirv.Shader)
 
 
+add_object(valkyrie.adt.small_vector)
 add_object(valkyrie.adt.dictionary)
 add_object(valkyrie.adt.concurrent_list)
 add_object(valkyrie.adt.hazard_ptr)
 add_object(valkyrie.adt.rb_tree)
+add_object(valkyrie.adt.twine)
 
 
 add_object(valkyrie.memory.detail.debug_helpers)
@@ -166,17 +168,20 @@ add_object(valkyrie.win32_functions)
 
 add_object(valkyrie.utility.simdjson)
 add_object(valkyrie.utility.json)
+add_object(valkyrie.utility.cpu)
+add_object(valkyrie.utility.simd)
 add_object(valkyrie.utility.random)
 add_object(valkyrie.utility.library)
+add_object(valkyrie.utility.demangle)
 add_object(valkyrie.utility.components)
 add_object(valkyrie.utility.reflect)
-add_object(valkyrie.utility.simd)
 add_object(valkyrie.utility.uuid)
 
 add_object(valkyrie.graphics.api.instance)
 add_object(valkyrie.graphics.api.physical_device)
 add_object(valkyrie.graphics.api.device)
 add_object(valkyrie.graphics.api.queue)
+add_object(valkyrie.graphics.api.structures)
 add_object(valkyrie.graphics.api.command_buffer)
 add_object(valkyrie.graphics.api.command_pool)
 add_object(valkyrie.graphics.api.pipeline)
@@ -185,6 +190,7 @@ add_object(valkyrie.graphics.api.surface)
 add_object(valkyrie.graphics.api.swapchain)
 add_object(valkyrie.graphics.api.display)
 add_object(valkyrie.graphics.api.api)
+add_object(valkyrie.graphics.api.library)
 
 add_object(valkyrie.gui.window)
 add_object(valkyrie.gui.monitor)
@@ -194,10 +200,9 @@ add_object(valkyrie.graphics.engine.engine)
 add_object(valkyrie.graphics.engine.option)
 add_object(valkyrie.graphics.engine.obj)
 add_object(valkyrie.graphics.engine.resource)
+add_object(valkyrie.graphics.engine.dispatch_table)
 
-add_object_library(valkyrie.status OBJECTS error system)
-add_object_library(valkyrie.memory.detail OBJECTS debug_helpers free_list free_list_array small_free_list)
-add_object_library(valkyrie.memory OBJECTS detail debugging error heap_allocator iteration_allocator malloc_allocator memory_arena memory_pool memory_pool_collection memory_stack new_allocator static_allocator temporary_allocator virtual_memory)
+
 
 add_object_library(spirv OBJECTS SpirV Shader)
 
@@ -206,13 +211,35 @@ add_object_library(valkyrie.async           OBJECTS semaphore agent)
 add_object_library(valkyrie.graphics.api    OBJECTS instance physical_device device queue command_buffer loader surface display command_pool)
 add_object_library(valkyrie.graphics.engine OBJECTS engine option)
 add_object_library(valkyrie.gui             OBJECTS window monitor)
-
+add_object_library(valkyrie.status          OBJECTS error system)
+add_object_library(valkyrie.memory.detail   OBJECTS debug_helpers free_list free_list_array small_free_list)
+add_object_library(valkyrie.memory          OBJECTS debugging error heap_allocator iteration_allocator malloc_allocator memory_arena memory_pool memory_pool_collection memory_stack new_allocator static_allocator temporary_allocator virtual_memory)
+add_object_library(valkyrie.utility         OBJECTS simd uuid reflect components library demangle random json cpu)
 
 
 target_link_libraries(valkyrie.gui PUBLIC $<$<CXX_COMPILER_ID:MSVC>:Dxva2>)
+target_link_libraries(valkyrie.memory PUBLIC valkyrie.memory.detail)
+
+add_library(valkyrie.graphics STATIC src/valkyrie/graphics.cpp)
+target_link_libraries(valkyrie.graphics PUBLIC
+        valkyrie.graphics.api
+        valkyrie.graphics.engine)
 
 
-add_library(valkyrie src/valkyrie/valkyrie.cpp src/valkyrie/common.h)
+add_library(valkyrie STATIC src/valkyrie.cpp)
+target_link_libraries(valkyrie PUBLIC
+        valkyrie.adt
+        valkyrie.agent
+        valkyrie.async
+        valkyrie.graphics
+        valkyrie.gui
+        valkyrie.memory
+        valkyrie.status
+        valkyrie.utility)
+
+
+
+
 #target_link_libraries(valkyrie PUBLIC valkyrie.Core valkyrie.graphics.api)
 
 
@@ -225,8 +252,12 @@ valkyrie_test(valkyrie.graphics.api.Device)
 valkyrie_test(valkyrie.utility.Enums)
 valkyrie_test(valkyrie.GUI.Monitor)
 valkyrie_test(valkyrie.GUI.DXGI)]]
+valkyrie_test(valkyrie.utility.cpu)
 valkyrie_test(valkyrie.memory)
 valkyrie_test(valkyrie.graphics.api.swapchain)
+valkyrie_test(valkyrie.graphics.api.api)
+target_link_libraries(test.valkyrie.graphics.api.swapchain PUBLIC valkyrie.status #[[valkyrie.graphics.api]])
+
 
 add_executable(test.valkyrie.utility.waymarking test/valkyrie/utility/waymarking.cpp)
 
@@ -234,13 +265,16 @@ add_executable(test.Mailbox test/Mailbox.cpp)
 add_executable(test.VirtualFuncPtr test/VirtualFuncPtr.cpp)
 target_compile_options(test.Mailbox PUBLIC -EHsc)
 
+add_executable(test.json.json test/json/json.c)
+
+
 
 add_executable(catch
         test/valkyrie.cpp
         test/valkyrie/utility/Arrays.cpp
         test/valkyrie/utility/Enums.cpp
         test/valkyrie/Async/Agent.cpp
-        test/valkyrie/graphics/api/Device.cpp
+        test/valkyrie/Graphics/api/Device.cpp
         test/valkyrie/GUI/DXGI.cpp
         test/valkyrie/GUI/Monitor.cpp)
 
@@ -250,11 +284,15 @@ target_link_libraries(CudaGraph PUBLIC CUDA::cuda_driver)
 add_executable(DirectedGraph test/directed_graph.cpp)
 #target_link_libraries(directed_graph PUBLIC valkyrie.Core)
 
+
+
 add_executable(RBTreeTest src/json/json_interval_tree.cpp)
 add_executable(vulkan_example src/example.cpp)
 add_executable(clangd_debug debug_clangd.cpp)
 add_executable(tictactoe test/tictactoe.c)
 add_executable(better_ttt test/better_tictactoe.c)
+add_executable(api_test test/api_test.cpp $<TARGET_OBJECTS:valkyrie.graphics.api.api>)
+target_link_libraries(api_test PUBLIC valkyrie.status)
 
 
 add_library(imgui STATIC IMPORTED)
@@ -281,6 +319,37 @@ add_executable(windowsapi_test test/windowsapi.cpp)
 target_link_libraries(windowsapi_test PUBLIC valkyrie.status)
 add_executable(intrinsics_test test/intrin.cpp)
 
+
+
+
+add_library(argent
+        src/argent/agent.c
+        src/argent/mailbox.c
+        src/argent/message.c
+        src/argent/sender.c
+        src/argent/receiver.c
+        src/argent/quartz/init.c
+        src/argent/quartz/mailbox.c
+        src/argent/quartz/shmem.c
+        src/argent/mailbox/sssr.c
+        src/argent/mailbox/ssmr.c
+        src/argent/mailbox/mssr.c
+        src/argent/mailbox/msmr.c
+        src/argent/mailbox/cmssr.c
+        src/argent/mailbox/cmsmr.c
+        src/argent/mailbox/sscmr.c
+        src/argent/mailbox/mscmr.c
+        src/argent/mailbox/cmscmr.c)
+
+set_target_properties(
+
+        argent
+
+        PROPERTIES
+            C_STANDARD 11)
+
+
+
 add_library(JSON src/json/json.c
                  src/json/jsonmm.c
                  src/json/jsonvmm.c
@@ -304,3 +373,8 @@ function(preprocess file path)
 endfunction()
 
 preprocess(traits.hpp include/valkyrie/utility)
+
+
+add_executable(print_modules test/print_modules.cpp)
+
+target_compile_definitions(print_modules PUBLIC PSAPI_VERSION=1)
