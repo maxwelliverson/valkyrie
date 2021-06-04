@@ -8,14 +8,10 @@
 #include <valkyrie/constants.hpp>
 #include <valkyrie/traits.hpp>
 #include <valkyrie/utility/casting.hpp>
-#include <valkyrie/adt/tags.hpp>
 
 namespace valkyrie{
 
-
-
-
-  template <typename T, auto Extent_ = dynamic, auto Stride_ = dynamic>
+  template <typename T, auto Extent = dynamic, auto Stride = dynamic>
   class array_ref;
 
   namespace detail{
@@ -145,7 +141,8 @@ namespace valkyrie{
 
       ArrayRefIterator(const Self&) = default;
       explicit ArrayRefIterator(pointer pArray, ArrayRefStrideStorage<Stride_> str) noexcept
-          : ArrayRefStrideStorage<Stride_>(str), pAddress(static_cast<byte_pointer>(static_cast<void_pointer>(pArray))){}
+          : ArrayRefStrideStorage<Stride_>(str),
+              pAddress(static_cast<byte_pointer>(static_cast<void_pointer>(pArray))){}
 
       reference operator*() noexcept {
         return *cast(pAddress);
@@ -222,11 +219,6 @@ namespace valkyrie{
       using byte_pointer = std::conditional_t<std::is_const_v<element_type>, const byte*, byte*>;
       byte_pointer pAddress;
     };
-
-
-
-
-
 
     /*class ArrayRefSentinel{
     public:
@@ -367,32 +359,32 @@ namespace valkyrie{
 
 
 
-    reference front() noexcept {
+    constexpr reference front() noexcept {
       VK_assert(!empty());
       return *begin();
     }
-    const_reference front() const noexcept {
+    constexpr const_reference front() const noexcept {
       VK_assert(!empty());
       return *begin();
     }
-    reference back() noexcept {
+    constexpr reference back() noexcept {
       VK_assert(!empty());
       return *rbegin();
     }
-    const_reference back() const noexcept {
+    constexpr const_reference back() const noexcept {
       VK_assert(!empty());
       return *rbegin();
     }
 
 
-    inline pointer         data()       noexcept requires StrideCompatible<sizeof(T)> {
+    inline constexpr pointer data()       noexcept requires StrideCompatible<sizeof(T)> {
       if constexpr (Self::dynamicStride()) {
         if (this->stride() != sizeof(T))
           return nullptr;
       }
       return pArray;
     }
-    inline const_pointer   data() const noexcept requires StrideCompatible<sizeof(T)> {
+    inline constexpr const_pointer data() const noexcept requires StrideCompatible<sizeof(T)> {
       if constexpr (Self::dynamicStride()) {
         if (this->stride() != sizeof(T))
           return nullptr;
@@ -443,10 +435,10 @@ namespace valkyrie{
 
 
 
-    inline constexpr bool isContiguous() const noexcept {
+    VK_nodiscard constexpr bool is_contiguous() const noexcept {
       return this->stride() == sizeof(T);
     }
-    inline constexpr static bool isAlwaysContiguous() noexcept {
+    VK_nodiscard constexpr static bool is_always_contiguous() noexcept {
       if constexpr (same_as<dynamic_t, decltype(Stride_)>)
         return false;
       else

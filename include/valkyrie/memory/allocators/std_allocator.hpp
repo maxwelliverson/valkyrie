@@ -8,7 +8,7 @@
 
 #include <valkyrie/adt/ptr.hpp>
 
-#include "allocator_storage.hpp"
+#include "../allocator_storage.hpp"
 
 namespace valkyrie {
   /*namespace traits_detail {
@@ -78,7 +78,7 @@ namespace valkyrie {
     // if it is any_allocator_reference an optimized implementation can be used
     VK_constant bool is_any = same_as<alloc_reference, any_allocator_reference>;
 
-    using trt               = allocator_traits<RawAllocator>;
+    using base = allocator_reference<RawAllocator>;
 
     template <typename U>
     using ptr_t = ptr_rebind_t<U, Ptr>;
@@ -95,9 +95,9 @@ namespace valkyrie {
     using difference_type                        = ptr_difference_t<pointer>;
 
 
-    using propagate_on_container_copy_assignment = std::bool_constant<trt::propagate_on_container_copy_assignment>;
-    using propagate_on_container_move_assignment = std::bool_constant<trt::propagate_on_container_move_assignment>;
-    using propagate_on_container_swap            = std::bool_constant<trt::propagate_on_container_swap>;
+    using propagate_on_container_copy_assignment = std::bool_constant<base::propagate_on_container_copy_assignment>;
+    using propagate_on_container_move_assignment = std::bool_constant<base::propagate_on_container_move_assignment>;
+    using propagate_on_container_swap            = std::bool_constant<base::propagate_on_container_swap>;
 
     template <typename U>
     struct rebind {
@@ -109,7 +109,7 @@ namespace valkyrie {
     //=== constructor ===//
     /// \effects Default constructs it by storing a default constructed, stateless \c RawAllocator inside the reference.
     /// \requires The \c RawAllocator type is stateless, otherwise the body of this function will not compile.
-    std_allocator() noexcept requires(!trt::is_stateful) : alloc_reference(allocator_type{}) {}
+    std_allocator() noexcept requires(base::is_stateless) : alloc_reference(allocator_type{}) {}
 
     /// \effects Creates it from a reference to a \c RawAllocator.
     /// It will store an \ref allocator_reference to it.
@@ -119,7 +119,7 @@ namespace valkyrie {
     /// \note The caller has to ensure that the lifetime of the \c RawAllocator is at least as long as the lifetime
     /// of this \ref std_allocator object.
     template <typename RawAlloc>
-    std_allocator(RawAlloc &alloc) noexcept requires(!std::is_base_of_v<std_allocator, RawAlloc> && std::constructible_from<alloc_reference, RawAlloc &>)
+    std_allocator(RawAlloc &alloc) noexcept requires(!std::is_base_of_v<std_allocator, RawAlloc> && constructible_from<alloc_reference, RawAlloc &>)
         : alloc_reference(alloc) {
     }
 
@@ -129,7 +129,7 @@ namespace valkyrie {
     /// and the expression <tt>allocator_reference<RawAllocator>(alloc)</tt> is well-formed as above,
     /// otherwise this function does not participate in overload resolution.
     template <typename RawAlloc>
-    std_allocator(const RawAlloc &alloc) noexcept requires(!std::is_base_of_v<std_allocator, RawAlloc> && std::constructible_from<alloc_reference, const RawAlloc &>)
+    std_allocator(const RawAlloc &alloc) noexcept requires(!std::is_base_of_v<std_allocator, RawAlloc> && constructible_from<alloc_reference, const RawAlloc &>)
         : alloc_reference(alloc) {
     }
 
@@ -150,15 +150,15 @@ namespace valkyrie {
     }
 
     template <typename U>
-    std_allocator(std_allocator<U, RawAllocator> &alloc) noexcept : alloc_reference(alloc) {
+    std_allocator(std_allocator<U, RawAllocator> &alloc) noexcept : alloc_reference(alloc.get_allocator()) {
     }
     /// @}
 
-    /// \returns A copy of the allocator.
+    /*/// \returns A copy of the allocator.
     /// This is required by the \c Allocator concept and forwards to the \ref propagation_traits.
     std_allocator select_on_container_copy_construction() const noexcept {
-      return trt::select_on_container_copy_construction(*this);
-    }
+      return std_allocator(base::select_on_container_copy_construction());
+    }*/
 
     //=== allocation/deallocation ===//
     /// \effects Allocates memory using the underlying \concept{concept_rawallocator,RawAllocator}.
@@ -279,9 +279,9 @@ namespace valkyrie {
 
     template <typename U>
     bool equal_to(const std_allocator<U, RawAllocator> &other) const noexcept {
-      if constexpr (is_shared_allocator<RawAllocator>::value)
+      if constexpr ( base::is_shared )
         return get_allocator() == other.get_allocator();
-      else if constexpr (allocator_traits<RawAllocator>::is_stateful::value)
+      else if constexpr (allocator_traits<RawAllocator>::is_stateful)
         return &get_allocator() == &other.get_allocator();
       else
         return true;

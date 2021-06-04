@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class AccelerationStructure : public VulkanResource{};
+  class acceleration_structure : public vulkan_object{};
 }
 
 #endif//VALKYRIE_RESOURCE_ACCELERATION_STRUCTURE_HPP

@@ -5,9 +5,9 @@
 #ifndef VALKYRIE_UTILITY_HASH_HPP
 #define VALKYRIE_UTILITY_HASH_HPP
 
-#include <valkyrie/adt/array_ref.hpp>
+#include <valkyrie/traits.hpp>
+#include <valkyrie/utility/casting.hpp>
 
-#include <ranges>
 #include <array>
 
 namespace valkyrie{

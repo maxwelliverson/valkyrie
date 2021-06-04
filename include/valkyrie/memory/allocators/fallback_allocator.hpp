@@ -6,11 +6,11 @@
 #define VALKYRIE_MEMORY_FALLBACK_ALLOCATOR_HPP
 
 
-#include "detail/ebo_storage.hpp"
-#include "detail/utility.hpp"
-#include <valkyrie/traits.hpp>
+#include "../../traits.hpp"
+#include "../detail/ebo_storage.hpp"
+#include "../detail/utility.hpp"
 
-#include <valkyrie/meta.hpp>
+#include "../../meta.hpp"
 
 namespace valkyrie{
   /// A \concept{raw_allocator,RawAllocator} with a fallback.
@@ -24,21 +24,19 @@ namespace valkyrie{
       : detail::ebo_storage<0, typename allocator_traits<Default>::allocator_type>,
         detail::ebo_storage<1, typename allocator_traits<Fallback>::allocator_type>
   {
-    using default_traits             = allocator_traits<Default>;
-    using default_composable_traits  = composable_allocator_traits<Default>;
-    using fallback_traits            = allocator_traits<Fallback>;
-    using fallback_composable_traits = composable_allocator_traits<Fallback>;
-    using fallback_composable        = std::bool_constant<composable_allocator<typename fallback_traits::allocator_type>>;
+    using default_traits                 = allocator_traits<Default>;
+    using fallback_traits                = allocator_traits<Fallback>;
+    VK_constant bool fallback_composable = composable_allocator_c<typename fallback_traits::allocator_type>;
 
     public:
     using default_allocator_type     = typename allocator_traits<Default>::allocator_type;
     using fallback_allocator_type    = typename allocator_traits<Fallback>::allocator_type;
 
-    using is_stateful                = std::disjunction<default_traits::is_stateful, fallback_traits::is_stateful>;
+    VK_constant bool is_stateful = default_traits::is_stateful || fallback_traits::is_stateful;
 
     /// \effects Default constructs both allocators.
     /// \notes This function only participates in overload resolution, if both allocators are not stateful.
-    fallback_allocator() requires(!is_stateful::value)
+    fallback_allocator() requires(!is_stateful)
     : detail::ebo_storage<0, default_allocator_type>({}),
         detail::ebo_storage<1, fallback_allocator_type>({})
     {
@@ -57,8 +55,7 @@ namespace valkyrie{
     /// If that fails, uses the non-compositioning function of the `fallback_allocator_type`.
     void* allocate_node(u64 size, u64 alignment)
     {
-      auto ptr = default_composable_traits::try_allocate_node(get_default_allocator(),
-                                                              size, alignment);
+      auto ptr = default_traits::try_allocate_node(get_default_allocator(), size, alignment);
       if (!ptr)
         ptr = fallback_traits::allocate_node(get_fallback_allocator(), size, alignment);
       return ptr;
@@ -66,32 +63,26 @@ namespace valkyrie{
 
     void* allocate_array(u64 count, u64 size, u64 alignment)
     {
-      auto ptr = default_composable_traits::try_allocate_array(get_default_allocator(),
-                                                               count, size, alignment);
+      auto ptr = default_traits::try_allocate_array(get_default_allocator(), count, size, alignment);
       if (!ptr)
-        ptr = fallback_traits::allocate_array(get_fallback_allocator(), count, size,
-                                              alignment);
+        ptr = fallback_traits::allocate_array(get_fallback_allocator(), count, size, alignment);
       return ptr;
     }
 
     void deallocate_node(void* ptr, u64 size, u64 alignment) noexcept
     {
-      auto res = default_composable_traits::try_deallocate_node(get_default_allocator(),
-                                                                ptr, size, alignment);
+      auto res = default_traits::try_deallocate_node(get_default_allocator(), ptr, size, alignment);
       if (!res)
-        fallback_traits::deallocate_node(get_fallback_allocator(), ptr, size,
-                                         alignment);
+        fallback_traits::deallocate_node(get_fallback_allocator(), ptr, size, alignment);
     }
 
     void deallocate_array(void* ptr, u64 count, u64 size,
     u64 alignment) noexcept
     {
       auto res =
-          default_composable_traits::try_deallocate_array(get_default_allocator(), ptr,
-                                                          count, size, alignment);
+          default_traits::try_deallocate_array(get_default_allocator(), ptr, count, size, alignment);
       if (!res)
-        fallback_traits::deallocate_array(get_fallback_allocator(), ptr, count, size,
-                                          alignment);
+        fallback_traits::deallocate_array(get_fallback_allocator(), ptr, count, size, alignment);
     }
     /// @}
 
@@ -99,42 +90,41 @@ namespace valkyrie{
     /// \effects First calls the compositioning (de)allocation function on the `default_allocator_type`.
     /// If that fails, uses the compositioning function of the `fallback_allocator_type`.
     /// \requires The `fallback_allocator_type` msut be composable.
-    void* try_allocate_node(u64 size, u64 alignment) noexcept requires(fallback_composable::value)
+    void* try_allocate_node(u64 size, u64 alignment) noexcept requires(fallback_composable)
     {
-      auto ptr = default_composable_traits::try_allocate_node(get_default_allocator(),
+      auto ptr = default_traits::try_allocate_node(get_default_allocator(),
                                                               size, alignment);
       if (!ptr)
-        ptr = fallback_composable_traits::try_allocate_node(get_fallback_allocator(),
-                                                            size, alignment);
+        ptr = fallback_traits::try_allocate_node(get_fallback_allocator(), size, alignment);
       return ptr;
     }
-    void* allocate_array(u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
+    void* allocate_array(u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable)
     {
-      auto ptr = default_composable_traits::try_allocate_array(get_default_allocator(),
+      auto ptr = default_traits::try_allocate_array(get_default_allocator(),
                                                                count, size, alignment);
       if (!ptr)
-        ptr = fallback_composable_traits::try_allocate_array(get_fallback_allocator(),
+        ptr = fallback_traits::try_allocate_array(get_fallback_allocator(),
                                                              count, size, alignment);
       return ptr;
     }
 
-    bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
+    bool try_deallocate_node(void* ptr, u64 size, u64 alignment) noexcept requires(fallback_composable)
     {
-      auto res = default_composable_traits::try_deallocate_node(get_default_allocator(),
+      auto res = default_traits::try_deallocate_node(get_default_allocator(),
                                                                 ptr, size, alignment);
       if (!res)
-        res = fallback_composable_traits::try_deallocate_node(get_fallback_allocator(),
+        res = fallback_traits::try_deallocate_node(get_fallback_allocator(),
                                                               ptr, size, alignment);
       return res;
     }
 
-    bool try_deallocate_array(void* ptr, u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable::value)
+    bool try_deallocate_array(void* ptr, u64 count, u64 size, u64 alignment) noexcept requires(fallback_composable)
     {
       auto res =
-          default_composable_traits::try_deallocate_array(get_default_allocator(), ptr,
+          default_traits::try_deallocate_array(get_default_allocator(), ptr,
                                                           count, size, alignment);
       if (!res)
-        res = fallback_composable_traits::try_deallocate_array(get_fallback_allocator(),
+        res = fallback_traits::try_deallocate_array(get_fallback_allocator(),
                                                                ptr, count, size,
                                                                alignment);
       return res;

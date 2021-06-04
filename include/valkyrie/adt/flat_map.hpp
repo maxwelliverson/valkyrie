@@ -13,8 +13,8 @@ namespace valkyrie{
     Key key{};
     Value value{};
 
-    using key_t = param_t<Key>;
-    using value_t = param_t<Value>;
+    using key_t = in_param_t<Key>;
+    using value_t = in_param_t<Value>;
     using entry_t = std::conditional_t<is_register_copyable<std::pair<Key, Value>>, FlatMapEntry, const FlatMapEntry&>;
 
     constexpr FlatMapEntry() noexcept = default;
@@ -33,20 +33,20 @@ namespace valkyrie{
 
 
     template <typename ...Args>
-    requires(ConstructibleFrom<Value, Args...> && !(sizeof...(Args) == 1 && (same_as<Args, value_t> || ...)))
+    requires(constructible_from<Value, Args...> && !(sizeof...(Args) == 1 && (same_as<Args, value_t> || ...)))
     constexpr explicit FlatMapEntry(key_t key, Args&&...args) noexcept(
     std::is_nothrow_copy_constructible_v<Key> &&
     std::is_nothrow_constructible_v<Value, Args...>)
         : key{key},
           value{ std::forward<Args>(args)... }{}
     template <typename ...KArgs, typename ...VArgs>
-    requires(ConstructibleFrom<Key, KArgs...> && ConstructibleFrom<Value, VArgs...>)
+    requires(constructible_from<Key, KArgs...> && constructible_from<Value, VArgs...>)
     constexpr FlatMapEntry(std::tuple<KArgs...>&& kargs, std::tuple<VArgs...>&& vargs) noexcept(
     std::is_nothrow_constructible_v<Key, KArgs...> &&
     std::is_nothrow_constructible_v<Value, VArgs...>)
         : key{std::make_from_tuple<Key>(std::move(kargs))},
           value{std::make_from_tuple<Value>(std::move(vargs))}{}
-    template <typename K, typename V> requires(ConstructibleFrom<Key, K> && ConstructibleFrom<Value, V>)
+    template <typename K, typename V> requires(constructible_from<Key, K> && constructible_from<Value, V>)
     constexpr FlatMapEntry(K&& k, V&& v) noexcept(std::is_nothrow_constructible_v<Key, K> && std::is_nothrow_constructible_v<Value, V>)
         : key{std::forward<K>(k)},
           value{std::forward<V>(v)}{}
@@ -87,19 +87,24 @@ namespace valkyrie{
   template <typename K, typename V>
   FlatMapEntry(K&&, V&&) -> FlatMapEntry<std::remove_cvref_t<K>, std::remove_cvref_t<V>>;
 
-  template <ordered Key, typename Value, typename Container = small_vector<FlatMapEntry<Key, Value>>>
+  template <ordered Key,
+            typename Value,
+            allocator_c Alloc = default_allocator,
+            u32 InlineEl = 4>
   class flat_map {
 
-    using key_param_t = param_t<Key>;
-    using value_param_t = param_t<Value>;
-    using entry_param_t = param_t<typename Container::value_type>;
+    using entry_t = FlatMapEntry<Key, Value>;
+
+    using key_param_t = in_param_t<Key>;
+    using value_param_t = in_param_t<Value>;
+    using entry_param_t = in_param_t<entry_t>;
 
   public:
 
     using key_type = Key;
     using mapped_type = Value;
-    using value_type = typename Container::value_type;
-    using container_type = flat_set<value_type, Container>;
+    using value_type = entry_t;
+    using container_type = flat_set<value_type, Alloc, std::compare_three_way, InlineEl>;
     using size_type = typename container_type::size_type;
     using difference_type = typename container_type::difference_type;
 
@@ -130,7 +135,7 @@ namespace valkyrie{
         : m_set_( std::forward<I>(first), std::forward<S>(last) ){}
     constexpr flat_map(std::initializer_list<value_type> list) noexcept
         : m_set_{ list }{}
-    template <typename ...Args> requires(ConstructibleFrom<Container, Args...>)
+    template <typename ...Args> requires(constructible_from<Container, Args...>)
     constexpr explicit flat_map(std::in_place_t, Args&& ...args) noexcept
         : m_set_{  std::in_place, std::forward<Args>(args)... }{}
     template <std::input_iterator I, std::sentinel_for<I> S> requires(std::convertible_to<std::iter_reference_t<I>, value_type>)
@@ -138,7 +143,7 @@ namespace valkyrie{
         : m_set_(guaranteeUnique, std::forward<I>(first), std::forward<S>(last) ){}
     constexpr flat_map(GuaranteeUniqueTag, std::initializer_list<value_type> list) noexcept
         : m_set_{ guaranteeUnique, list }{}
-    template <typename ...Args> requires(ConstructibleFrom<Container, Args...>)
+    template <typename ...Args> requires(constructible_from<Container, Args...>)
     constexpr explicit flat_map(GuaranteeUniqueTag, std::in_place_t, Args&& ...args) noexcept
         : m_set_{ guaranteeUnique, std::in_place, std::forward<Args>(args)... }{}
 
@@ -216,13 +221,13 @@ namespace valkyrie{
       m_set_.insert(std::forward<Rng>(rng));
     }
 
-    template <typename ...Args> requires(ConstructibleFrom<Value, Args...>)
+    template <typename ...Args> requires(constructible_from<Value, Args...>)
     constexpr iterator emplace(key_param_t key, Args&& ...args) noexcept(std::is_nothrow_constructible_v<Value, Args...>) {
       return m_set_.find_or_emplace(key, key, std::forward<Args>(args)...);
     }
 
 
-    /*template <typename ...Args> requires(ConstructibleFrom<Value, Args...>)
+    /*template <typename ...Args> requires(constructible_from<Value, Args...>)
     constexpr iterator find_or_emplace(key_param_t key, Args&& ...args) noexcept {
       return m_set_.find_or_emplace(key, key, std::forward<Args>(args)...);
     }*/

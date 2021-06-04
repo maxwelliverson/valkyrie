@@ -12,10 +12,7 @@ namespace valkyrie::graphics::api{
 
   class command_buffer;
 
-
-
-
-  enum class CommandPoolMsg{
+  enum class cmd_msg_kind{
     DestroyCommandPool,
     ResetCommandPool,
     TrimCommandPool,
@@ -179,7 +176,7 @@ namespace valkyrie::graphics::api{
     EndRecordingGraphicsPipeline
   };
 
-  class QueueFamily{
+  /*class QueueFamily{
   public:
 
   };
@@ -223,9 +220,9 @@ namespace valkyrie::graphics::api{
     void trim() noexcept;
     status reset() noexcept;
 
-    /*Result<CommandBuffer> allocateCommandBuffer() noexcept;
+    Result<CommandBuffer> allocateCommandBuffer() noexcept;
     void                  freeCommandBuffer(const CommandBuffer&) noexcept;
-    status allocateCommandBuffers(std::span<CommandBuffer> commandBuffers) noexcept;*/
+    status allocateCommandBuffers(std::span<CommandBuffer> commandBuffers) noexcept;
   };
 
   class command_buffer {
@@ -371,10 +368,7 @@ namespace valkyrie::graphics::api{
     void copy_query_pool_results() noexcept;
     void begin_recording_graphics_pipeline() noexcept;
     void end_recording_graphics_pipeline() noexcept;
-  };
-
-
-
+  };*/
 
 
   /* Threading

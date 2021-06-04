@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_MEMORY_ALIGNED_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_ALIGNED_ALLOCATOR_HPP
 
-#include <valkyrie/primitives.hpp>
-#include <valkyrie/traits.hpp>
+#include "../../primitives.hpp"
+#include "../../traits.hpp"
 
-#include <valkyrie/utility/align.hpp>
+#include "../../utility/align.hpp"
 
 
 namespace valkyrie {

@@ -9,14 +9,15 @@
 #include <valkyrie/utility/hash.hpp>
 
 #include <iterator>
+#include <string>
 #include <string_view>
 /*#include <new>*/
+
+#include <intrin.h>
 
 namespace valkyrie{
 
   //class String;
-  template <size_t N>
-  class small_string;
   template <size_t N>
   class static_string;
   class string_view;
@@ -26,48 +27,6 @@ namespace valkyrie{
 
   class lazy_string;
 
-  /*class Grapheme{
-    utf8 byte[4];
-  public:
-    [[nodiscard]] u32 bytes() const noexcept {
-      auto firstByte = (uint8_t)byte[0];
-      if (!(firstByte & 0x80u)) VK_likely return 1;
-      if (!(firstByte & 0x20u)) return 2;
-      if (!(firstByte & 0x10u)) return 3;
-      return 4;
-    }
-
-    [[nodiscard]] constexpr explicit operator bool() const noexcept {
-      return bool(byte[0]);
-    }
-
-    [[nodiscard]] friend bool operator==(Grapheme A, Grapheme B) noexcept{
-      if (A.byte[0] != B.byte[0])
-        return false;
-      switch(A.bytes()) {
-        case 4: if (A.byte[3] != B.byte[3]) return false;
-          [[fallthrough]];
-        case 3: if (A.byte[2] != B.byte[2]) return false;
-          [[fallthrough]];
-        case 2: if (A.byte[1] != B.byte[1]) return false;
-          [[fallthrough]];
-        case 1: return true;
-        default:
-          __assume(false);
-      }
-    }
-    [[nodiscard]] friend std::strong_ordering operator<=>(Grapheme A, Grapheme B) noexcept{
-      auto byte0Result = ((uint8_t)A.byte[0]) <=> ((uint8_t)B.byte[0]);
-      if (byte0Result != std::strong_ordering::equal) return byte0Result;
-      auto bytes = A.bytes();
-      if (bytes == 1) VK_likely return std::strong_ordering::equal;
-      if (auto byte1Result = (uint8_t)A.byte[1] <=> (uint8_t)B.byte[1];
-          bytes == 2 || byte1Result != std::strong_ordering::equal) return byte1Result;
-      if (auto byte2Result = (uint8_t)A.byte[2] <=> (uint8_t)B.byte[2];
-          bytes == 3 || byte2Result != std::strong_ordering::equal) return byte2Result;
-      return (uint8_t)A.byte[3] <=> (uint8_t)B.byte[3];
-    }
-  };*/
 
   namespace detail{
 
@@ -143,12 +102,6 @@ namespace valkyrie{
       inline constexpr static const utf8* data(string_view str) noexcept;
       inline constexpr static u32 byteLength(string_view str) noexcept;
       inline constexpr static u32 length(string_view str) noexcept;
-    };
-    template <size_t N>
-    struct StringInfo<small_string<N>>{
-      inline constexpr static const utf8* data(const small_string<N>& str) noexcept;
-      inline constexpr static u32 byteLength(const small_string<N>& str) noexcept;
-      inline constexpr static u32 length(const small_string<N>& str) noexcept;
     };
     template <size_t N>
     struct StringInfo<static_string<N>>{
@@ -350,14 +303,486 @@ namespace valkyrie{
     using ConstStringIterator = const utf8*;
     using StringSentinel = utf8*;
     using ConstStringSentinel = const utf8*;
+
+
+
+#if defined(_AMD64_) || defined(_M_X64)
+
+    class string_bitmap{
+    public:
+
+      string_bitmap() noexcept : bits(_mm256_setzero_si256()){}
+
+
+    private:
+      __m256i bits;
+    };
+
+    template <size_t Step>
+    class string_chunk;
+
+
+
+    template <>
+    class string_chunk<16>{
+    public:
+
+      VK_constant u64 chunk_size = 16;
+      using chunk_type = __m128i;
+
+      string_chunk() = default;
+      string_chunk(const chunk_type& c, int len) noexcept
+          : chunk(c), length_(len){}
+
+      void fill(utf8_string str) noexcept {
+        chunk = _mm_loadu_si128((const __m128i* __unaligned)str);
+        length_ = chunk_size;
+      }
+      void fill(utf8_string str, u64 len) noexcept {
+        VK_assert(len <= chunk_size);
+        __m128i tmp_simd = _mm_setzero_si128();
+        std::memcpy(&tmp_simd, str, len);
+        chunk = _mm_load_si128(&tmp_simd);
+        length_ = len;
+      }
+
+      const chunk_type& reg()    const noexcept {
+        return chunk;
+      }
+      int               length() const noexcept {
+        return length_;
+      }
+
+      VK_nodiscard u32 find(const string_chunk<16>& other) const noexcept {
+
+      }
+
+      VK_nodiscard u32 find_first_of(const string_chunk<16>& other) const noexcept {
+        return static_cast<u32>(_mm_cmpestri(other.reg(), other.length(), reg(), length(), 0));
+      }
+      VK_nodiscard u32 find_first_not_of(const string_chunk<16>& other) const noexcept {
+        return static_cast<u32>(_mm_cmpestri(other.reg(), other.length(), reg(), length(), _SIDD_MASKED_NEGATIVE_POLARITY));
+      }
+      VK_nodiscard u32 find_last_of(const string_chunk<16>& other) const noexcept {
+        return static_cast<u32>(_mm_cmpestri(other.reg(), other.length(), reg(), length(), _SIDD_MOST_SIGNIFICANT | _SIDD_MASKED_NEGATIVE_POLARITY));
+      }
+      VK_nodiscard u32 find_last_not_of(const string_chunk<16>& other) const noexcept {
+        return static_cast<u32>(_mm_cmpestri(other.reg(), other.length(), reg(), length(), _SIDD_MOST_SIGNIFICANT));
+      }
+
+      VK_nodiscard u32 mask_each_from(const string_chunk<16>& other) const noexcept {
+        chunk_type result = _mm_cmpestrm(other.reg(), other.length(), reg(), length(), 0);
+        return _mm_extract_epi16(result, 0);
+      }
+      VK_nodiscard u32 mask_each_not_from(const string_chunk<16>& other) const noexcept {
+        chunk_type result = _mm_cmpestrm(other.reg(), other.length(), reg(), length(), _SIDD_MASKED_NEGATIVE_POLARITY);
+        return _mm_extract_epi16(result, 0);
+      }
+
+    private:
+      chunk_type chunk;
+      int        length_;
+    };
+    template <>
+    class string_chunk<32>{
+    public:
+
+      VK_constant u64 chunk_size = 32;
+      using chunk_type = __m256i;
+
+      string_chunk() = default;
+      string_chunk(const string_chunk<16>& a, const string_chunk<16>& b) noexcept
+          : chunk(_mm256_set_m128i(a.reg(), b.reg())), length_(a.length() + b.length()){
+        VK_assert(a.length() == 16);
+      }
+
+      void fill(utf8_string str) noexcept {
+        chunk = _mm256_loadu_si256((const __m256i* __unaligned)str);
+        length_ = chunk_size;
+      }
+      void fill(utf8_string str, u64 len) noexcept {
+        VK_assert(len <= chunk_size);
+        __m256i tmp_simd = _mm256_setzero_si256();
+        std::memcpy(&tmp_simd, str, len);
+        chunk = _mm256_load_si256(&tmp_simd);
+        length_ = len;
+      }
+
+      string_chunk<16> lo() const noexcept {
+        return { _mm256_extractf128_si256(chunk, 0), std::min(length_, 16) };
+      }
+      string_chunk<16> hi() const noexcept {
+        return { _mm256_extractf128_si256(chunk, 0), std::max(length_ - 16, 0) };
+      }
+
+      const chunk_type& reg() const noexcept {
+        return chunk;
+      }
+      int               length() const noexcept {
+        return length_;
+      }
+
+    private:
+      chunk_type chunk;
+      int     length_;
+    };
+
+    template <size_t Step>
+    class string_chunk_reverse_iterator;
+
+    class string_chunk_sentinel{};
+    template <size_t Step>
+    class string_chunk_iterator{
+
+      void update() const noexcept {
+        if ( needs_update ) {
+          utf8_string string = end - remaining;
+          if ( remaining >= Step )
+            chunk.fill(string);
+          else
+            chunk.fill(string, remaining);
+          needs_update = false;
+        }
+      }
+
+    public:
+
+      VK_constant u64 chunk_size = Step;
+      using chunk_type = string_chunk<chunk_size>;
+
+      string_chunk_iterator() = default;
+      template <size_t N>
+      string_chunk_iterator(const string_chunk_iterator<N>& other) noexcept
+          : end(other.end), remaining(other.remaining), chunk(){ }
+      string_chunk_iterator(utf8_string string, u64 size) noexcept
+          : chunk(), end(string + size), remaining(static_cast<i32>(size)){ }
+      template <size_t N>
+      explicit string_chunk_iterator(const string_chunk_reverse_iterator<N>& iter) noexcept;
+
+      string_chunk_iterator& operator++() noexcept {
+        remaining -= Step;
+        needs_update = true;
+        return *this;
+      }
+      string_chunk_iterator  operator++(int) noexcept {
+        string_chunk_iterator tmp(*this);
+        remaining -= Step;
+        needs_update = true;
+        return tmp;
+      }
+
+      chunk_type& operator*() const noexcept {
+        update();
+        return chunk;
+      }
+
+
+      void add_offset(u64 offset) noexcept {
+        remaining -= offset;
+        needs_update = true;
+      }
+
+
+      friend bool operator==(const string_chunk_iterator& iter, string_chunk_sentinel) noexcept {
+        return iter.remaining <= 0;
+      }
+
+    private:
+
+      template <size_t>
+      friend class string_chunk_reverse_iterator;
+      template <size_t>
+      friend class string_chunk_iterator;
+
+
+      VK_constant u64 StepHiMask = ~(Step - 1);
+
+      utf8_string        end;
+      i32                remaining = 0;
+      mutable bool       needs_update = true;
+      mutable chunk_type chunk;
+    };
+    class string_chunk_reverse_sentinel{};
+    template <size_t Step>
+    class string_chunk_reverse_iterator{
+
+      void update() const noexcept {
+        if ( needs_update ) {
+          if ( remaining >= Step )
+            chunk.fill(begin + remaining - Step);
+          else
+            chunk.fill(begin, remaining);
+          needs_update = false;
+        }
+      }
+
+    public:
+
+      VK_constant u64 chunk_size = Step;
+      using chunk_type = string_chunk<chunk_size>;
+
+      string_chunk_reverse_iterator() = default;
+      template <size_t N>
+      string_chunk_reverse_iterator(const string_chunk_reverse_iterator<N>& other) noexcept
+          : begin(other.begin), remaining(other.remaining), chunk(){ }
+      string_chunk_reverse_iterator(utf8_string string, u64 size) noexcept
+          : begin(string), remaining(static_cast<i32>(size)), chunk(){ }
+
+      template <size_t N>
+      explicit string_chunk_reverse_iterator(const string_chunk_iterator<N>& iter) noexcept
+          : begin(iter.end - iter.remaining), remaining(iter.remaining), chunk(){ }
+
+      string_chunk_reverse_iterator& operator++() noexcept {
+        remaining -= Step;
+        needs_update = true;
+        return *this;
+      }
+      string_chunk_reverse_iterator  operator++(int) noexcept {
+        string_chunk_reverse_iterator tmp(*this);
+        remaining -= Step;
+        needs_update = true;
+        return tmp;
+      }
+
+      chunk_type& operator*() const noexcept {
+        update();
+        return chunk;
+      }
+
+      void add_offset(u64 offset) noexcept {
+        remaining -= offset;
+        needs_update = true;
+      }
+
+      friend bool operator==(const string_chunk_reverse_iterator& iter, string_chunk_reverse_sentinel) noexcept {
+        return iter.remaining <= 0;
+      }
+
+    private:
+      template <size_t>
+      friend class string_chunk_iterator;
+      template <size_t>
+      friend class string_chunk_reverse_iterator;
+
+      VK_constant u64 StepHiMask = ~(Step - 1);
+
+      utf8_string        begin;
+      i32                remaining = 0;
+      mutable bool       needs_update = true;
+      mutable chunk_type chunk;
+    };
+
+    template <size_t N>
+    template <size_t M>
+    string_chunk_iterator<N>::string_chunk_iterator(const string_chunk_reverse_iterator<M>& iter) noexcept
+        : end(iter.begin + iter.remaining), remaining(iter.remaining), chunk(){}
+
+    template <size_t Step>
+    class string_chunk_range;
+    template <size_t Step>
+    class string_chunk_reverse_range;
+
+    template <size_t Step>
+    class string_chunk_range{
+    public:
+
+      VK_constant u64 chunk_size = Step;
+
+      using value_type = string_chunk<chunk_size>;
+
+      using iterator = string_chunk_iterator<Step>;
+      using sentinel = string_chunk_sentinel;
+      using reverse_iterator = string_chunk_reverse_iterator<Step>;
+      using reverse_sentinel = string_chunk_reverse_sentinel;
+
+      string_chunk_range() = default;
+      string_chunk_range(utf8_string str, u64 length) noexcept
+          : string(str), length(length){}
+
+      VK_nodiscard iterator begin() const noexcept {
+        return iterator(string, length);
+      }
+      VK_nodiscard sentinel end() const noexcept {
+        return sentinel();
+      }
+
+      VK_nodiscard reverse_iterator rbegin() const noexcept {
+        return reverse_iterator(string, length);
+      }
+      VK_nodiscard reverse_sentinel rend() const noexcept {
+        return reverse_sentinel();
+      }
+
+      VK_nodiscard string_chunk_reverse_range<Step> reverse() const noexcept;
+
+      VK_nodiscard u64 size() const noexcept {
+        constexpr static u64 offset = chunk_size - 1;
+        constexpr static u64 mask   = ~offset;
+        return ((length + offset) & mask) / chunk_size;
+      }
+
+    private:
+      utf8_string string;
+      u64         length = 0;
+    };
+
+    template <size_t Step>
+    class string_chunk_reverse_range{
+    public:
+
+      VK_constant u64 chunk_size = Step;
+
+      using value_type = string_chunk<chunk_size>;
+
+      using iterator = string_chunk_reverse_iterator<Step>;
+      using sentinel = string_chunk_reverse_sentinel;
+      using reverse_iterator = string_chunk_iterator<Step>;
+      using reverse_sentinel = string_chunk_sentinel;
+
+      string_chunk_reverse_range() = default;
+      string_chunk_reverse_range(utf8_string str, u64 length) noexcept
+          : string(str), length(length){}
+
+      VK_nodiscard iterator begin() const noexcept {
+        return iterator(string, length);
+      }
+      VK_nodiscard sentinel end() const noexcept {
+        return sentinel();
+      }
+
+      VK_nodiscard reverse_iterator rbegin() const noexcept {
+        return reverse_iterator(string, length);
+      }
+      VK_nodiscard reverse_sentinel rend() const noexcept {
+        return reverse_sentinel();
+      }
+
+      VK_nodiscard string_chunk_range<chunk_size> reverse() const noexcept {
+        return { string, length };
+      }
+
+      VK_nodiscard u64 size() const noexcept {
+        constexpr static u64 offset = chunk_size - 1;
+        constexpr static u64 mask   = ~offset;
+        return ((length + offset) & mask) / chunk_size;
+      }
+
+    private:
+      utf8_string string;
+      u64         length = 0;
+    };
+
+    template <size_t Step>
+    string_chunk_reverse_range<Step> string_chunk_range<Step>::reverse() const noexcept {
+      return { string, length };
+    }
+
+
+    namespace string_ops {
+      enum class type : u8{
+        u8  = _SIDD_UBYTE_OPS,
+        u16 = _SIDD_UWORD_OPS,
+        i8  = _SIDD_SBYTE_OPS,
+        i16 = _SIDD_SWORD_OPS
+      };
+      enum class cmp  : u8{
+        equal_any     = _SIDD_CMP_EQUAL_ANY,
+        ranges        = _SIDD_CMP_RANGES,
+        equal_each    = _SIDD_CMP_EQUAL_EACH,
+        equal_ordered = _SIDD_CMP_EQUAL_ORDERED
+      };
+      enum class parity : u8{
+        positive = _SIDD_POSITIVE_POLARITY,
+        masked_positive = _SIDD_MASKED_POSITIVE_POLARITY,
+        negative = _SIDD_NEGATIVE_POLARITY,
+        masked_negative = _SIDD_MASKED_NEGATIVE_POLARITY
+      };
+      enum class index : u8 {
+        lsb = _SIDD_LEAST_SIGNIFICANT,
+        msb = _SIDD_MOST_SIGNIFICANT
+      };
+      enum class mask : u8 {
+        bit  = _SIDD_BIT_MASK,
+        unit = _SIDD_UNIT_MASK
+      };
+
+      template <typename ...Opts>
+      VK_forceinline static u32 cmpistri(const string_chunk<16>& a, const string_chunk<16>& b, Opts ...opts) noexcept {
+        const int options_mask = (0 & ... & (static_cast<int>(opts)));
+        return static_cast<u32>(_mm_cmpistri(a.reg(), b.reg(), options_mask));
+      }
+      template <typename ...Opts>
+      VK_forceinline static u32 cmpestri(const string_chunk<16>& a, const string_chunk<16>& b, Opts ...opts) noexcept {
+        const int options_mask = (0 & ... & (static_cast<int>(opts)));
+        return static_cast<u32>(_mm_cmpestri(a.reg(), a.length(), b.reg(), b.length(), options_mask));
+      }
+      template <typename ...Opts>
+      VK_forceinline static u64 cmpistri(const string_chunk<32>& a, const string_chunk<32>& b, Opts ...opts) noexcept {
+        const int options_mask = (0 & ... &  (static_cast<int>(opts)));
+        const u64 lo_mask = static_cast<u32>(_mm_cmpistri(a.lo().reg(), b.lo().reg(), options_mask));
+        const u64 hi_mask = static_cast<u32>(_mm_cmpistri(a.hi().reg(), b.hi().reg(), options_mask));
+        return lo_mask | (hi_mask << 32);
+      }
+      template <typename ...Opts>
+      VK_forceinline static u64 cmpestri(const string_chunk<32>& a, const string_chunk<32>& b, Opts ...opts) noexcept {
+        const int options_mask = (0 & ... &  (static_cast<int>(opts)));
+        const auto a_lo = a.lo();
+        const auto a_hi = a.hi();
+        const auto b_lo = b.lo();
+        const auto b_hi = b.hi();
+        const u64 lo_mask = static_cast<u32>(_mm_cmpestri(a_lo.reg(), a_lo.length(), b_lo.reg(), b_lo.length(), options_mask));
+        const u64 hi_mask = static_cast<u32>(_mm_cmpestri(a_hi.reg(), a_hi.length(), b_hi.reg(), b_hi.length(), options_mask));
+        return lo_mask | (hi_mask << 32);
+      }
+
+      VK_nodiscard static u64 find_first_of(utf8_string string, u64 length, utf8_string coll, u64 coll_len) noexcept {
+        string_chunk_range<16> haystack{string, length};
+        string_chunk_range<16> needles{coll, coll_len};
+
+
+        u64 offset = 0;
+
+        for ( const auto& chunk : haystack ) {
+          for ( const auto& needle : needles ) {
+            if (auto result = chunk.find_first_of(needle); result != 16) {
+              return offset + result;
+            }
+          }
+          offset += chunk.length();
+        }
+
+        return (u64)-1;
+      }
+      VK_nodiscard static u64 find_last_of(utf8_string string, u64 length, utf8_string coll, u64 coll_len) noexcept {
+        string_chunk_range<16> haystack{string, length};
+        string_chunk_range<16> needles{coll, coll_len};
+
+
+        u64 offset = 0;
+
+        for ( const auto& chunk : haystack.reverse() ) {
+          for ( const auto& needle : needles ) {
+            if (auto result = chunk.find_last_of(needle); result != 16) {
+              return offset + result;
+            }
+          }
+          offset += chunk.length();
+        }
+
+        return (u64)-1;
+      }
+    };
+
+
+#endif
   }
 
   class string_view {
-    union {
-      const utf8 *pString = u8"";
-      const char *pCString;
-    };
-    u64 length_ = 0;
+    union{
+      const utf8* u8;
+      const char* asc;
+    } ptr = { .u8 = u8"" };
+    u64        length_ = 0;
   public:
 
     using value_type = const utf8;
@@ -372,6 +797,11 @@ namespace valkyrie{
     using sentinel = detail::ConstStringSentinel;
     using const_sentinel = sentinel;
 
+
+    VK_constant size_type npos = std::numeric_limits<size_type>::max();
+
+
+
     constexpr string_view() noexcept = default;
     constexpr string_view(const string_view &) noexcept = default;
     constexpr string_view(string_view &&) noexcept = default;
@@ -383,373 +813,400 @@ namespace valkyrie{
 
     template <std::ranges::contiguous_range Rng> requires(same_as_one_of<std::ranges::range_value_t<Rng>, utf8, char>)
     constexpr string_view(Rng& rng) noexcept
-        : pString(std::ranges::data(rng)),
-          length_(std::ranges::size(rng)){}
+        : string_view(std::ranges::data(rng), std::ranges::size(rng)) { }
 
     template <size_t N>
     constexpr string_view(const utf8(&str)[N]) noexcept
-        : pString(str),
-          length_(N - 1){}
+        : string_view(static_cast<utf8_string>(str), N - 1){}
+
     template <size_t N>
     constexpr string_view(const char(&str)[N]) noexcept
-        : pCString(str),
-          length_(N - 1){}
+        : string_view(static_cast<cstring>(str), N - 1){}
 
+    constexpr string_view(utf8_string c_str) noexcept
+        : string_view(c_str, std::char_traits<utf8>::length(c_str)){}
+    constexpr string_view(cstring c_str) noexcept
+        : string_view(c_str, std::char_traits<char>::length(c_str)){}
 
-    /*template <typename Str> requires(!std::same_as<string_view, std::remove_cvref_t<Str>> && requires(Str&& str){
-      { detail::StringInfo<std::remove_cvref_t<Str>>::data((Str&&)str) } noexcept;
-    })
-    constexpr string_view(Str&& str) noexcept
-        : pString(detail::StringInfo<std::remove_cvref_t<Str>>::data(std::forward<Str>(str))),
-          length_(detail::StringInfo<std::remove_cvref_t<Str>>::byteLength(std::forward<Str>(str))){}*/
-
-    constexpr string_view(const utf8* pData) noexcept
-        : pString(pData),
-          length_(std::char_traits<utf8>::length(pData)){}
-    constexpr explicit string_view(const char* pData) noexcept
-        : pCString(pData),
-          length_(std::char_traits<char>::length(pData)){}
-
-    constexpr string_view(const utf8* pData, u64 stringLength) noexcept
-        : pString(pData),
+    constexpr string_view(utf8_string data, u64 stringLength) noexcept
+        : ptr{ .u8 = data },
+          length_(stringLength){}
+    constexpr string_view(cstring data, u64 stringLength) noexcept
+        : ptr{ .asc = data },
           length_(stringLength){}
 
 
-    [[nodiscard]] cstring_type c_str() const noexcept { return (cstring_type)pString; }
 
-    [[nodiscard]] constexpr pointer data() const noexcept { return pString; }
 
-    [[nodiscard]] constexpr u64 size() const noexcept { return length_; }
-    [[nodiscard]] constexpr u64 length() const noexcept { return length_; }
+    // [ string_view.capacity ]
 
-    //[[nodiscard]] constexpr u64 byteLength() const noexcept { return length_; }
+    VK_nodiscard constexpr size_type size() const noexcept { return length_; }
+    VK_nodiscard constexpr size_type length() const noexcept { return length_; }
+    VK_nodiscard constexpr size_type max_size() const noexcept { return std::numeric_limits<i64>::max(); }
+    VK_nodiscard constexpr bool      empty() const noexcept { return !length_; }
 
-    [[nodiscard]] reference front() const noexcept { return *begin(); }
-    [[nodiscard]] reference back() const noexcept { return *(pString + length_ - 1); }
+    // [ string_view.accessors ]
 
-    [[nodiscard]] iterator begin()        const noexcept { return iterator(pString); }
-    [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
-    [[nodiscard]] sentinel end()          const noexcept { return sentinel(pString + length_); }
-    [[nodiscard]] const_sentinel cend()   const noexcept { return end(); }
-
-    [[nodiscard]] friend bool operator==(string_view A, string_view B) noexcept {
-      return A.length_ == B.length_ &&
-             detail::stringCompare(A.pString, B.pString, A.length_) == std::strong_ordering::equal;
+    VK_nodiscard constexpr pointer data() const noexcept { return ptr.u8; }
+    VK_nodiscard constexpr cstring_type c_str() const noexcept { return ptr.asc; }
+    VK_nodiscard constexpr reference front() const noexcept { return *begin(); }
+    VK_nodiscard constexpr reference back() const noexcept { return *(ptr.u8 + length_ - 1); }
+    VK_nodiscard constexpr reference operator[](size_type pos) const noexcept {
+      VK_assert( pos < size() );
+      return ptr.u8[pos];
     }
-    [[nodiscard]] friend std::strong_ordering operator<=>(string_view A, string_view B) noexcept {
-      auto compResult = detail::stringCompare(A.pString, B.pString, std::min(A.length_, B.length_));
+
+
+    // [ string_view.iterators ]
+
+    VK_nodiscard constexpr iterator begin()        const noexcept { return iterator(ptr.u8); }
+    VK_nodiscard constexpr const_iterator cbegin() const noexcept { return begin(); }
+    VK_nodiscard constexpr sentinel end()          const noexcept { return sentinel(ptr.u8 + length_); }
+    VK_nodiscard constexpr const_sentinel cend()   const noexcept { return end(); }
+
+
+
+    // [ string_view.modifiers ]
+
+    constexpr void remove_prefix(size_type n) noexcept {
+      VK_constexpr_assert( n <= size() );
+      ptr.u8 += n;
+      length_ -= n;
+    }
+    constexpr void remove_suffix(size_type n) noexcept {
+      VK_constexpr_assert( n <= size() );
+      length_ -= n;
+    }
+    constexpr void swap(string_view& other) noexcept {
+      std::swap(ptr.u8, other.ptr.u8);
+      std::swap(length_, other.length_);
+    }
+
+
+
+    // [ string_view.operations ]
+    
+    constexpr size_type copy(utf8* dest, size_type count, size_type pos = 0) const noexcept {
+      VK_constexpr_assert(pos <= size());
+      const size_type min_count = std::min(count, size() - pos);
+      VK_consteval_block {
+        for (size_type i = 0; i < min_count; ++i)
+          dest[i] = ptr.u8[pos + i];
+      }
+      VK_runtime_block {
+        if ( min_count > 0 ) VK_likely
+              std::memcpy(dest, data() + pos, min_count);
+      }
+      return min_count;
+    }
+    VK_nodiscard constexpr string_view substr(size_type pos = 0, size_type count = npos) const noexcept {
+      VK_constexpr_assert(pos <= size());
+      return string_view(data() + pos, std::min(count, size() - pos));
+    }
+    VK_nodiscard constexpr string_view slice(size_type from, size_type to) const noexcept {
+      return string_view(ptr.u8 + from, to - from);
+    }
+
+    VK_nodiscard constexpr int compare(string_view sv) const noexcept {
+      return std::char_traits<utf8>::compare(data(), sv.data(), std::min(size(), sv.size()));
+    }
+    VK_nodiscard constexpr int compare(size_type pos, size_type count, string_view sv) const noexcept {
+      return substr(pos, count).compare(sv);
+    }
+    VK_nodiscard constexpr int compare(size_type pos, size_type count, string_view sv, size_type pos2, size_type count2) const noexcept {
+      return substr(pos, count).compare(sv.substr(pos2, count2));
+    }
+    VK_nodiscard constexpr int compare(utf8_string str) const noexcept {
+      return compare(string_view(str));
+    }
+    VK_nodiscard constexpr int compare(size_type pos, size_type count, utf8_string str) const noexcept {
+      return substr(pos, count).compare(string_view(str));
+    }
+    VK_nodiscard constexpr int compare(size_type pos, size_type count, utf8_string str, size_type pos2, size_type count2) const noexcept {
+      return substr(pos, count).compare(string_view(str + pos2, count2));
+    }
+
+    VK_nodiscard constexpr bool starts_with(string_view sv) const noexcept {
+      return substr(0, sv.size()) == sv;
+    }
+    VK_nodiscard constexpr bool starts_with(utf8 c) const noexcept {
+      return !empty() && front() == c;
+    }
+    VK_nodiscard constexpr bool starts_with(utf8_string str) const noexcept {
+      return starts_with(string_view(str));
+    }
+
+    VK_nodiscard constexpr bool ends_with(string_view sv) const noexcept {
+      return size() >= sv.size() && substr(size() - sv.size()) == sv;
+    }
+    VK_nodiscard constexpr bool ends_with(utf8 c) const noexcept {
+      return !empty() && back() == c;
+    }
+    VK_nodiscard constexpr bool ends_with(utf8_string str) const noexcept {
+      return ends_with(string_view(str));
+    }
+
+
+    VK_nodiscard constexpr bool contains(string_view sv) const noexcept {
+      return this->find(sv) != npos;
+    }
+    VK_nodiscard constexpr bool contains(utf8 c) const noexcept {
+      return this->find(c) != npos;
+    }
+    VK_nodiscard constexpr bool contains(utf8_string str) const noexcept {
+      return this->find(str) != npos;
+    }
+
+
+    // [ string_view.searching ]
+
+    VK_nodiscard constexpr size_type find(string_view sv) const noexcept {
+      if ( sv.empty() )
+        return 0;
+      if ( size() >= sv.size() ) {
+        utf8_string first = std::char_traits<utf8>::find(begin(), size(), sv.front());
+        while ( first ) {
+          if ( (end() - first) < sv.size() )
+            return npos;
+          if ( string_view(first, sv.size()) == sv )
+            return first - begin();
+          first = std::char_traits<utf8>::find(first, end() - first, sv.front());
+        }
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find(string_view sv, size_type pos) const noexcept {
+      return substr(pos).find(sv);
+    }
+    VK_nodiscard constexpr size_type find(utf8 c) const noexcept {
+      if ( utf8_string pos = std::char_traits<utf8>::find(begin(), size(), c) )
+        return pos - begin();
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find(utf8 c, size_type pos) const noexcept {
+      return substr(pos).find(c);
+    }
+    VK_nodiscard constexpr size_type find(utf8_string str) const noexcept {
+      return find(string_view(str));
+    }
+    VK_nodiscard constexpr size_type find(utf8_string str, size_type pos) const noexcept {
+      return substr(pos).find(string_view(str));
+    }
+    VK_nodiscard constexpr size_type find(utf8_string str, size_type pos, size_type count) const noexcept {
+      return substr(pos).find(string_view(str, count));
+    }
+
+    VK_nodiscard constexpr size_type rfind(string_view sv, size_type pos = npos) const noexcept {
+      if ( sv.empty() )
+        return 0;
+      if ( size() >= sv.size() ) {
+        for (const_iterator current = begin() + std::min(pos, size() - sv.size()); ; --current ) {
+          if ( *current == sv.front() && string_view((utf8_string)current, sv.size()) == sv )
+            return current - begin();
+          if ( current == begin() )
+            break;
+        }
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type rfind(utf8 c, size_type pos = npos) const noexcept {
+      if ( !empty() ) {
+        for (const_iterator current = begin() + std::min(pos, size() - 1); ; --current ) {
+          if ( *current == c )
+            return current - begin();
+          if ( current == begin() )
+            break;
+        }
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type rfind(utf8_string str, size_type pos = npos) const noexcept {
+      return rfind(string_view(str), pos);
+    }
+    VK_nodiscard constexpr size_type rfind(utf8_string str, size_type pos, size_type count) const noexcept {
+      return rfind(string_view(str, count), pos);
+    }
+
+
+    VK_nodiscard constexpr size_type find_first_of(string_view sv, size_type pos = 0) const noexcept {
+      for ( size_type i = pos; i < size(); ++i ) {
+        if ( sv.contains((*this)[i]) )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_first_of(utf8 c, size_type pos = 0) const noexcept {
+      for ( size_type i = pos; i < size(); ++i ) {
+        if ( (*this)[i] == c )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_first_of(utf8_string str, size_type pos = 0) const noexcept {
+      return find_first_of(string_view(str), pos);
+    }
+    VK_nodiscard constexpr size_type find_first_of(utf8_string str, size_type pos, size_type count) const noexcept {
+      return find_first_of(string_view(str, count), pos);
+    }
+
+    VK_nodiscard constexpr size_type find_last_of(string_view sv, size_type pos = npos) const noexcept {
+      for ( size_type i = std::min(size() - 1, pos); i > 0; --i ) {
+        if ( sv.contains((*this)[i]) )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_last_of(utf8 c, size_type pos = npos) const noexcept {
+      for ( size_type i = std::min(size() - 1, pos); i > 0; --i ) {
+        if ( (*this)[i] == c )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_last_of(utf8_string str, size_type pos = npos) const noexcept {
+      return find_last_of(string_view(str), pos);
+    }
+    VK_nodiscard constexpr size_type find_last_of(utf8_string str, size_type pos, size_type count) const noexcept {
+      return find_last_of(string_view(str, count), pos);
+    }
+
+    VK_nodiscard constexpr size_type find_first_not_of(string_view sv, size_type pos = 0) const noexcept {
+      for ( size_type i = pos; i < size(); ++i ) {
+        if ( !sv.contains((*this)[i]) )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_first_not_of(utf8 c, size_type pos = 0) const noexcept {
+      for ( size_type i = pos; i < size(); ++i ) {
+        if ( (*this)[i] != c )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_first_not_of(utf8_string str, size_type pos = 0) const noexcept {
+      return find_first_not_of(string_view(str), pos);
+    }
+    VK_nodiscard constexpr size_type find_first_not_of(utf8_string str, size_type pos, size_type count) const noexcept {
+      return find_first_not_of(string_view(str, count), pos);
+    }
+
+    VK_nodiscard constexpr size_type find_last_not_of(string_view sv, size_type pos = npos) const noexcept {
+      for ( size_type i = std::min(size() - 1, pos); i > 0; --i ) {
+        if ( !sv.contains((*this)[i]) )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_last_not_of(utf8 c, size_type pos = npos) const noexcept {
+      for ( size_type i = std::min(size() - 1, pos); i > 0; --i ) {
+        if ( (*this)[i] != c )
+          return i;
+      }
+      return npos;
+    }
+    VK_nodiscard constexpr size_type find_last_not_of(utf8_string str, size_type pos = npos) const noexcept {
+      return find_last_not_of(string_view(str), pos);
+    }
+    VK_nodiscard constexpr size_type find_last_not_of(utf8_string str, size_type pos, size_type count) const noexcept {
+      return find_last_not_of(string_view(str, count), pos);
+    }
+
+
+    VK_nodiscard constexpr friend bool operator==(string_view A, string_view B) noexcept {
+      return A.length_ == B.length_ &&
+             detail::stringCompare(A.ptr.u8, B.ptr.u8, A.length_) == std::strong_ordering::equal;
+    }
+    VK_nodiscard constexpr friend std::strong_ordering operator<=>(string_view A, string_view B) noexcept {
+      auto compResult = detail::stringCompare(A.ptr.u8, B.ptr.u8, std::min(A.length_, B.length_));
       if (compResult != std::strong_ordering::equal)
         return compResult;
       return A.length_ <=> B.length_;
     }
   };
   class mutable_string_view {
-    utf8* pString = nullptr;
-    u32   stringLength = 0;
+
+    inline static utf8 EmptyString = u8'\0';
+
+    union{
+      utf8* u8;
+      char* asc;
+    } ptr = { .u8 = &EmptyString };
+    u64        length_ = 0;
   public:
 
     using value_type = utf8;
-    using size_type = u32;
+    using size_type = u64;
     using pointer = utf8*;
     using cstring_type = char*;
 
+    //using reference = const Grapheme&;
     using reference = utf8&;
-    using const_reference = const utf8&;
     using iterator = detail::StringIterator;
     using const_iterator = detail::ConstStringIterator;
-    using sentinel = detail::StringSentinel;
+    using sentinel = detail::ConstStringSentinel;
     using const_sentinel = detail::ConstStringSentinel;
 
-    constexpr mutable_string_view() = default;
-    constexpr mutable_string_view(utf8* pString, size_t N) noexcept
-        : pString(pString), stringLength(N){}
-    constexpr explicit mutable_string_view(utf8* pString) noexcept
-        : pString(pString), stringLength(std::char_traits<utf8>::length(pString)){}
+    constexpr mutable_string_view() noexcept = default;
+    constexpr mutable_string_view(const mutable_string_view &) noexcept = default;
+    constexpr mutable_string_view(mutable_string_view &&) noexcept = default;
 
-    VK_nodiscard cstring_type c_str() const noexcept { return (cstring_type)pString; }
+    constexpr mutable_string_view & operator=(const mutable_string_view &) noexcept = default;
+    constexpr mutable_string_view & operator=(mutable_string_view &&) noexcept = default;
 
-    VK_nodiscard constexpr pointer data() const noexcept { return pString; }
+    /*constexpr */~mutable_string_view() noexcept = default;
 
-    VK_nodiscard constexpr u32 size() const noexcept { return stringLength; }
-    VK_nodiscard constexpr u32 length() const noexcept { return stringLength; }
+    template <contiguous_range_c Rng> requires(exact_same_as_one_of<std::ranges::range_value_t<Rng>, utf8, char>)
+    constexpr mutable_string_view(Rng& rng) noexcept
+        : mutable_string_view(std::ranges::data(rng), std::ranges::size(rng)) { }
+
+    template <size_t N>
+    constexpr mutable_string_view(utf8(&str)[N]) noexcept
+        : mutable_string_view(static_cast<utf8*>(str), N - 1){}
+
+    template <size_t N>
+    constexpr mutable_string_view(char(&str)[N]) noexcept
+        : mutable_string_view(static_cast<char*>(str), N - 1){}
+
+    constexpr mutable_string_view(utf8* c_str) noexcept
+        : mutable_string_view(c_str, std::char_traits<utf8>::length(c_str)){}
+    constexpr mutable_string_view(char* c_str) noexcept
+        : mutable_string_view(c_str, std::char_traits<char>::length(c_str)){}
+
+    constexpr mutable_string_view(utf8* data, u64 stringLength) noexcept
+        : ptr{ .u8 = data },
+          length_(stringLength){}
+    constexpr mutable_string_view(char* data, u64 stringLength) noexcept
+        : ptr{ .asc = data },
+          length_(stringLength){}
+
+
+    VK_nodiscard constexpr cstring_type c_str() const noexcept { return ptr.asc; }
+
+    VK_nodiscard constexpr pointer data() const noexcept { return ptr.u8; }
+
+    VK_nodiscard constexpr u64 size() const noexcept { return length_; }
+    VK_nodiscard constexpr u64 length() const noexcept { return length_; }
 
     VK_nodiscard reference front() const noexcept { return *begin(); }
-    VK_nodiscard reference back() const noexcept { return *(pString + stringLength - 1); }
+    VK_nodiscard reference back() const noexcept { return *(ptr.u8 + length_ - 1); }
 
-    VK_nodiscard iterator        begin() const noexcept { return iterator(pString); }
-    VK_nodiscard const_iterator cbegin() const noexcept { return const_iterator(pString); }
-
-    VK_nodiscard sentinel        end()   const noexcept { return sentinel(pString + stringLength); }
-    VK_nodiscard const_sentinel cend()   const noexcept { return const_sentinel(pString + stringLength); }
+    VK_nodiscard iterator begin()        const noexcept { return iterator(ptr.u8); }
+    VK_nodiscard const_iterator cbegin() const noexcept { return begin(); }
+    VK_nodiscard sentinel end()          const noexcept { return sentinel(ptr.u8 + length_); }
+    VK_nodiscard const_sentinel cend()   const noexcept { return end(); }
 
     VK_nodiscard friend bool operator==(mutable_string_view A, mutable_string_view B) noexcept {
-      return A.stringLength == B.stringLength && std::char_traits<utf8>::compare(A.pString, B.pString, A.stringLength) == 0;
+      return A.length_ == B.length_ &&
+             detail::stringCompare(A.ptr.u8, B.ptr.u8, A.length_) == std::strong_ordering::equal;
     }
     VK_nodiscard friend std::strong_ordering operator<=>(mutable_string_view A, mutable_string_view B) noexcept {
-
-      //return std::lexicographical_compare_three_way(A.pString, A.pString + A.stringLength, B.pString, B.pString + B.stringLength);
-
-      //return std::u8string_view{A.pString, A.stringLength} <=> std::u8string_view{B.pString, B.stringLength};
-
-      const u32 minLength = std::min(A.stringLength, B.stringLength);
-      for (u32 i = 0; i < minLength; ++i)
-        if (auto compResult = A.pString[i] <=> B.pString[i]; compResult != std::strong_ordering::equal)
-          return compResult;
-      return A.stringLength <=> B.stringLength;
-
-
-      //auto compResult = std::char_traits<utf8>::compare(A.pString, B.pString, std::min(A.stringLength, B.stringLength));
-      /*if (compResult != std::strong_ordering::equal)
+      auto compResult = detail::stringCompare(A.ptr.u8, B.ptr.u8, std::min(A.length_, B.length_));
+      if (compResult != std::strong_ordering::equal)
         return compResult;
-      return A.stringLength <=> B.stringLength;*/
-    }
-
-    operator string_view() const noexcept {
-      return {pString, stringLength};
+      return A.length_ <=> B.length_;
     }
   };
-
-  /*class StringReference{
-
-    inline static constexpr utf8 EmptyString[1] = u8"";
-
-  public:
-
-    using value_type = const utf8;
-    using size_type  = u32;
-    using pointer = const utf8*;
-    using iterator = pointer;
-    using reference = const utf8&;
-
-  protected:
-    enum class ThunkOp{
-      default_ctor,
-      copy_ctor,
-      move_ctor,
-      copy_assign,
-      move_assign,
-      destruct,
-      size,
-      begin,
-      end,
-      callback
-    };
-    struct ThunkIn{
-      union{
-        byte* pThis;
-        const byte* pConstThis;
-      };
-      ThunkOp op;
-      union{
-        byte* pOther;
-        const byte* pConstOther;
-        void* pUserData;
-        const void* pConstUserData;
-        struct {
-          void(* pFunction)(byte* pStorage, void* pData);
-          void* pData;
-        } callback;
-      };
-    };
-    union ThunkOut{
-      pointer* ppString;
-      u32*     pSize;
-      i32*     pComp;
-    };
-
-    using ThunkFn = void (*)(ThunkIn in, ThunkOut out);
-
-    inline constexpr static size_t erasedStorageSize = 4 * sizeof(void*);
-
-    template <typename T>
-    struct DefaultThunkHolder{
-      inline constexpr static ThunkFn function = [](ThunkIn in, ThunkOut out) {
-        switch (in.op) {
-          case ThunkOp::default_ctor:
-            VK_assert(in.pThis);
-            new(in.pThis) T{};
-            break;
-            *//*case ThunkOp::callback:
-              in.callback.pFunction(pTo, in.callback.pData);
-              break;*//*
-          case ThunkOp::copy_ctor:
-            VK_assert(in.pThis && in.pConstOther);
-            new(in.pThis) T{*(const T*)in.pConstOther};
-            break;
-          case ThunkOp::move_ctor:
-            VK_assert(in.pThis && in.pOther);
-            new(in.pThis) T{std::move(*(T*)in.pOther)};
-            break;
-          case ThunkOp::copy_assign:
-            VK_assert(in.pThis &&in.pConstOther);
-            (*(T*)in.pThis) = (*(const T*)in.pConstOther);
-            break;
-          case ThunkOp::move_assign:
-            VK_assert(in.pThis &&in.pOther);
-            (*(T*)in.pThis) = std::move(*(T*)in.pOther);
-            break;
-          case ThunkOp::destruct:
-            VK_assert(in.pThis&&!in.pConstOther);
-            ((T*)in.pThis)->~T();
-            break;
-          case ThunkOp::size:
-            VK_assert(in.pConstThis && !in.pConstOther && out.pSize);
-            if constexpr(requires(const T& str){ { std::size(str) } -> std::integral; })
-              *out.pSize = static_cast<u32>(std::size(*(const T*)in.pConstThis));
-            else if constexpr(requires(const T& str){ { size(str) } -> std::integral; })
-              *out.pSize = static_cast<u32>(size(*(const T*)in.pConstThis));
-            else
-                static_assert(requires(const T& str){ { size(str) } -> std::integral; });
-            break;
-          case ThunkOp::begin:
-            VK_assert(in.pConstThis && !in.pConstOther && out.ppString);
-            if constexpr(requires(const T& str){ { std::begin(str) } -> std::random_access_iterator; })
-              *out.ppString = (pointer)&*std::begin(*(const T*)in.pConstThis);
-            else if constexpr(requires(const T& str){ { begin(str) } -> std::random_access_iterator; })
-              *out.ppString = (pointer)&*begin(*(const T*)in.pConstThis);
-            else
-                static_assert(requires(const T& str){ { begin(str) } -> std::random_access_iterator; });
-            break;
-          case ThunkOp::end:
-            VK_assert(in.pConstThis && !in.pConstOther && out.ppString);
-            if constexpr(requires(const T& str){ { std::end(str) } -> std::sentinel_for<decltype(std::begin(str))>; })
-              *out.ppString = (pointer)&*std::end(*(const T*)in.pConstThis);
-            else if constexpr(requires(const T& str){ { end(str) } -> std::sentinel_for<decltype(begin(str))>; })
-              *out.ppString = (pointer)&*end(*(const T*)in.pConstThis);
-            else
-                static_assert(requires(const T& str){ { end(str) } -> std::sentinel_for<decltype(begin(str))>; });
-            break;
-          VK_no_default;
-        }
-      };
-    };
-
-    inline static void emptyThunk(ThunkIn in, ThunkOut out) noexcept {
-      switch (in.op) {
-        case ThunkOp::size:
-          VK_assert(out.pSize);
-          *out.pSize = 0;
-          break;
-        case ThunkOp::begin:
-        case ThunkOp::end:
-          VK_assert(out.ppString);
-          *out.ppString = EmptyString;
-          break;
-        default:
-          (void)0;
-      }
-    }
-
-    const ThunkFn thunk_fn_ = emptyThunk;
-    byte storage_[erasedStorageSize];
-
-  public:
-
-    StringReference() noexcept = default;
-    explicit StringReference(const char(&)[1]) noexcept{}
-    StringReference(const utf8(&)[1]) noexcept{}
-
-    template <size_t N>
-    StringReference(const utf8(&string)[N]) noexcept : StringReference(string_view(string)){}
-    template <size_t N>
-    explicit StringReference(const char(&string)[N]) noexcept : StringReference(string_view(string)){}
-
-
-    template <typename T>
-    requires(sizeof(T) <= erasedStorageSize && std::semiregular<T> &&
-             std::ranges::random_access_range<T> && same_as_one_of<std::ranges::range_value_t<T>, char, utf8>)
-    StringReference(T&& string) noexcept : thunk_fn_(DefaultThunkHolder<std::remove_cvref_t<T>>::function){
-      if constexpr (std::is_reference_v<T>)
-        thunk_fn_({ .pThis = storage_, .op = ThunkOp::copy_ctor, .pConstOther = (const byte*)std::addressof(string) }, {});
-      else
-        thunk_fn_({ .pThis = storage_, .op = ThunkOp::move_ctor, .pOther      = (byte*)std::addressof(string) }, {});
-    }
-
-
-    StringReference(const StringReference& Other) : thunk_fn_(Other.thunk_fn_){
-      thunk_fn_({ .pThis = storage_, .op = ThunkOp::copy_ctor, .pConstOther = Other.storage_ }, {});
-    }
-    StringReference(StringReference&& Other) noexcept : thunk_fn_(Other.thunk_fn_){
-      thunk_fn_({ .pThis = storage_, .op = ThunkOp::move_ctor, .pOther = Other.storage_ }, {});
-    }
-
-    StringReference& operator=(const StringReference& other) VK_throws {
-
-      if (this != &other) {
-        if (thunk_fn_ == other.thunk_fn_) {
-          thunk_fn_( {.pThis = storage_, .op = ThunkOp::copy_assign, .pConstOther = other.storage_ }, {});
-        } else {
-#if VK_exceptions_enabled
-          StringReference tmp{std::move(*this)};
-          this->~StringReference();
-          try {
-            new (this) StringReference(other);
-          } catch (...) {
-            new (this) StringReference{std::move(tmp)};
-            throw;
-          }
-#else
-          this->~StringReference();
-          new (this) StringReference(other);
-#endif
-        }
-      }
-      return *this;
-    }
-    StringReference& operator=(StringReference&& other) noexcept {
-      if (thunk_fn_ == other.thunk_fn_) {
-        thunk_fn_({ .pThis = storage_, .op = ThunkOp::move_assign, .pOther = other.storage_ }, {});
-      } else {
-        this->~StringReference();
-        new(this) StringReference(std::move(other));
-      }
-      return *this;
-    }
-
-    ~StringReference() noexcept {
-      thunk_fn_({ .pThis = storage_, .op = ThunkOp::destruct }, {});
-    }
-
-  protected:
-
-    explicit StringReference(ThunkFn thunkFunction) noexcept : thunk_fn_(thunkFunction){
-      thunk_fn_({ .pThis = storage_, .op = ThunkOp::default_ctor }, {});
-    }
-
-  public:
-
-
-    [[nodiscard]] bool empty() const noexcept {
-      return !size();
-    }
-    [[nodiscard]] size_type size() const noexcept {
-      u32 Size = 0;
-      thunk_fn_({ .pConstThis = storage_, .op = ThunkOp::size }, { .pSize = &Size });
-      return Size;
-    }
-
-    [[nodiscard]] const char* c_str() const noexcept {
-      const char* pResult;
-      thunk_fn_({ .pConstThis = storage_, .op = ThunkOp::begin }, { .ppString = (const utf8**)&pResult });
-      return pResult;
-    }
-
-    [[nodiscard]] pointer data() const noexcept {
-      pointer pResult;
-      thunk_fn_({ .pConstThis = storage_, .op = ThunkOp::begin }, { .ppString = &pResult });
-      return pResult;
-    }
-
-    [[nodiscard]] iterator begin() const noexcept { return data(); }
-    [[nodiscard]] iterator cbegin() const noexcept { return data(); }
-
-    [[nodiscard]] iterator end() const noexcept {
-      pointer pResult;
-      thunk_fn_({ .pConstThis = storage_, .op = ThunkOp::end }, { .ppString = &pResult });
-      return pResult;
-    }
-    [[nodiscard]] iterator cend() const noexcept { return end(); }
-  };*/
 
   class string_ref {
   public:
@@ -885,25 +1342,25 @@ namespace valkyrie{
     }
 
     //! Returns whether the reference is empty or not
-    [[nodiscard]] bool empty() const noexcept { return _begin == _end; }
+    VK_nodiscard bool empty() const noexcept { return _begin == _end; }
     //! Returns the size of the string
-    [[nodiscard]] size_type size() const noexcept { return _end - _begin; }
+    VK_nodiscard size_type size() const noexcept { return _end - _begin; }
     //! Returns a null terminated C string
-    [[nodiscard]] cstring_type c_str() const noexcept { return (cstring_type)_begin; }
+    VK_nodiscard cstring_type c_str() const noexcept { return (cstring_type)_begin; }
     //! Returns a null terminated C string
-    [[nodiscard]] const_pointer data() const noexcept { return _begin; }
+    VK_nodiscard const_pointer data() const noexcept { return _begin; }
     //! Returns the beginning of the string
-    [[nodiscard]] iterator begin() noexcept { return _begin; }
+    VK_nodiscard iterator begin() noexcept { return _begin; }
     //! Returns the beginning of the string
-    [[nodiscard]] const_iterator begin() const noexcept { return _begin; }
+    VK_nodiscard const_iterator begin() const noexcept { return _begin; }
     //! Returns the beginning of the string
-    [[nodiscard]] const_iterator cbegin() const noexcept { return _begin; }
+    VK_nodiscard const_iterator cbegin() const noexcept { return _begin; }
     //! Returns the end of the string
-    [[nodiscard]] iterator end() noexcept { return _end; }
+    VK_nodiscard iterator end() noexcept { return _end; }
     //! Returns the end of the string
-    [[nodiscard]] const_iterator end() const noexcept { return _end; }
+    VK_nodiscard const_iterator end() const noexcept { return _end; }
     //! Returns the end of the string
-    [[nodiscard]] const_iterator cend() const noexcept { return _end; }
+    VK_nodiscard const_iterator cend() const noexcept { return _end; }
   };
 
   class string_literal : public string_view {
@@ -912,21 +1369,7 @@ namespace valkyrie{
     consteval string_literal(const char(&stringLiteral)[N]) : string_view(stringLiteral, N - 1){}
   };
 
-  class twine{};
 
-  /*class Twine{
-    class ErasedValueType{
-
-    };
-    template <typename T>
-    class ToStringPlaceholder{
-      T* pValue;
-    public:
-
-    };
-  public:
-
-  };*/
 
 
 

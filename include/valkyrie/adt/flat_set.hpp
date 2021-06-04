@@ -7,6 +7,7 @@
 
 #include "small_vector.hpp"
 
+#include <valkyrie/utility/ordering.hpp>
 #include <valkyrie/status/result.hpp>
 #include <valkyrie/memory/default_allocator.hpp>
 
@@ -23,18 +24,21 @@ namespace valkyrie{
     concept OrderedKeyFor = !std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>> && ordered_with<T, U>;
   }
 
+  template <typename T,
+            allocator_c Alloc = default_allocator,
+            weak_order<const T&> Order = std::compare_three_way,
+            u32 InlineElements = 4>
+  class flat_set;
+
   inline constexpr static struct GuaranteeUniqueTag{} guaranteeUnique;
 
-  template <typename T,
-      weak_order<const T&> Order = std::compare_three_way,
-      raw_allocator Alloc = default_allocator,
-      u32           InlineElements = 4>
-  class flat_set{
-    using in_param_t = param_t<T>;
-    using container_type = small_vector<T, InlineElements, Alloc>;
+  template <typename T, allocator_c Alloc, weak_order<const T&> Order, u32 InlineElements>
+  class flat_set {
+    using param_t = in_param_t<T>;
+    using container_type = small_array<T, InlineElements, Alloc>;
   public:
     using value_type = T;
-    using allocator_type = typename container_type::allocator_type;
+    using allocator_type = typename allocator_traits<Alloc>::allocator_type;
     using size_type = typename container_type::size_type;
     using difference_type = typename container_type::difference_type;
 
@@ -59,7 +63,7 @@ namespace valkyrie{
     constexpr flat_set(std::initializer_list<T> List) : m_set_(List) {
         priv_prune_();
     }
-    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
+    template <typename ...Args> requires(constructible_from<container_type, Args...>)
     constexpr explicit flat_set(std::in_place_t, Args&& ...args) noexcept
     : m_set_{ std::forward<Args>(args)... }{
       priv_prune_();
@@ -71,7 +75,7 @@ namespace valkyrie{
     constexpr flat_set(GuaranteeUniqueTag, std::initializer_list<T> List) : m_set_(List) {
         priv_sort_();
     }
-    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
+    template <typename ...Args> requires(constructible_from<container_type, Args...>)
     constexpr explicit flat_set(GuaranteeUniqueTag, std::in_place_t, Args&& ...args) noexcept
     : m_set_{ std::forward<Args>(args)... }{
       priv_sort_();
@@ -127,7 +131,7 @@ namespace valkyrie{
     constexpr const_reverse_iterator  rend() const noexcept { return const_reverse_iterator(begin()); }
     constexpr const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-    constexpr size_type count(in_param_t Value) const noexcept {
+    constexpr size_type count(param_t Value) const noexcept {
       return this->contains(Value);
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -136,7 +140,7 @@ namespace valkyrie{
     }
 
 
-    constexpr bool contains(in_param_t Value) const noexcept {
+    constexpr bool contains(param_t Value) const noexcept {
       return std::binary_search(m_set_.begin(), m_set_.end(), Value, get_less_than());
       //return std::ranges::binary_search(m_set_, Value);
     }
@@ -146,12 +150,12 @@ namespace valkyrie{
     }
 
 
-    constexpr iterator       find(in_param_t Value) noexcept {
+    constexpr iterator       find(param_t Value) noexcept {
       iterator result = this->lower_bound(Value);
       if (result == end() || *result != Value) return end();
       return result;
     }
-    constexpr const_iterator find(in_param_t Value) const noexcept {
+    constexpr const_iterator find(param_t Value) const noexcept {
       const_iterator result = this->lower_bound(Value);
       if (result == cend() || *result != Value) return cend();
       return result;
@@ -170,7 +174,7 @@ namespace valkyrie{
     }
 
 
-    constexpr maybe_iterator insert(in_param_t Value) noexcept {
+    constexpr maybe_iterator insert(param_t Value) noexcept {
       //iterator iter = std::ranges::lower_bound(m_set_, Value);
       iterator iter = std::lower_bound(m_set_.begin(), m_set_.end(), Value, get_less_than());
       if (iter != end() && *iter == Value) return std::nullopt;
@@ -203,7 +207,7 @@ namespace valkyrie{
     constexpr iterator erase(const_iterator from, const_iterator to) noexcept {
       return m_set_.erase(from, to);
     }
-    constexpr bool     erase(in_param_t Val) noexcept {
+    constexpr bool     erase(param_t Val) noexcept {
       iterator position = this->find(Val);
       if (position == end()) return false;
       m_set_.erase(position);
@@ -217,7 +221,7 @@ namespace valkyrie{
       return true;
     }
 
-    template <typename ...Args> requires(ConstructibleFrom<T, Args...>)
+    template <typename ...Args> requires(constructible_from<T, Args...>)
     constexpr maybe_iterator emplace(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
       auto& result = m_set_.emplace_back(std::forward<Args>(args)...);
       auto post_size = m_set_.size();
@@ -241,10 +245,10 @@ namespace valkyrie{
 
 
 
-    constexpr iterator       lower_bound(in_param_t Val) noexcept {
+    constexpr iterator       lower_bound(param_t Val) noexcept {
       return std::lower_bound(m_set_.begin(), m_set_.end(), Val, get_less_than());
     }
-    constexpr const_iterator lower_bound(in_param_t Val) const noexcept {
+    constexpr const_iterator lower_bound(param_t Val) const noexcept {
       return std::lower_bound(m_set_.begin(), m_set_.end(), Val, get_less_than());
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -257,10 +261,10 @@ namespace valkyrie{
     }
 
 
-    constexpr iterator       upper_bound(in_param_t Val) noexcept {
+    constexpr iterator       upper_bound(param_t Val) noexcept {
       return std::upper_bound(m_set_.begin(), m_set_.end(), Val, get_less_than());
     }
-    constexpr const_iterator upper_bound(in_param_t Val) const noexcept {
+    constexpr const_iterator upper_bound(param_t Val) const noexcept {
       return std::upper_bound(m_set_.begin(), m_set_.end(), Val, get_less_than());
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -330,7 +334,7 @@ namespace valkyrie{
     }
 
     inline constexpr void priv_sort_() noexcept {
-      std::sort(m_set_.begin(), m_set_.end(), [this](in_param_t A, in_param_t B){
+      std::sort(m_set_.begin(), m_set_.end(), [this](param_t A, param_t B){
         return order(A, B) == std::weak_ordering::less;
       });
       VK_constexpr_assert(checkIsSorted());
@@ -349,7 +353,7 @@ namespace valkyrie{
     inline constexpr auto get_less_than() const noexcept {
       return [this](auto&& a, auto&& b){
         return order(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b)) == std::weak_ordering::less;
-      }
+      };
     }
 
     container_type m_set_{};
@@ -362,7 +366,7 @@ namespace valkyrie{
 
   /*template <*//*concepts::ordered*//*typename T, typename Container = small_vector<T>>
   class flat_set {
-    using in_param_t = param_t<T>;
+    using param_t = param_t<T>;
     using container_type = Container;
   public:
     using value_type = T;
@@ -391,7 +395,7 @@ namespace valkyrie{
     constexpr flat_set(std::initializer_list<T> List) : m_set_(List) {
       priv_prune_();
     }
-    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
+    template <typename ...Args> requires(constructible_from<container_type, Args...>)
     constexpr explicit flat_set(std::in_place_t, Args&& ...args) noexcept
         : m_set_{ std::forward<Args>(args)... }{
       priv_prune_();
@@ -403,7 +407,7 @@ namespace valkyrie{
     constexpr flat_set(GuaranteeUniqueTag, std::initializer_list<T> List) : m_set_(List) {
       priv_sort_();
     }
-    template <typename ...Args> requires(ConstructibleFrom<container_type, Args...>)
+    template <typename ...Args> requires(constructible_from<container_type, Args...>)
     constexpr explicit flat_set(GuaranteeUniqueTag, std::in_place_t, Args&& ...args) noexcept
         : m_set_{ std::forward<Args>(args)... }{
       priv_sort_();
@@ -459,7 +463,7 @@ namespace valkyrie{
     constexpr const_reverse_iterator  rend() const noexcept { return const_reverse_iterator(begin()); }
     constexpr const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-    constexpr size_type count(in_param_t Value) const noexcept {
+    constexpr size_type count(param_t Value) const noexcept {
       return this->contains(Value);
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -468,7 +472,7 @@ namespace valkyrie{
     }
 
 
-    constexpr bool contains(in_param_t Value) const noexcept {
+    constexpr bool contains(param_t Value) const noexcept {
       return std::binary_search(m_set_.begin(), m_set_.end(), Value);
       //return std::ranges::binary_search(m_set_, Value);
     }
@@ -478,12 +482,12 @@ namespace valkyrie{
     }
 
 
-    constexpr iterator       find(in_param_t Value) noexcept {
+    constexpr iterator       find(param_t Value) noexcept {
       iterator result = this->lower_bound(Value);
       if (result == end() || *result != Value) return end();
       return result;
     }
-    constexpr const_iterator find(in_param_t Value) const noexcept {
+    constexpr const_iterator find(param_t Value) const noexcept {
       const_iterator result = this->lower_bound(Value);
       if (result == cend() || *result != Value) return cend();
       return result;
@@ -502,7 +506,7 @@ namespace valkyrie{
     }
 
 
-    constexpr maybe_iterator insert(in_param_t Value) noexcept {
+    constexpr maybe_iterator insert(param_t Value) noexcept {
       //iterator iter = std::ranges::lower_bound(m_set_, Value);
       iterator iter = std::lower_bound(m_set_.begin(), m_set_.end(), Value);
       if (iter != end() && *iter == Value) return std::nullopt;
@@ -535,7 +539,7 @@ namespace valkyrie{
     constexpr iterator erase(const_iterator from, const_iterator to) noexcept {
       return m_set_.erase(from, to);
     }
-    constexpr bool     erase(in_param_t Val) noexcept {
+    constexpr bool     erase(param_t Val) noexcept {
       iterator position = this->find(Val);
       if (position == end()) return false;
       m_set_.erase(position);
@@ -549,7 +553,7 @@ namespace valkyrie{
       return true;
     }
 
-    template <typename ...Args> requires(ConstructibleFrom<T, Args...>)
+    template <typename ...Args> requires(constructible_from<T, Args...>)
     constexpr maybe_iterator emplace(Args&& ...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
       auto& result = m_set_.emplace_back(std::forward<Args>(args)...);
       auto post_size = m_set_.size();
@@ -573,10 +577,10 @@ namespace valkyrie{
 
 
 
-    constexpr iterator       lower_bound(in_param_t Val) noexcept {
+    constexpr iterator       lower_bound(param_t Val) noexcept {
       return std::lower_bound(m_set_.begin(), m_set_.end(), Val);
     }
-    constexpr const_iterator lower_bound(in_param_t Val) const noexcept {
+    constexpr const_iterator lower_bound(param_t Val) const noexcept {
       return std::lower_bound(m_set_.begin(), m_set_.end(), Val);
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -589,10 +593,10 @@ namespace valkyrie{
     }
 
 
-    constexpr iterator       upper_bound(in_param_t Val) noexcept {
+    constexpr iterator       upper_bound(param_t Val) noexcept {
       return std::upper_bound(m_set_.begin(), m_set_.end(), Val);
     }
-    constexpr const_iterator upper_bound(in_param_t Val) const noexcept {
+    constexpr const_iterator upper_bound(param_t Val) const noexcept {
       return std::upper_bound(m_set_.begin(), m_set_.end(), Val);
     }
     template <concepts::OrderedKeyFor<T> Key>
@@ -660,7 +664,7 @@ namespace valkyrie{
     }
 
     inline constexpr void priv_sort_() noexcept {
-      std::sort(m_set_.begin(), m_set_.end(), [](in_param_t A, in_param_t B){ return A < B; });
+      std::sort(m_set_.begin(), m_set_.end(), [](param_t A, param_t B){ return A < B; });
       VK_constexpr_assert(checkIsSorted());
     }
     inline constexpr void priv_sort_() noexcept requires(std::is_const_v<value_type>){

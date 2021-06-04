@@ -61,13 +61,13 @@ namespace valkyrie{
 
     protected:
 
-      template <raw_allocator Alloc>
+      template <allocator_c Alloc>
       VK_constant auto allocate_table_fn = [](u64 size, void* state) noexcept {
         using traits         = allocator_traits<Alloc>;
         using allocator_type = typename traits::allocator_type;
         return static_cast<dictionary_entry_base**>(traits::allocate_array(*static_cast<allocator_type*>(state), size + 1, sizeof(void*) + sizeof(u32), max_alignment));
       };
-      template <raw_allocator Alloc>
+      template <allocator_c Alloc>
       VK_constant auto deallocate_table_fn = [](dictionary_entry_base** table, u64 size, void* state) noexcept {
         using traits         = allocator_traits<Alloc>;
         using allocator_type = typename traits::allocator_type;
@@ -100,30 +100,30 @@ namespace valkyrie{
 
       /// Allocate the table with the specified number of buckets and otherwise
       /// setup the map as empty.
-      void init(u32 Size, PFN_allocate_table, void* allocator_state);
+      void init(u32 Size, PFN_allocate_table, void* allocator_state) noexcept;
       void explicit_init(u32 size, PFN_allocate_table, void* allocator_state) noexcept;
 
-      u32  rehash_table(u32 BucketNo, PFN_allocate_table, PFN_deallocate_table, void* allocator_state);
+      u32  rehash_table(u32 BucketNo, PFN_allocate_table, PFN_deallocate_table, void* allocator_state) noexcept;
 
       /// lookup_bucket_for - Look up the bucket that the specified string should end
       /// up in.  If it already exists as a key in the map, the Item pointer for the
       /// specified bucket will be non-null.  Otherwise, it will be null.  In either
       /// case, the FullHashValue field of the bucket will be set to the hash value
       /// of the string.
-      unsigned lookup_bucket_for(string_view Key, PFN_allocate_table, void* allocator_state);
+      u32 lookup_bucket_for(string_view Key, PFN_allocate_table, void* allocator_state) noexcept;
 
       /// find_key - Look up the bucket that contains the specified key. If it exists
       /// in the map, return the bucket number of the key.  Otherwise return -1.
       /// This does not modify the map.
-      VK_nodiscard i32 find_key(string_view Key) const;
+      VK_nodiscard i32 find_key(string_view Key) const noexcept;
 
       /// remove_key - Remove the specified dictionary_entry from the table, but do not
       /// delete it.  This aborts if the value isn't in the table.
-      void remove_key(dictionary_entry_base *V);
+      void remove_key(dictionary_entry_base *V) noexcept;
 
       /// remove_key - Remove the dictionary_entry for the specified key from the
       /// table, returning it.  If the key is not in the table, this returns null.
-      dictionary_entry_base *remove_key(string_view Key);
+      dictionary_entry_base *remove_key(string_view Key) noexcept;
 
 
 
@@ -268,12 +268,31 @@ namespace valkyrie{
       allocator_traits<Alloc>::deallocate_node(allocator, this, AllocSize, alignof(dictionary_entry));
     }
   };
-  
-  template <typename T, raw_allocator Alloc = default_allocator>
+
+
+
+  template <typename T, allocator_c Alloc = default_allocator>
   class dictionary : public impl::dictionary {
 
     using alloc_traits = allocator_traits<Alloc>;
     using allocator_state = typename alloc_traits::allocator_type;
+
+    void do_init(u32 size) noexcept {
+      init(size, allocate_table_fn<Alloc>, &allocator);
+    }
+    void do_explicit_init(u32 size) noexcept {
+      explicit_init(size, allocate_table_fn<Alloc>, &allocator);
+    }
+
+    u32 do_rehash_table(u32 BucketNo = 0) noexcept {
+      return rehash_table(BucketNo, allocate_table_fn<Alloc>, deallocate_table_fn<Alloc>, &allocator);
+    }
+
+    u32 do_lookup_bucket_for(string_view Key) noexcept {
+      return lookup_bucket_for(Key, allocate_table_fn<Alloc>, &allocator);
+    }
+
+
 
   public:
     using entry_type = dictionary_entry<T>;
@@ -282,7 +301,7 @@ namespace valkyrie{
 
     explicit dictionary(u32 InitialSize)
         : impl::dictionary(narrow_cast<u32>(sizeof(entry_type))), allocator{} {
-      this->explicit_init(InitialSize, allocate_table_fn<Alloc>, &allocator);
+      do_explicit_init(InitialSize);
     }
 
     explicit dictionary(allocator_state A)
@@ -292,13 +311,13 @@ namespace valkyrie{
     dictionary(unsigned InitialSize, allocator_state A)
         : impl::dictionary(narrow_cast<u32>(sizeof(entry_type))),
           allocator(std::move(A)) {
-      this->explicit_init(InitialSize, allocate_table_fn<Alloc>, &allocator);
+      do_explicit_init(InitialSize);
     }
 
     dictionary(std::initializer_list<std::pair<string_view, T>> List)
         : impl::dictionary(narrow_cast<u32>(sizeof(entry_type))),
           allocator{}{
-      this->explicit_init(List.size(), allocate_table_fn<Alloc>, &allocator);
+      do_explicit_init(List.size());
       for (const auto &P : List) {
         insert(P);
       }
@@ -316,7 +335,7 @@ namespace valkyrie{
 
       // Allocate TheTable of the same size as RHS's TheTable, and set the
       // sentinel appropriately (and NumBuckets).
-      this->init(RHS.NumBuckets, allocate_table_fn<Alloc>, &allocator);
+      do_init(RHS.NumBuckets);
       auto* HashTable    = (u32*)(TheTable + NumBuckets + 1);
       auto* RHSHashTable = (u32*)(RHS.TheTable + NumBuckets + 1);
 
@@ -403,13 +422,13 @@ namespace valkyrie{
     T lookup(string_view Key) const {
       const_iterator it = find(Key);
       if (it != end())
-        return it->second;
+        return it->get();
       return T();
     }
 
     /// Lookup the ValueTy for the \p Key, or create a default constructed value
     /// if the key is not in the map.
-    T& operator[](string_view Key) noexcept { return try_emplace(Key).first->second; }
+    T& operator[](string_view Key) noexcept { return try_emplace(Key).first->get(); }
 
     /// count - Return 1 if the element is in the map, 0 otherwise.
     VK_nodiscard size_type count(string_view Key) const { return find(Key) == end() ? 0 : 1; }
@@ -441,7 +460,7 @@ namespace valkyrie{
     /// already exists in the map, return false and ignore the request, otherwise
     /// insert it and return true.
     bool insert(entry_type *KeyValue) {
-      unsigned BucketNo = lookup_bucket_for(KeyValue->key());
+      unsigned BucketNo = do_lookup_bucket_for(KeyValue->key());
       impl::dictionary_entry_base *&Bucket = TheTable[BucketNo];
       if (Bucket && Bucket != get_tombstone_val())
         return false;// Already exists in map.
@@ -452,7 +471,7 @@ namespace valkyrie{
       ++NumItems;
       VK_assert(NumItems + NumTombstones <= NumBuckets);
 
-      rehash_table();
+      do_rehash_table();
       return true;
     }
 
@@ -469,8 +488,8 @@ namespace valkyrie{
     template<typename V>
     std::pair<iterator, bool> insert_or_assign(string_view Key, V &&Val) {
       auto Ret = try_emplace(Key, std::forward<V>(Val));
-      if (!Ret.second)
-        Ret.first->second = std::forward<V>(Val);
+      if (!Ret.get())
+        Ret.first->get() = std::forward<V>(Val);
       return Ret;
     }
 
@@ -480,7 +499,7 @@ namespace valkyrie{
     /// the pair points to the element with key equivalent to the key of the pair.
     template<typename... ArgsTy>
     std::pair<iterator, bool> try_emplace(string_view Key, ArgsTy &&...Args) {
-      unsigned BucketNo = lookup_bucket_for(Key);
+      unsigned BucketNo = do_lookup_bucket_for(Key);
       impl::dictionary_entry_base *&Bucket = TheTable[BucketNo];
       if (Bucket && Bucket != get_tombstone_val())
         return std::make_pair(iterator(TheTable + BucketNo, false),
@@ -492,7 +511,7 @@ namespace valkyrie{
       ++NumItems;
       assert(NumItems + NumTombstones <= NumBuckets);
 
-      BucketNo = this->rehash_table(BucketNo);
+      BucketNo = do_rehash_table(BucketNo);
       return std::make_pair(iterator(TheTable + BucketNo, false), true);
     }
 

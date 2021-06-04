@@ -11,6 +11,7 @@
 #include <valkyrie/adt/flat_set.hpp>
 #include <valkyrie/utility/version.hpp>
 #include <valkyrie/adt/string_view.hpp>
+#include <valkyrie/utility/shapes.hpp>
 
 #include <string>
 
@@ -22,11 +23,11 @@ using namespace valkyrie::graphics::api;
 using namespace valkyrie;
 
 
-class instance::Impl : public Internal::InstanceImpl{
+class instance::Impl : public internal::instance_impl{
 
 };
 
-surface instance::createSurface(Extent2D<> extents) const noexcept {
+surface instance::createSurface(extent2d<> extents) const noexcept {
   return {*this, extents};
 }
 

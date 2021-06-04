@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class display {
+  class display : public vulkan_object{
 
   };
 }

@@ -8,8 +8,8 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class Buffer : public VulkanResource{};
-  class BufferView : public VulkanResource{};
+  class buffer : public vulkan_object{};
+  class buffer_view : public vulkan_object{};
 }
 
 #endif//VALKYRIE_RESOURCE_BUFFER_HPP

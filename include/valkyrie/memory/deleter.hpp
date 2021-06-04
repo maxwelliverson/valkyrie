@@ -6,7 +6,8 @@
 #define VALKYRIE_MEMORY_DELETER_HPP
 
 #include "allocator_storage.hpp"
-#include <valkyrie/traits.hpp>
+
+#include "new_delete.hpp"
 
 namespace valkyrie {
   /// A deleter class that deallocates the memory through a specified \concept{concept_rawallocator,RawAllocator}.
@@ -164,14 +165,12 @@ namespace valkyrie {
     /// on the referenced allocator object for the deallocation.
     /// \requires The deleter must not have been created by the default constructor.
     void operator()(value_type *pointer) noexcept {
-      pointer->~value_type();
-      this->deallocate_node(pointer, sizeof(value_type), alignof(value_type));
+      delete_object(get_allocator(), pointer);
     }
 
     /// \returns The reference to the allocator.
     /// It has the same type as the call to \ref allocator_reference::get_allocator().
-    auto get_allocator() const noexcept
-        -> decltype(std::declval<allocator_reference<allocator_type>>().get_allocator()) {
+    decltype(auto) get_allocator() const noexcept {
       return this->allocator_reference<allocator_type>::get_allocator();
     }
   };
@@ -195,17 +194,14 @@ namespace valkyrie {
     /// \effects Creates it by passing it an \ref allocator_reference and the size of the array that will be deallocated.
     /// It will store the reference to the allocator and uses the referenced allocator object for the deallocation.
     allocator_deleter(allocator_reference<RawAllocator> alloc, u64 size) noexcept
-        : allocator_reference<RawAllocator>(alloc), size_(size) {
-    }
+        : allocator_reference<RawAllocator>(alloc), size_(size) { }
 
     /// \effects Calls the destructors and deallocates the memory given to it.
     /// Calls \c deallocate_array(pointer, size, sizeof(value_type), alignof(value_type))
     /// on the referenced allocator object with the size given in the constructor for the deallocation.
     /// \requires The deleter must not have been created by the default constructor.
     void operator()(value_type *pointer) noexcept {
-      for (auto cur = pointer; cur != pointer + size_; ++cur)
-        cur->~value_type();
-      this->deallocate_array(pointer, size_, sizeof(value_type), alignof(value_type));
+      delete_array(get_allocator(), pointer, size_);
     }
 
     /// \returns The reference to the allocator.
@@ -232,39 +228,39 @@ namespace valkyrie {
   /// \ingroup adapter
   template<typename BaseType, class RawAllocator>
   class allocator_polymorphic_deleter : allocator_reference<RawAllocator> {
+    using base_type = BaseType;
+    using raw_allocator_t = remove_cvref_t<decltype(std::declval<allocator_reference<RawAllocator>&>().get_allocator())>;
+    using PFN_delete = void(*)(raw_allocator_t&, base_type*) noexcept;
+
   public:
     using allocator_type = typename allocator_reference<RawAllocator>::allocator_type;
     using value_type = BaseType;
 
     /// \effects Creates it from a deleter for a derived type.
     /// It will deallocate the memory as if done by the derived type.
-    template<typename T>
-    allocator_polymorphic_deleter(allocator_deleter<T, RawAllocator> deleter) requires(std::is_base_of<BaseType, T>::value)
+    template <std::derived_from<value_type> T>
+    allocator_polymorphic_deleter(allocator_deleter<T, RawAllocator> deleter)
         : allocator_reference<RawAllocator>(deleter.get_allocator()),
-          derived_size_(sizeof(T)),
-          derived_alignment_(alignof(T)) {
-      VK_assert(u64(derived_size_) == sizeof(T) && u64(derived_alignment_) == alignof(T));
-    }
+          delete_fn(&delete_object<T, raw_allocator_t, value_type>){ }
 
     /// \effects Deallocates the memory given to it.
     /// Calls \c deallocate_node(pointer, size, alignment) on the referenced allocator object,
     /// where \c size and \c alignment are the values of the type it was created with.
     void operator()(value_type *pointer) noexcept {
-      pointer->~value_type();
-      this->deallocate_node(pointer, derived_size_, derived_alignment_);
+      delete_fn(get_allocator(), pointer);
     }
 
     /// \returns The reference to the allocator.
     /// It has the same type as the call to \ref allocator_reference::get_allocator().
-    auto get_allocator() const noexcept
-        -> decltype(std::declval<allocator_reference<allocator_type>>().get_allocator()) {
+    decltype(auto) get_allocator() const noexcept {
       return this->allocator_reference<allocator_type>::get_allocator();
     }
 
   private:
-    unsigned short derived_size_,
-        derived_alignment_;// use unsigned short here to save space
+    PFN_delete delete_fn;
   };
+
+
 }// namespace valkyrie
 
 #endif//VALKYRIE_MEMORY_DELETER_HPP

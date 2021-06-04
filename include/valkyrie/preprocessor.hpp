@@ -19,6 +19,7 @@
 #define PP_VK_impl_DOUBLE_ARG(arg) arg , arg
 #define PP_VK_impl_ARG_32_TIMES(x) PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(x)))))
 #define PP_VK_impl_FALSE_32_TIMES PP_VK_impl_ARG_32_TIMES(false)
+#define PP_VK_impl_FALSE_256_TIMES PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(PP_VK_impl_DOUBLE_ARG(PP_VK_impl_FALSE_32_TIMES)))
 #define PP_VK_impl_GET_NINTH_MEM(a, b, c, d, e, f, g, h, i, j, ...) j
 #define PP_VK_impl_GET_32ND_MEM(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, aa, ab, ac, ad, ae, af, ag, ah, ...) ah
 #define PP_VK_impl_GET_32ND_MEM_IMPL PP_VK_impl_GET_32ND_MEM
@@ -66,8 +67,6 @@
 
 #define PP_VK_impl_GET_256TH_MEM_redirect PP_VK_impl_GET_256TH_MEM_redirect_2
 #define PP_VK_impl_GET_256TH_MEM(...) PP_VK_impl_GET_256TH_MEM_redirect(__VA_ARGS__)
-#define PP_VK_impl_IS_PACK_EMPTY_IMPL(...) PP_VK_impl_GET_32ND_MEM_IMPL(__VA_ARGS__)
-#define PP_VK_impl_GET_LIST_LENGTH_POSTFIX(...) PP_VK_impl_GET_NINTH_MEM(,##__VA_ARGS__ , _8, _7, _6, _5, _4, _3, _2, _1, _0)
 
 #define PP_VK_impl_FOREACH_INNER_INVOKE_INDEXED(Macro, i, x) PP_VK_impl_INVOKE_DISPATCH_redirect(PP_VK_impl_INVOKE_DISPATCH_COUNT(PP_VK_impl_INVOKE_TRY_UNWRAP(Macro)), PP_VK_impl_INVOKE_TRY_UNWRAP(Macro), i, x)
 
@@ -776,7 +775,7 @@
 #define result_PP_VK_impl_TRY_UNWRAP_INNER_I PP_VK_impl_UNWRAP_INNER_failure
 #define PP_VK_impl_UNWRAP_INNER_failure
 #define PP_VK_impl_UNWRAP_INNER_success(...) __VA_ARGS__
-#define PP_VK_impl_PACK_IS_EMPTY_redirect(...) PP_VK_impl_IS_PACK_EMPTY_IMPL(, ##__VA_ARGS__, PP_VK_impl_FALSE_32_TIMES, true)
+#define PP_VK_impl_PACK_IS_EMPTY_redirect(...) PP_VK_impl_GET_256TH_MEM(, ##__VA_ARGS__, PP_VK_impl_FALSE_256_TIMES, true)
 #define PP_VK_impl_PACK_IS_EMPTY PP_VK_impl_PACK_IS_EMPTY_redirect
 #define PP_VK_impl_RAW_STRING_redirect_2(...) u8R###__VA_ARGS__
 #define PP_VK_impl_RAW_STRING_redirect PP_VK_impl_RAW_STRING_redirect_2
@@ -906,7 +905,8 @@
 #define PP_VK_impl_TRAIT_CASE_member_type(name_, ...) (requires{ typename __VA_ARGS__::name_; }), (typename __VA_ARGS__::name_)
 #define PP_VK_impl_TRAIT_CASE_member_value(name_, ...) (requires{ { __VA_ARGS__::name_ }; }), (__VA_ARGS__::name_)
 
-
+#define PP_VK_impl_DISPATCH_CONCAT_redirect(A, B) A##B
+#define PP_VK_impl_DISPATCH_CONCAT(...) PP_VK_impl_DISPATCH_CONCAT_redirect(__VA_ARGS__)
 
 
 
@@ -954,6 +954,8 @@
 #define VK_foreach_delimit(Macro, Delimiter, ...) PP_VK_impl_INVOKE_FOREACH(Macro, Delimiter, ##__VA_ARGS__)
 #define VK_bind_front(Macro, ...) PP_VK_impl_BIND_DISPATCH(PP_VK_impl_BIND_FRONT_UNWRAPPED, Macro, ##__VA_ARGS__)
 #define VK_bind_back(Macro, ...)  PP_VK_impl_BIND_DISPATCH(PP_VK_impl_BIND_BACK_UNWRAPPED, Macro, ##__VA_ARGS__)
+#define VK_dispatch(Macro, ...) PP_VK_impl_DISPATCH_CONCAT(Macro, VK_tuple_size(__VA_ARGS__))(__VA_ARGS__)
+
 
 #define VK_next(...) PP_VK_impl_NEXT_VALUE(__VA_ARGS__)
 #define VK_previous(...) PP_VK_impl_PREVIOUS_VALUE(__VA_ARGS__)
@@ -1029,6 +1031,7 @@
 #define PP_VK_impl_VAR_CONCAT PP_VK_impl_VAR_CONCAT_redirect
 #define VK_variadic_concat(...) PP_VK_impl_VAR_CONCAT(__VA_ARGS__)
 
+#define VK_noinline VK_if(VK_compiler_msvc(__declspec(noinline))VK_else_if(VK_or(VK_compiler_gcc, VK_compiler_clang)(__attribute__((noinline)))))
 #define VK_forceinline VK_if(VK_compiler_msvc(__forceinline)VK_else(__attribute__((always_inline))))
 #define VK_fallthrough [[fallthrough]]
 #define VK_nodiscard [[nodiscard]]
@@ -1164,7 +1167,8 @@
 #endif
 #endif
 
-
+#define VK_stdcall VK_if(VK_compiler_msvc(__stdcall))
+#define VK_cdecl   VK_if(VK_compiler_msvc(__cdecl))
 
 
 #define VK_begin_c_namespace VK_if(VK_language_cxx(extern "C" {) VK_else())

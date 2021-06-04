@@ -145,11 +145,11 @@ namespace valkyrie::impl{
 
       dynamic_base() noexcept : msgQueue(nullptr), queueLength(0){}
       dynamic_base(u64 length, status& status) noexcept;
-      template <raw_allocator Alloc>
+      template <allocator_c Alloc>
       dynamic_base(u64 length, Alloc&& allocator, status& status){
         status = code::invalid_argument;
       }
-      template <raw_allocator Alloc>
+      template <allocator_c Alloc>
       dynamic_base(Alloc&& allocator, status& status){
         status = code::invalid_argument;
       }
@@ -214,7 +214,7 @@ namespace valkyrie::impl{
 
       static_base(u64 capacity, status& status) noexcept : static_base(capacity, default_allocator{}, status){}
 
-      template <raw_allocator Alloc>
+      template <allocator_c Alloc>
       static_base(u64 capacity, Alloc&& allocator, status& status_) noexcept
           : queueAllocator(make_any_allocator_reference(std::forward<Alloc>(allocator))),
             queueCapacity(capacity),
@@ -235,12 +235,11 @@ namespace valkyrie::impl{
 #endif
       }
 
-      template <composable_allocator Alloc>
+      template <composable_allocator_c Alloc>
       static_base(u64 capacity, Alloc&& allocator, status& status_) noexcept
           : queueAllocator(make_any_allocator_reference(std::forward<Alloc>(allocator))),
             queueCapacity(capacity),
-            msgQueue(static_cast<byte*>(
-                queueAllocator.try_allocate_array(queueCapacity,message_size, alignof(message)))){
+            msgQueue(static_cast<byte*>(queueAllocator.try_allocate_array(queueCapacity,message_size, alignof(message)))){
         // TODO: Replace with non-generic codes once memory errors are implemented.
         status_ = msgQueue == nullptr ? code::out_of_memory : code::success;
       }

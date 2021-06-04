@@ -6,530 +6,450 @@
 #define VALKYRIE_UTILITY_SHAPES_HPP
 
 
-#include <valkyrie/preprocessor.hpp>
-#include <valkyrie/primitives.hpp>
+
 #include <valkyrie/traits.hpp>
 
 #include <tuple>
 
 namespace valkyrie{
   template <typename T = u32>
-  struct Extent2D{
+  struct extent2d{
     T width;
     T height;
 
-    constexpr Extent2D() = default;
-    constexpr Extent2D(const Extent2D&) = default;
-    constexpr Extent2D(Extent2D&&) noexcept = default;
+    constexpr extent2d() = default;
+    constexpr extent2d(const extent2d&) = default;
+    constexpr extent2d(extent2d&&) noexcept = default;
 
-    constexpr Extent2D& operator=(const Extent2D&) = default;
-    constexpr Extent2D& operator=(Extent2D&&) noexcept = default;
+    constexpr extent2d& operator=(const extent2d&) = default;
+    constexpr extent2d& operator=(extent2d&&) noexcept = default;
 
-    template <std::convertible_to<T> A>
-    explicit constexpr Extent2D(A&& a) noexcept
+    template <convertible_to<T> A>
+    explicit constexpr extent2d(A&& a) noexcept
         : width(std::forward<A>(a)),
           height{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B>
-    constexpr Extent2D(A&& a, B&& b) noexcept
+    template <convertible_to<T> A, convertible_to<T> B>
+    constexpr extent2d(A&& a, B&& b) noexcept
         : width(std::forward<A>(a)),
           height(std::forward<B>(b)){}
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit(!std::convertible_to<const U&, T>) Extent2D(const Extent2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit(!convertible_to<const U&, T>) extent2d(const extent2d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width(other.width),
           height(other.height){}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit(!std::convertible_to<U&&, T>) Extent2D(Extent2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit(!convertible_to<U&&, T>) extent2d(extent2d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : width(std::move(other.width)),
           height(std::move(other.height)){}
   };
   template <typename T = u32>
-  struct Extent3D{
+  struct extent3d{
     T width;
     T height;
     T depth;
 
-    constexpr Extent3D() = default;
-    constexpr Extent3D(const Extent3D&) = default;
-    constexpr Extent3D(Extent3D&&) noexcept = default;
+    constexpr extent3d() = default;
+    constexpr extent3d(const extent3d&) = default;
+    constexpr extent3d(extent3d&&) noexcept = default;
 
-    constexpr Extent3D& operator=(const Extent3D&) = default;
-    constexpr Extent3D& operator=(Extent3D&&) noexcept = default;
+    constexpr extent3d& operator=(const extent3d&) = default;
+    constexpr extent3d& operator=(extent3d&&) noexcept = default;
 
 
-    template <std::convertible_to<T> A>
-    explicit constexpr Extent3D(A&& a) noexcept
+    template <convertible_to<T> A>
+    explicit constexpr extent3d(A&& a) noexcept
         : width(std::forward<A>(a)),
           height{},
           depth{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B>
-    constexpr Extent3D(A&& a, B&& b) noexcept
+    template <convertible_to<T> A, convertible_to<T> B>
+    constexpr extent3d(A&& a, B&& b) noexcept
         : width( std::forward<A>(a)),
           height(std::forward<B>(b)),
           depth{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B, std::convertible_to<T> C>
-    constexpr Extent3D(A&& a, B&& b, C&& c) noexcept
+    template <convertible_to<T> A, convertible_to<T> B, convertible_to<T> C>
+    constexpr extent3d(A&& a, B&& b, C&& c) noexcept
         : width( std::forward<A>(a)),
           height(std::forward<B>(b)),
           depth( std::forward<C>(c)){}
 
 
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit constexpr Extent3D(const Extent2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit constexpr extent3d(const extent2d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width( other.width),
           height(other.height),
           depth{}{}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit constexpr Extent3D(Extent2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit constexpr extent3d(extent2d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : width( std::move(other.width)),
           height(std::move(other.height)),
           depth{}{}
 
 
 
-    template <typename U, typename V> requires(ConstructibleFrom<T, const U&> && ConstructibleFrom<T, V>)
-    constexpr Extent3D(const Extent2D<U>& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
+    template <typename U, typename V> requires(constructible_from<T, const U&> && constructible_from<T, V>)
+    constexpr extent3d(const extent2d<U>& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
         : width( other.width),
           height(other.height),
           depth( std::forward<V>(depth)){}
-    template <typename U, typename V> requires(ConstructibleFrom<T, U&&> && ConstructibleFrom<T, V>)
-    constexpr Extent3D(Extent2D<U>&& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
+    template <typename U, typename V> requires(constructible_from<T, U&&> && constructible_from<T, V>)
+    constexpr extent3d(extent2d<U>&& other, V&& depth) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
         : width( std::move(other.width)),
           height(std::move(other.height)),
           depth( std::forward<V>(depth)){}
 
 
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit(!std::convertible_to<const U&, T>) constexpr Extent3D(const Extent3D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit(!convertible_to<const U&, T>) constexpr extent3d(const extent3d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : width( other.width),
           height(other.height),
           depth( other.depth){}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit(!std::convertible_to<U&&, T>) constexpr Extent3D(Extent3D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit(!convertible_to<U&&, T>) constexpr extent3d(extent3d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : width( std::move(other.width)),
           height(std::move(other.height)),
           depth( std::move(other.depth)){}
   };
 
-  template <numeric_type T>
-  Extent2D(T&&) -> Extent2D<std::remove_cvref_t<T>>;
-  template <numeric_type T, numeric_type U>
-  Extent2D(T&&, U&&) -> Extent2D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>>;
+  template <typename T> requires numeric_c<T>
+  extent2d(T) -> extent2d<T>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent2d(T, U) -> extent2d<std::common_type_t<T, U>>;
 
-  template <numeric_type T>
-  Extent3D(T&&) -> Extent3D<std::remove_cvref_t<T>>;
-  template <numeric_type T, numeric_type U>
-  Extent3D(T&&, U&&) -> Extent3D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U, numeric_type V>
-  Extent3D(T&&, U&&, V&&) -> Extent3D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>, std::remove_cvref_t<V>>>;
-  template <numeric_type T>
-  Extent3D(const Extent2D<T>&) -> Extent3D<T>;
-  template <numeric_type T>
-  Extent3D(Extent2D<T>&&) -> Extent3D<T>;
-  template <numeric_type T, numeric_type U>
-  Extent3D(const Extent2D<T>&, U&&) -> Extent3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Extent3D(U&&, const Extent2D<T>&) -> Extent3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Extent3D(Extent2D<T>&&, U&&) -> Extent3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Extent3D(U&&, Extent2D<T>&&) -> Extent3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
+  template <typename T> requires numeric_c<T>
+  extent3d(T) -> extent3d<T>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent3d(T, U) -> extent3d<std::common_type_t<T, U>>;
+  template <typename T, typename U, typename V> requires(numeric_c<T> && numeric_c<U> && numeric_c<V>)
+  extent3d(T, U, V) -> extent3d<std::common_type_t<T, U, V>>;
+  template <typename T> requires numeric_c<T>
+  extent3d(const extent2d<T>&) -> extent3d<T>;
+  template <typename T> requires numeric_c<T>
+  extent3d(extent2d<T>&&) -> extent3d<T>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent3d(const extent2d<T>&, U) -> extent3d<std::common_type_t<T, U>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent3d(U, const extent2d<T>&) -> extent3d<std::common_type_t<T, U>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent3d(extent2d<T>&&, U) -> extent3d<std::common_type_t<T, U>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  extent3d(U, extent2d<T>&&) -> extent3d<std::common_type_t<T, U>>;
 
 
   template <typename T = u32>
-  struct Position2D{
+  struct position2d{
     T x;
     T y;
 
-    constexpr Position2D() = default;
-    constexpr Position2D(const Position2D&) = default;
-    constexpr Position2D(Position2D&&) noexcept = default;
+    constexpr position2d() = default;
+    constexpr position2d(const position2d&) = default;
+    constexpr position2d(position2d&&) noexcept = default;
 
-    constexpr Position2D& operator=(const Position2D&) = default;
-    constexpr Position2D& operator=(Position2D&&) noexcept = default;
+    constexpr position2d& operator=(const position2d&) = default;
+    constexpr position2d& operator=(position2d&&) noexcept = default;
 
-    template <std::convertible_to<T> A>
-    explicit constexpr Position2D(A&& a) noexcept
+    template <convertible_to<T> A>
+    explicit constexpr position2d(A&& a) noexcept
         : x(std::forward<A>(a)),
           y{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B>
-    constexpr Position2D(A&& a, B&& b) noexcept
+    template <convertible_to<T> A, convertible_to<T> B>
+    constexpr position2d(A&& a, B&& b) noexcept
         : x(std::forward<A>(a)),
           y(std::forward<B>(b)){}
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit(!std::convertible_to<const U&, T>) Position2D(const Position2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit(!convertible_to<const U&, T>) position2d(const position2d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x(other.x),
           y(other.y){}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit(!std::convertible_to<U&&, T>) Position2D(Position2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit(!convertible_to<U&&, T>) position2d(position2d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : x(std::move(other.x)),
           y(std::move(other.y)){}
   };
   template <typename T = u32>
-  struct Position3D{
+  struct position3d{
     T x;
     T y;
     T z;
 
-    constexpr Position3D() = default;
-    constexpr Position3D(const Position3D&) = default;
-    constexpr Position3D(Position3D&&) noexcept = default;
+    constexpr position3d() = default;
+    constexpr position3d(const position3d&) = default;
+    constexpr position3d(position3d&&) noexcept = default;
 
-    constexpr Position3D& operator=(const Position3D&) = default;
-    constexpr Position3D& operator=(Position3D&&) noexcept = default;
+    constexpr position3d& operator=(const position3d&) = default;
+    constexpr position3d& operator=(position3d&&) noexcept = default;
 
-    template <std::convertible_to<T> A>
-    explicit constexpr Position3D(A&& a) noexcept
+    template <convertible_to<T> A>
+    explicit constexpr position3d(A&& a) noexcept
         : x(std::forward<A>(a)),
           y{},
           z{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B>
-    constexpr Position3D(A&& a, B&& b) noexcept
+    template <convertible_to<T> A, convertible_to<T> B>
+    constexpr position3d(A&& a, B&& b) noexcept
         : x( std::forward<A>(a)),
           y(std::forward<B>(b)),
           z{}{}
-    template <std::convertible_to<T> A, std::convertible_to<T> B, std::convertible_to<T> C>
-    constexpr Position3D(A&& a, B&& b, C&& c) noexcept
+    template <convertible_to<T> A, convertible_to<T> B, convertible_to<T> C>
+    constexpr position3d(A&& a, B&& b, C&& c) noexcept
         : x( std::forward<A>(a)),
           y(std::forward<B>(b)),
           z( std::forward<C>(c)){}
 
 
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit constexpr Position3D(const Position2D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit constexpr position3d(const position2d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x( other.x),
           y(other.y),
           z{}{}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit constexpr Position3D(Position2D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit constexpr position3d(position2d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : x( std::move(other.x)),
           y(std::move(other.y)),
           z{}{}
 
 
 
-    template <typename U, typename V> requires(ConstructibleFrom<T, const U&> && ConstructibleFrom<T, V>)
-    constexpr Position3D(const Position2D<U>& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
+    template <typename U, typename V> requires(constructible_from<T, const U&> && constructible_from<T, V>)
+    constexpr position3d(const position2d<U>& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, const U&> && std::is_nothrow_constructible_v<T, V>)
         : x( other.x),
           y(other.y),
           z( std::forward<V>(z)){}
-    template <typename U, typename V> requires(ConstructibleFrom<T, U&&> && ConstructibleFrom<T, V>)
-    constexpr Position3D(Position2D<U>&& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
+    template <typename U, typename V> requires(constructible_from<T, U&&> && constructible_from<T, V>)
+    constexpr position3d(position2d<U>&& other, V&& z) noexcept(std::is_nothrow_constructible_v<T, U&&> && std::is_nothrow_constructible_v<T, V>)
         : x( std::move(other.x)),
           y(std::move(other.y)),
           z( std::forward<V>(z)){}
 
 
 
-    template <typename U> requires(ConstructibleFrom<T, const U&>)
-    explicit(!std::convertible_to<const U&, T>) constexpr Position3D(const Position3D<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
+    template <typename U> requires(constructible_from<T, const U&>)
+    explicit(!convertible_to<const U&, T>) constexpr position3d(const position3d<U>& other) noexcept(std::is_nothrow_constructible_v<T, const U&>)
         : x( other.x),
           y(other.y),
           z( other.z){}
-    template <typename U> requires(ConstructibleFrom<T, U&&>)
-    explicit(!std::convertible_to<U&&, T>) constexpr Position3D(Position3D<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
+    template <typename U> requires(constructible_from<T, U&&>)
+    explicit(!convertible_to<U&&, T>) constexpr position3d(position3d<U>&& other) noexcept(std::is_nothrow_constructible_v<T, U&&>)
         : x( std::move(other.x)),
           y(std::move(other.y)),
           z( std::move(other.z)){}
   };
 
 
-  template <numeric_type T>
-  Position2D(T&&) -> Position2D<std::remove_cvref_t<T>>;
-  template <numeric_type T, numeric_type U>
-  Position2D(T&&, U&&) -> Position2D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>>;
+  template <typename T> requires numeric_c<T>
+  position2d(T&&) -> position2d<remove_cvref_t<T>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position2d(T&&, U&&) -> position2d<std::common_type_t<remove_cvref_t<T>, remove_cvref_t<U>>>;
 
-  template <numeric_type T>
-  Position3D(T&&) -> Position3D<std::remove_cvref_t<T>>;
-  template <numeric_type T, numeric_type U>
-  Position3D(T&&, U&&) -> Position3D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U, numeric_type V>
-  Position3D(T&&, U&&, V&&) -> Position3D<std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>, std::remove_cvref_t<V>>>;
-  template <numeric_type T>
-  Position3D(const Position2D<T>&) -> Position3D<T>;
-  template <numeric_type T>
-  Position3D(Position2D<T>&&) -> Position3D<T>;
-  template <numeric_type T, numeric_type U>
-  Position3D(const Position2D<T>&, U&&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Position3D(U&&, const Position2D<T>&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Position3D(Position2D<T>&&, U&&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
-  template <numeric_type T, numeric_type U>
-  Position3D(U&&, Position2D<T>&&) -> Position3D<std::common_type_t<T, std::remove_cvref_t<U>>>;
+  template <typename T> requires numeric_c<T>
+  position3d(T&&) -> position3d<remove_cvref_t<T>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position3d(T&&, U&&) -> position3d<std::common_type_t<remove_cvref_t<T>, remove_cvref_t<U>>>;
+  template <typename T, typename U, typename V> requires(numeric_c<T> && numeric_c<U> && numeric_c<V>)
+  position3d(T&&, U&&, V&&) -> position3d<std::common_type_t<remove_cvref_t<T>, remove_cvref_t<U>, remove_cvref_t<V>>>;
+  template <typename T> requires numeric_c<T>
+  position3d(const position2d<T>&) -> position3d<T>;
+  template <typename T> requires numeric_c<T>
+  position3d(position2d<T>&&) -> position3d<T>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position3d(const position2d<T>&, U&&) -> position3d<std::common_type_t<T, remove_cvref_t<U>>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position3d(U&&, const position2d<T>&) -> position3d<std::common_type_t<T, remove_cvref_t<U>>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position3d(position2d<T>&&, U&&) -> position3d<std::common_type_t<T, remove_cvref_t<U>>>;
+  template <typename T, typename U> requires(numeric_c<T> && numeric_c<U>)
+  position3d(U&&, position2d<T>&&) -> position3d<std::common_type_t<T, remove_cvref_t<U>>>;
 
 
 
-  template <size_t N, typename T>
-  constexpr T& get(Extent2D<T>& ext) noexcept {
-    if constexpr (N == 0) {
-      return ext.width;
-    }
-    else if constexpr (N == 1) {
-      return ext.height;
-    }
-    else {
-      static_assert(N < 2, "Index out of range for Extent2D");
-      return ext.height;
-    }
-  }
-  template <size_t N, typename T>
-  constexpr const T& get(const Extent2D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr T& get(extent2d<T>& ext) noexcept {
     if constexpr (N == 0)
       return ext.width;
-    else if constexpr (N == 1)
+    else
       return ext.height;
-    else {
-      static_assert(N < 2, "Index out of range for Extent2D");
-      return ext.height;
-    }
   }
-  template <size_t N, typename T>
-  constexpr T&& get(Extent2D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr const T& get(const extent2d<T>& ext) noexcept {
+    if constexpr (N == 0)
+      return ext.width;
+    else
+      return ext.height;
+  }
+  template <size_t N, typename T> requires(N < 2)
+  constexpr T&& get(extent2d<T>&& ext) noexcept {
     if constexpr (N == 0)
       return std::move(ext.width);
-    else if constexpr (N == 1)
+    else
       return std::move(ext.height);
-    else {
-      static_assert(N < 2, "Index out of range for Extent2D");
-      return std::move(ext.height);
-    }
   }
-  template <size_t N, typename T>
-  constexpr const T&& get(const Extent2D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr const T&& get(const extent2d<T>&& ext) noexcept {
     if constexpr (N == 0)
       return std::move(ext.width);
-    else if constexpr (N == 1)
+    else
       return std::move(ext.height);
-    else {
-      static_assert(N < 2, "Index out of range for Extent2D");
-      return std::move(ext.height);
-    }
   }
 
-  template <size_t N, typename T>
-  constexpr T& get(Extent3D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr T& get(extent3d<T>& ext) noexcept {
     if constexpr (N == 0)
       return ext.width;
     else if constexpr (N == 1)
       return ext.height;
-    else if constexpr (N == 2)
+    else
       return ext.depth;
-    else {
-      static_assert(N < 3, "Index out of range for Extent3D");
-      return ext.depth;
-    }
   }
-  template <size_t N, typename T>
-  constexpr const T& get(const Extent3D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr const T& get(const extent3d<T>& ext) noexcept {
     if constexpr (N == 0)
       return ext.width;
     else if constexpr (N == 1)
       return ext.height;
-    else if constexpr (N == 2)
+    else
       return ext.depth;
-    else {
-      static_assert(N < 3, "Index out of range for Extent3D");
-      return ext.depth;
-    }
   }
-  template <size_t N, typename T>
-  constexpr T&& get(Extent3D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr T&& get(extent3d<T>&& ext) noexcept {
     if constexpr (N == 0)
       return std::move(ext.width);
     else if constexpr (N == 1)
       return std::move(ext.height);
-    else if constexpr (N == 2)
+    else
       return std::move(ext.depth);
-    else {
-      static_assert(N < 3, "Index out of range for Extent3D");
-      return std::move(ext.depth);
-    }
   }
-  template <size_t N, typename T>
-  constexpr const T&& get(const Extent3D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr const T&& get(const extent3d<T>&& ext) noexcept {
     if constexpr (N == 0)
       return std::move(ext.width);
     else if constexpr (N == 1)
       return std::move(ext.height);
-    else if constexpr (N == 2)
+    else
       return std::move(ext.depth);
-    else {
-      static_assert(N < 3, "Index out of range for Extent3D");
-      return std::move(ext.depth);
-    }
   }
 
 
-  template <size_t N, typename T>
-  constexpr T& get(Position2D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr T& get(position2d<T>& pos) noexcept {
     if constexpr (N == 0)
-      return ext.x;
-    else if constexpr (N == 1)
-      return ext.y;
-    else {
-      static_assert(N < 2, "Index out of range for Position2D");
-      return ext.y;
-    }
+      return pos.x;
+    else
+      return pos.y;
   }
-  template <size_t N, typename T>
-  constexpr const T& get(const Position2D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr const T& get(const position2d<T>& pos) noexcept {
     if constexpr (N == 0)
-      return ext.x;
-    else if constexpr (N == 1)
-      return ext.y;
-    else {
-      static_assert(N < 2, "Index out of range for Position2D");
-      return ext.y;
-    }
+      return pos.x;
+    else
+      return pos.y;
   }
-  template <size_t N, typename T>
-  constexpr T&& get(Position2D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr T&& get(position2d<T>&& pos) noexcept {
     if constexpr (N == 0)
-      return std::move(ext.x);
-    else if constexpr (N == 1)
-      return std::move(ext.y);
-    else {
-      static_assert(N < 2, "Index out of range for Position2D");
-      return std::move(ext.y);
-    }
+      return std::move(pos.x);
+    else
+      return std::move(pos.y);
   }
-  template <size_t N, typename T>
-  constexpr const T&& get(const Position2D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 2)
+  constexpr const T&& get(const position2d<T>&& pos) noexcept {
     if constexpr (N == 0)
-      return std::move(ext.x);
-    else if constexpr (N == 1)
-      return std::move(ext.y);
-    else {
-      static_assert(N < 2, "Index out of range for Position2D");
-      return std::move(ext.y);
-    }
+      return std::move(pos.x);
+    else
+      return std::move(pos.y);
   }
 
-  template <size_t N, typename T>
-  constexpr T& get(Position3D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr T& get(position3d<T>& pos) noexcept {
     if constexpr (N == 0)
-      return ext.x;
+      return pos.x;
     else if constexpr (N == 1)
-      return ext.y;
-    else if constexpr (N == 2)
-      return ext.z;
-    else {
-      static_assert(N < 3, "Index out of range for Position3D");
-      return ext.z;
-    }
+      return pos.y;
+    else
+      return pos.z;
   }
-  template <size_t N, typename T>
-  constexpr const T& get(const Position3D<T>& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr const T& get(const position3d<T>& pos) noexcept {
     if constexpr (N == 0)
-      return ext.x;
+      return pos.x;
     else if constexpr (N == 1)
-      return ext.y;
-    else if constexpr (N == 2)
-      return ext.z;
-    else {
-      static_assert(N < 3, "Index out of range for Position3D");
-      return ext.z;
-    }
+      return pos.y;
+    else
+      return pos.z;
   }
-  template <size_t N, typename T>
-  constexpr T&& get(Position3D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr T&& get(position3d<T>&& pos) noexcept {
     if constexpr (N == 0)
-      return std::move(ext.x);
+      return std::move(pos.x);
     else if constexpr (N == 1)
-      return std::move(ext.y);
-    else if constexpr (N == 2)
-      return std::move(ext.z);
-    else {
-      static_assert(N < 3, "Index out of range for Position3D");
-      return std::move(ext.z);
-    }
+      return std::move(pos.y);
+    else
+      return std::move(pos.z);
   }
-  template <size_t N, typename T>
-  constexpr const T&& get(const Position3D<T>&& ext) noexcept {
+  template <size_t N, typename T> requires(N < 3)
+  constexpr const T&& get(const position3d<T>&& pos) noexcept {
     if constexpr (N == 0)
-      return std::move(ext.x);
+      return std::move(pos.x);
     else if constexpr (N == 1)
-      return std::move(ext.y);
-    else if constexpr (N == 2)
-      return std::move(ext.z);
-    else {
-      static_assert(N < 3, "Index out of range for Position3D");
-      return std::move(ext.z);
-    }
+      return std::move(pos.y);
+    else
+      return std::move(pos.z);
   }
 
 
-  template <typename T = u32>
-  struct Box2D{
-    Position2D<T> offsets;
-    Extent2D<T> extents;
+  template <typename OffsetType = u32, typename ExtentType = OffsetType>
+  struct box2d {
+    position2d<OffsetType> offsets;
+    extent2d<ExtentType>   extents;
   };
-  template <typename T = u32>
-  struct Box3D{
-    Position3D<T> offsets;
-    Extent3D<T> extents;
-  };
-
-  struct Rect2D{
-    Position2D<i32> offsets;
-    Extent2D<u32>   extents;
-  };
-  struct Rect3D{
-    Position3D<i32> offsets;
-    Extent3D<u32>   extents;
+  template <typename OffsetType = u32, typename ExtentType = OffsetType>
+  struct box3d {
+    position3d<OffsetType> offsets;
+    extent3d<ExtentType>   extents;
   };
 
   template <typename T>
-  inline constexpr static auto square(T&& sideLength) noexcept {
-    using V = std::remove_cvref_t<T>;
-    return Box2D<V>{ .extents = {sideLength, sideLength}, .offsets = { 0, 0 } };
+  inline constexpr static auto square(T sideLength) noexcept {
+    return box2d<T>{  .offsets = { 0, 0 }, .extents = { sideLength, sideLength } };
   }
   template <typename T, typename U>
-  inline constexpr static auto square(T&& sideLength, const Position2D<U>& offset) noexcept {
-    using V = std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
-    return Box2D<V>{ .extents = {sideLength, sideLength}, .offsets = offset };
+  inline constexpr static auto square(T sideLength, const position2d<U>& offset) noexcept {
+    return box2d<U, T>{ .offsets = offset, .extents = {sideLength, sideLength} };
   }
   template <typename T>
-  inline constexpr static auto cube(T&& sideLength) noexcept {
-    using V = std::remove_cvref_t<T>;
-    return Box3D<V>{ .extents = {sideLength, sideLength, sideLength}, .offsets = { 0, 0, 0 } };
+  inline constexpr static auto cube(T sideLength) noexcept {
+    return box3d<T>{ .offsets = { 0, 0, 0 }, .extents = { sideLength, sideLength, sideLength } };
   }
   template <typename T, typename U>
-  inline constexpr static auto cube(T&& sideLength, const Position3D<U>& offset) noexcept {
-    using V = std::common_type_t<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
-    return Box3D<V>{ .extents = {sideLength, sideLength, sideLength}, .offsets = offset };
+  inline constexpr static auto cube(T sideLength, const position3d<U>& offset) noexcept {
+    return box3d<U, T>{ .offsets = offset, .extents = {sideLength, sideLength, sideLength} };
   }
 
 }
 
 template <typename T>
-struct std::tuple_size<valkyrie::Extent2D<T>> : std::integral_constant<size_t, 2>{};
+struct std::tuple_size<valkyrie::extent2d<T>> : std::integral_constant<size_t, 2>{};
 template <typename T>
-struct std::tuple_size<valkyrie::Extent3D<T>> : std::integral_constant<size_t, 3>{};
+struct std::tuple_size<valkyrie::extent3d<T>> : std::integral_constant<size_t, 3>{};
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Extent2D<T>>{
+struct std::tuple_element<N, valkyrie::extent2d<T>>{
   using type = T;
 };
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Extent3D<T>>{
+struct std::tuple_element<N, valkyrie::extent3d<T>>{
   using type = T;
 };
 
 template <typename T>
-struct std::tuple_size<valkyrie::Position2D<T>> : std::integral_constant<size_t, 2>{};
+struct std::tuple_size<valkyrie::position2d<T>> : std::integral_constant<size_t, 2>{};
 template <typename T>
-struct std::tuple_size<valkyrie::Position3D<T>> : std::integral_constant<size_t, 3>{};
+struct std::tuple_size<valkyrie::position3d<T>> : std::integral_constant<size_t, 3>{};
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Position2D<T>>{
+struct std::tuple_element<N, valkyrie::position2d<T>>{
   using type = T;
 };
 template <size_t N, typename T>
-struct std::tuple_element<N, valkyrie::Position3D<T>>{
+struct std::tuple_element<N, valkyrie::position3d<T>>{
   using type = T;
 };
 

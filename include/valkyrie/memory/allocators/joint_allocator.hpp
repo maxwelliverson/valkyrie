@@ -6,12 +6,12 @@
 #define VALKYRIE_MEMORY_JOINT_ALLOCATOR_HPP
 
 
+#include "../allocator_storage.hpp"
+#include "../default_allocator.hpp"
+#include "../detail/memory_stack.hpp"
+#include "../detail/utility.hpp"
+#include "../error.hpp"
 #include <valkyrie/utility/align.hpp>
-#include "detail/memory_stack.hpp"
-#include "detail/utility.hpp"
-#include "allocator_storage.hpp"
-#include "default_allocator.hpp"
-#include "error.hpp"
 
 namespace valkyrie{
   template <typename T, class RawAllocator>

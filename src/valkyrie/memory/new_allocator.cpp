@@ -2,8 +2,8 @@
 // Created by maxwe on 2021-03-05.
 //
 
+#include <valkyrie/memory/allocators/new_allocator.hpp>
 #include <valkyrie/memory/error.hpp>
-#include <valkyrie/memory/new_allocator.hpp>
 
 using namespace valkyrie;
 
@@ -12,10 +12,10 @@ allocator_info detail::new_allocator_impl::info() noexcept {
   return {"valkyrie::new_allocator", nullptr};
 }
 
-void *detail::new_allocator_impl::allocate(u64 size, size_t) noexcept {
+void *detail::new_allocator_impl::allocate(u64 size, u64 align) noexcept {
   void *memory = nullptr;
   while (true) {
-    memory = ::operator new(size, std::nothrow);
+    memory = ::operator new(size, std::align_val_t{align}, std::nothrow);
     if (memory)
       break;
 
@@ -38,8 +38,8 @@ void *detail::new_allocator_impl::allocate(u64 size, size_t) noexcept {
   }
   return memory;
 }
-void detail::new_allocator_impl::deallocate(void *ptr, u64, size_t) noexcept {
-  ::operator delete(ptr);
+void detail::new_allocator_impl::deallocate(void *ptr, u64 size, u64 align) noexcept {
+  ::operator delete(ptr, size, std::align_val_t{align});
 }
 
 u64 detail::new_allocator_impl::max_node_size() noexcept {

@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_GRAPHICS_ENGINE_ATTACHMENT_RESOURCE_HPP
 #define VALKYRIE_GRAPHICS_ENGINE_ATTACHMENT_RESOURCE_HPP
 
-#include <valkyrie/ADT/array_ref.hpp>
-#include <valkyrie/ADT/small_vector.hpp>
+#include <valkyrie/adt/array_ref.hpp>
+#include <valkyrie/adt/small_vector.hpp>
 
 
 

@@ -2,11 +2,11 @@
 // Created by maxwe on 2021-03-01.
 //
 
+#include <valkyrie/adt/function_ref.hpp>
+#include <valkyrie/adt/list.hpp>
 #include <valkyrie/agent/agent.hpp>
 #include <valkyrie/agent/mailbox.hpp>
-#include <valkyrie/utility/function_ref.hpp>
 #include <valkyrie/async/task.hpp>
-#include <valkyrie/adt/list.hpp>
 
 #include <thread>
 #include <csetjmp>

@@ -19,7 +19,7 @@ namespace {
   }
 }
 
-void impl::dictionary::init(unsigned Size, PFN_allocate_table alloc_fn, void* allocator_state) {
+void impl::dictionary::init(unsigned Size, PFN_allocate_table alloc_fn, void* allocator_state) noexcept {
   VK_assert_msg(is_pow2(Size), "Init Size must be a power of 2 or zero!");
 
   unsigned NewNumBuckets = Size ? Size : default_bucket_count;
@@ -38,7 +38,7 @@ void impl::dictionary::init(unsigned Size, PFN_allocate_table alloc_fn, void* al
   TheTable[NumBuckets] = (impl::dictionary_entry_base *)2;
 }
 
-unsigned int impl::dictionary::rehash_table(unsigned int BucketNo, PFN_allocate_table alloc_fn, PFN_deallocate_table dealloc_fn, void* allocator_state) {
+u32 impl::dictionary::rehash_table(unsigned int BucketNo, PFN_allocate_table alloc_fn, PFN_deallocate_table dealloc_fn, void* allocator_state) noexcept {
   unsigned NewSize;
   unsigned *HashTable = (unsigned *)(TheTable + NumBuckets + 1);
 
@@ -101,7 +101,7 @@ unsigned int impl::dictionary::rehash_table(unsigned int BucketNo, PFN_allocate_
   return NewBucketNo;
 }
 
-u32 impl::dictionary::lookup_bucket_for(string_view Key, PFN_allocate_table alloc_fn, void* allocator_state) {
+u32 impl::dictionary::lookup_bucket_for(string_view Key, PFN_allocate_table alloc_fn, void* allocator_state) noexcept {
   u32 HTSize = NumBuckets;
   if (HTSize == 0) { // Hash table unallocated so far?
     init(default_bucket_count, alloc_fn, allocator_state);
@@ -174,7 +174,7 @@ void impl::dictionary::explicit_init(u32 initSize, PFN_allocate_table alloc_fn, 
   NumTombstones = 0;
 }
 
-int impl::dictionary::find_key(string_view Key) const {
+int impl::dictionary::find_key(string_view Key) const noexcept {
   unsigned HTSize = NumBuckets;
   if (HTSize == 0)
     return -1; // Really empty table?
@@ -215,7 +215,7 @@ int impl::dictionary::find_key(string_view Key) const {
   }
 }
 
-impl::dictionary_entry_base * impl::dictionary::remove_key(string_view Key) {
+impl::dictionary_entry_base * impl::dictionary::remove_key(string_view Key) noexcept {
   int Bucket = find_key(Key);
   if (Bucket == -1)
     return nullptr;
@@ -229,7 +229,7 @@ impl::dictionary_entry_base * impl::dictionary::remove_key(string_view Key) {
   return Result;
 }
 
-void impl::dictionary::remove_key(dictionary_entry_base *V) {
+void impl::dictionary::remove_key(dictionary_entry_base *V) noexcept {
   utf8_string VStr = (utf8 *)V + ItemSize;
   impl::dictionary_entry_base *V2 = remove_key(string_view(VStr, V->get_key_length()));
   (void)V2;

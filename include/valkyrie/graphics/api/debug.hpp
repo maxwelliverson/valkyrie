@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class ValidationCache : public VulkanResource{};
+  class validation_cache : public vulkan_object{};
 }
 
 #endif//VALKYRIE_GRAPHICS_API_DEBUG_HPP

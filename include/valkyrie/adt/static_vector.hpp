@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_ADT_STATIC_VECTOR_HPP
 #define VALKYRIE_ADT_STATIC_VECTOR_HPP
 
+#include <valkyrie/memory/allocators/std_allocator.hpp>
 #include <valkyrie/memory/default_allocator.hpp>
-#include <valkyrie/memory/std_allocator.hpp>
 
 #include <boost/container/static_vector.hpp>
 

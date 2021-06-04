@@ -6,15 +6,14 @@
 #define VALKYRIE_COMMAND_BUFFER_HPP
 
 #include <valkyrie/graphics/api/command_pool.hpp>
-#include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class command_buffer : public VulkanObject{
+  class command_buffer : public vulkan_object {
 
   };
 
-  class PrimaryCommandBuffer   : public command_buffer { };
-  class SecondaryCommandBuffer : public command_buffer { };
+  class primary_command_buffer   : public command_buffer { };
+  class secondary_command_buffer : public command_buffer { };
 }
 
 #endif//VALKYRIE_COMMAND_BUFFER_HPP

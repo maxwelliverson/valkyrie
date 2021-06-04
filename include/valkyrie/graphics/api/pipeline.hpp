@@ -6,22 +6,15 @@
 #define VALKYRIE_GRAPHICS_API_PIPELINE_HPP
 
 #include <valkyrie/graphics/api/vulkan.hpp>
-#include <valkyrie/graphics/shader.hpp>
 
-#include <valkyrie/adt/flat_map.hpp>
 
 #include <optional>
 
 namespace valkyrie::graphics::api {
-  class pipeline : public VulkanType {
-    class Impl;
-    Impl* pImpl;
-  public:
-
-  };
+  class pipeline : public vulkan_object {};
 
 
-  class VertexInputState{
+  /*class VertexInputState{
     struct Info{
       u32 location;
       u32 offset;
@@ -173,7 +166,7 @@ namespace valkyrie::graphics::api {
 
   class DepthStencilPipeline : public GraphicsPipeline{
 
-  };
+  };*/
 }
 
 #endif//VALKYRIE_GRAPHICS_API_PIPELINE_HPP

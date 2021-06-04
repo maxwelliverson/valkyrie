@@ -5,17 +5,17 @@
 #ifndef VALKYRIE_SMALL_OBJECT_ALLOCATOR_HPP
 #define VALKYRIE_SMALL_OBJECT_ALLOCATOR_HPP
 
-#include <valkyrie/preprocessor.hpp>
-#include <valkyrie/primitives.hpp>
+#include "../../preprocessor.hpp"
+#include "../../primitives.hpp"
 
-#include <algorithm>
-#include <bit>
-#include <deque>
-#include <memory>
-#include <memory_resource>
-#include <optional>
-#include <ranges>
-#include <vector>
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/algorithm"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/bit"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/deque"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/memory"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/memory_resource"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/optional"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/ranges"
+#include "../../../../../../../../Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.28.29910/include/vector"
 
 
 namespace valkyrie{

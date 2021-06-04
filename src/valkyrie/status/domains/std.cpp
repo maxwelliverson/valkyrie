@@ -3,6 +3,7 @@
 //
 
 #include <valkyrie/status/domains/std.hpp>
+#include <valkyrie/status/generic_code.hpp>
 #include <valkyrie/adt/dictionary.hpp>
 #include <valkyrie/adt/small_vector.hpp>
 
@@ -32,18 +33,20 @@ namespace {
 
     auto result = id_map.find(category_name);
     if (result == id_map.end()) {
-      lock inner(*outer.take(), write_access);
+      VK_if_lock(*outer.take(), upgrade_access, try_for(5s)) {
+        auto new_id = narrow_cast<u32>(id_to_category.size());
 
-      auto new_id = narrow_cast<u32>(id_to_category.size());
+        id_map.insert({category_name, new_id});
+        id_to_category.push_back(cat);
 
-      id_map.insert({category_name, new_id});
-      id_to_category.push_back(cat);
+        VK_assert(new_id == id_to_category.size() - 1);
+        VK_assert(id_map[category_name] == new_id);
+        VK_assert(id_to_category[new_id] == cat);
 
-      VK_assert(new_id == id_to_category.size() - 1);
-      VK_assert(id_map[category_name] == new_id);
-      VK_assert(id_to_category[new_id] == cat);
+        return new_id;
+      }
 
-      return new_id;
+      make_status_code(code::timed_out).throw_exception();
     }
     return result->get();
   }

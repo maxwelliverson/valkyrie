@@ -5,9 +5,8 @@
 #ifndef VALKYRIE_ADT_TEMP_ARRAY_HPP
 #define VALKYRIE_ADT_TEMP_ARRAY_HPP
 
-#include <valkyrie/adt/array_ref.hpp>
-#include <valkyrie/adt/ptr.hpp>
 #include <valkyrie/memory/default_allocator.hpp>
+#include <valkyrie/memory/allocator_storage.hpp>
 
 
 namespace valkyrie{
@@ -50,27 +49,31 @@ namespace valkyrie{
       other.size_ = 0; // not strictly necessary?
     }
 
-    explicit temp_array(size_type length_) requires(std::is_default_constructible_v<allocator_type>)
+    explicit temp_array(size_type length_) requires stateless_allocator_c<Alloc>
         : temp_array(length_, allocator_type{}){}
 
-    temp_array(size_type length, const allocator_type& allocator)
+
+    temp_array(pointer p, size_type length, allocator_type& allocator) noexcept
         : allocator_(allocator),
-          ptr_(static_cast<pointer>(alloc_traits::allocate_array(allocator_, length, sizeof(value_type), alignof(value_type)))),
+          ptr_(p),
+          size_(length){}
+
+    temp_array(size_type length, allocator_type& allocator)
+        : allocator_(allocator),
+          ptr_(static_cast<pointer>(allocator_.allocate_array(length, sizeof(value_type), alignof(value_type)))),
           size_(length) {
       if constexpr (!std::is_trivially_default_constructible_v<T>) {
-        for (size_type i = 0; i < length; ++i) {
-          alloc_traits::construct_object(allocator_, ptr_ + i);
-        }
+        for (size_type i = 0; i < length; ++i)
+          new ((void*)(ptr_ + i)) T{};
       }
     }
-    temp_array(size_type length, allocator_type&& allocator)
+    temp_array(size_type length, allocator_type&& allocator) requires stateless_allocator_c<Alloc>
         : allocator_(std::move(allocator)),
-          ptr_(static_cast<pointer>(alloc_traits::allocate_array(allocator_, length, sizeof(value_type), alignof(value_type)))),
-          size_(length){
+          ptr_(static_cast<pointer>(allocator_.allocate_array(length, sizeof(value_type), alignof(value_type)))),
+          size_(length) {
       if constexpr (!std::is_trivially_default_constructible_v<T>) {
-        for (size_t i = 0; i < length; ++i) {
-          alloc_traits::construct_object(allocator_, ptr_ + i);
-        }
+        for (size_t i = 0; i < length; ++i)
+          new ((void*)(ptr_ + i)) T{};
       }
     }
 
@@ -78,12 +81,19 @@ namespace valkyrie{
       if (ptr_) {
         if constexpr (!std::is_trivially_destructible_v<T>) {
           for (size_t i = 0; i < size_; ++i)
-            alloc_traits::destroy_object(allocator_, ptr_ + i);
+            ptr_[i].~T();
         }
-        alloc_traits::deallocate_array(allocator_, ptr_, size_, sizeof(T), alignof(T));
+        allocator_.deallocate_array(ptr_, size_, sizeof(T), alignof(T));
       }
     }
 
+
+    VK_nodiscard temp_array clone() const noexcept {
+      auto copy_ptr = static_cast<pointer>(allocator_.allocate_array(size_, sizeof(value_type), alignof(value_type)));
+      for (size_type i = 0; i < size_; i++)
+        new ((void*)(copy_ptr + i)) T(ptr_[i]);
+      return temp_array(copy_ptr, size_, allocator_.get_allocator());
+    }
 
 
     VK_nodiscard reference front() const noexcept {
@@ -105,6 +115,9 @@ namespace valkyrie{
       return size_ == 0;
     }
     VK_nodiscard pointer data() const noexcept {
+      return ptr_;
+    }
+    VK_nodiscard const_pointer data() const noexcept {
       return ptr_;
     }
 
@@ -139,19 +152,16 @@ namespace valkyrie{
 
 
     void swap(temp_array& other) noexcept {
-      if constexpr (alloc_traits::propagate_on_container_swap) {
-        allocator_type tmp = std::move(allocator_);
-        allocator_ = std::move(other.allocator_);
-        other.allocator_ = std::move(tmp);
-      }
+      if constexpr (alloc_traits::propagate_on_container_swap)
+        std::swap(allocator_, other.allocator_);
       std::swap(ptr_, other.ptr_);
       std::swap(size_, other.size_);
     }
 
   private:
-    [[no_unique_address]] allocator_type allocator_{};
-                          pointer        ptr_  = nullptr;
-                          size_type      size_ = 0;
+    [[no_unique_address]] allocator_reference<Alloc> allocator_{};
+                          pointer                    ptr_  = nullptr;
+                          size_type                  size_ = 0;
   };
 }
 

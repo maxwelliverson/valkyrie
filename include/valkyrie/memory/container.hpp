@@ -21,7 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "std_allocator.hpp"
+#include "allocators/std_allocator.hpp"
 #include "threading.hpp"
 
 namespace valkyrie

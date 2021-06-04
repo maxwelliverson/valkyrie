@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_GRAPHICS_API_SEMAPHORE_HPP
 #define VALKYRIE_GRAPHICS_API_SEMAPHORE_HPP
 
-#include <valkyrie/graphics/api/Vulkan.hpp>
+#include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class semaphore : public VulkanObject{};
+  class semaphore : public vulkan_object{};
 }
 
 #endif//VALKYRIE_GRAPHICS_API_SEMAPHORE_HPP

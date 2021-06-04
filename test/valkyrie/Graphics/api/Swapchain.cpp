@@ -332,7 +332,7 @@ int main(){
       VK_NV_MESH_SHADER_EXTENSION_NAME,
       VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME,
       VK_NV_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME,
-      "VK_NV_acquire_winrt_display",
+      VK_NV_ACQUIRE_WINRT_DISPLAY_EXTENSION_NAME,
       VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
       VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME,
       VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME,
@@ -389,11 +389,11 @@ int main(){
 
 
 
-  namespace Internal = valkyrie::graphics::api::Internal;
+  namespace internal = valkyrie::graphics::api::internal;
 
 
-  Internal::PhysicalDeviceFeatures deviceFeatures{};
-  Internal::PhysicalDeviceProperties deviceProperties{};
+  internal::physical_device_features deviceFeatures{};
+  internal::physical_device_properties deviceProperties{};
 
   physicalDeviceApi.getProperties(physicalDevice, &deviceProperties.vulkan10);
   physicalDeviceApi.getFeatures(physicalDevice, &deviceFeatures.vulkan10);
@@ -402,8 +402,8 @@ int main(){
 
 
 
-  Internal::SurfaceCapabilities surfaceCapabilities;
-  Internal::SurfaceInfo         surfaceInfo;
+  internal::surface_capabilities surfaceCapabilities;
+  internal::surface_info         surfaceInfo;
 
   /*VkQueueFamilyCheckpointPropertiesNV queueFamilyCheckpoint{
       .sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV,
@@ -709,7 +709,7 @@ int main(){
   };
 
 
-  deviceApi.allocateMemory();
+  //deviceApi.allocateMemory();
 
 
 
@@ -719,7 +719,50 @@ int main(){
   auto depthStencilResult = deviceApi.image.createImage(device, &imageCreateInfo[2], nullptr, &depthStencil);
 
 
+  const VkImageMemoryRequirementsInfo2 imageMemReqs[] = {
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+          .pNext = nullptr,
+          .image = sampledImage
+      },
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+          .pNext = nullptr,
+          .image = resolveImage
+      },
+      {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+          .pNext = nullptr,
+          .image = depthStencil
+      }
+  };
 
+  VkMemoryDedicatedRequirements dedicatedReqs = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS,
+      .pNext = nullptr
+  };
+  VkMemoryRequirements2KHR imageRequirements = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+      .pNext = &dedicatedReqs
+  };
+
+  VkMemoryAllocateInfo allocateInfo{
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = nullptr
+  };
+  VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo{
+      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+      .pNext = nullptr
+  };
+
+  deviceApi.image.getImageMemoryRequirements2(device, imageMemReqs, &imageRequirements);
+
+  allocateInfo.allocationSize = imageRequirements.memoryRequirements.size;
+  allocateInfo.memoryTypeIndex = imageRequirements.memoryRequirements.memoryTypeBits;
+  allocateInfo.memoryTypeIndex &= (-allocateInfo.memoryTypeIndex);
+
+
+  //deviceApi.allocateMemory(device, );
 
 
 
@@ -756,10 +799,11 @@ int main(){
           .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
           .viewMask = 0,
           .inputAttachmentCount = uint32_t(inputAttachments.size()),
-          .pInputAttachments = inputAttachments.data(),
+          .pInputAttachments    = inputAttachments.data(),
           .colorAttachmentCount = uint32_t(colorAttachments.size()),
-          .pColorAttachments = colorAttachments.data(),
-          .p
+          .pColorAttachments    = colorAttachments.data(),
+          .preserveAttachmentCount = 0,
+          .pPreserveAttachments    = nullptr
       }
   };
 

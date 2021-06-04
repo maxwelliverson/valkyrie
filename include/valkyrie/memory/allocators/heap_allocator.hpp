@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_HEAP_ALLOCATOR_HPP
 
-#include "detail/lowlevel_allocator.hpp"
-#include <valkyrie/traits.hpp>
+#include "../../traits.hpp"
+#include "../detail/lowlevel_allocator.hpp"
 
 namespace valkyrie{
   struct allocator_info;

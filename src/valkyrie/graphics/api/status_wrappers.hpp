@@ -193,7 +193,7 @@ namespace valkyrie::graphics{
     inline constexpr static vulkan_status_domain vulkanResultDomainInstance{};
   }
 
-  constexpr const vulkan_status_domain& vulkan_status_domain::get() {
+  constexpr const vulkan_status_domain& vulkan_status_domain::get() noexcept {
     return detail::vulkanResultDomainInstance;
   }
 }
@@ -411,9 +411,9 @@ namespace valkyrie::graphics{
 
 namespace {
 
-  inline valkyrie::graphics::vulkan_status make_status_code(VkResult result) noexcept {
+  /*inline valkyrie::graphics::vulkan_status make_status_code(VkResult result) noexcept {
     return valkyrie::graphics::vulkan_status(std::in_place, result);
-  }
+  }*/
   /*inline valkyrie::graphics::api::SpirVStatus make_status_code(spv_result_t result) noexcept {
     return valkyrie::graphics::api::SpirVStatus(result);
   }

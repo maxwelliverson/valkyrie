@@ -2,8 +2,8 @@
 // Created by maxwe on 2021-03-05.
 //
 
+#include <valkyrie/memory/allocators/malloc_allocator.hpp>
 #include <valkyrie/memory/error.hpp>
-#include <valkyrie/memory/malloc_allocator.hpp>
 
 using namespace valkyrie;
 

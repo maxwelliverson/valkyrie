@@ -120,16 +120,12 @@ namespace valkyrie{
       using type = ptrdiff_t;
     };
 
-
-    template <typename Fn>
-    using function_ptr = Fn*;
-
     template <typename Derived, typename Ptr>
-    concept has_on_acquire = requires(function_ptr<Ptr(Derived* VK_param(nonnull), in_param_t<Ptr>) noexcept>& fn){
+    concept has_on_acquire = requires(function_ptr<Ptr, Derived* VK_param(nonnull), in_param_t<Ptr>>& fn) {
       fn = get_function_ptr<&Derived::on_acquire>::value;
     };
     template <typename Derived>
-    concept has_on_release = requires(function_ptr<void(Derived* VK_param(nonnull)) noexcept>& fn){
+    concept has_on_release = requires(function_ptr<void, Derived* VK_param(nonnull)>& fn) {
       fn = get_function_ptr<&Derived::on_release>::value;
     };
 
@@ -672,7 +668,7 @@ namespace valkyrie{
     }
   };
 
-  template <typename T, typename Deleter = std::default_delete<T>>
+  /*template <typename T, typename Deleter = std::default_delete<T>>
   class unique_ptr : public ptr_base<unique_ptr<T>, T*>{
     using base = ptr_base<unique_ptr, T*>;
   public:
@@ -690,7 +686,7 @@ namespace valkyrie{
 
   private:
     [[no_unique_address]] Deleter deleter{};
-  };
+  };*/
 
   /*struct HelloTest{
     int hi;

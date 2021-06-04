@@ -6,8 +6,8 @@
 #define VALKYRIE_MEMORY_MALLOC_ALLOCATOR_HPP
 
 
-#include <valkyrie/traits.hpp>
-#include "detail/lowlevel_allocator.hpp"
+#include "../../traits.hpp"
+#include "../detail/lowlevel_allocator.hpp"
 
 
 namespace valkyrie{
@@ -19,14 +19,14 @@ namespace valkyrie{
     {
       static allocator_info info() noexcept;
 
-      static void* allocate(u64 size, u64) noexcept
-      {
-        return std::malloc(size);
+      static void* allocate(u64 size, u64 align) noexcept {
+        return _aligned_malloc(size, align);
       }
-
-      static void deallocate(void* ptr, u64, u64) noexcept
-      {
-        std::free(ptr);
+      static void* reallocate(void* ptr, u64 new_size, u64, u64 align) noexcept {
+        return _aligned_realloc(ptr, new_size, align);
+      }
+      static void deallocate(void* ptr, u64, u64) noexcept {
+        _aligned_free(ptr);
       }
 
       static u64 max_node_size() noexcept

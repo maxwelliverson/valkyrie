@@ -73,8 +73,6 @@ namespace valkyrie{
     underlying_type m_bits_;
   };*/
 
-  template <enumerator_c E>
-  class bitflags;
 
   namespace impl{
     /*template <enumerator_c E>
@@ -229,8 +227,8 @@ namespace valkyrie{
 
     template <typename E>
     class bitflag_const_iterator{
-      template <enumerator_c>
-      friend class bitflags;
+      template <typename>
+      friend class valkyrie::bitflags;
       using underlying_type = typename enum_traits<E>::underlying_type;
       using enum_type       = E;
 
@@ -281,8 +279,8 @@ namespace valkyrie{
     };
     template <typename E>
     class bitflag_iterator{
-      template <enumerator_c>
-      friend class bitflags;
+      template <typename>
+      friend class valkyrie::bitflags;
       using underlying_type = typename enum_traits<E>::underlying_type;
 
       underlying_type* pBits;
@@ -338,8 +336,8 @@ namespace valkyrie{
   }
 
   template <enumerator_c E>
-  class bitflags{
-    template <enumerator_c>
+  class bitflags<E>{
+    template <typename>
     friend class bitflags;
 
   public:

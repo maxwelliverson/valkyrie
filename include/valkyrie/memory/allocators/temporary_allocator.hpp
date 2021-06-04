@@ -5,8 +5,8 @@
 #ifndef VALKYRIE_MEMORY_TEMPORARY_ALLOCATOR_HPP
 #define VALKYRIE_MEMORY_TEMPORARY_ALLOCATOR_HPP
 
-#include "default_allocator.hpp"
-#include "memory_stack.hpp"
+#include "../default_allocator.hpp"
+#include "../memory_stack.hpp"
 
 namespace valkyrie{
   class temporary_allocator;

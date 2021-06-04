@@ -33,7 +33,7 @@ namespace valkyrie
   /// \ingroup core
   template <class RawAllocator>
   struct is_thread_safe_allocator
-      : std::integral_constant<bool, !allocator_traits<RawAllocator>::is_stateful::value>
+      : std::integral_constant<bool, !allocator_traits<RawAllocator>::is_stateful>
   {
   };
 

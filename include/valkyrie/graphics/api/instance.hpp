@@ -5,18 +5,17 @@
 #ifndef VALKYRIE_GRAPHICS_API_INSTANCE_HPP
 #define VALKYRIE_GRAPHICS_API_INSTANCE_HPP
 
+
+#include "vulkan.hpp"
+
 #include <valkyrie/adt/arrays.hpp>
-#include <valkyrie/graphics/api/physical_device.hpp>
-#include <valkyrie/graphics/api/vulkan.hpp>
 
 #include <valkyrie/utility/version.hpp>
 #include <valkyrie/adt/string_view.hpp>
-#include <valkyrie/status/status_code.hpp>
-
 
 namespace valkyrie::graphics::api{
 
-  enum class InstanceExtensionID : u32;
+  /*enum class InstanceExtensionID : u32;
   enum class LayerID : u32;
   enum class ValidationFeatureID : u32;
 
@@ -25,7 +24,7 @@ namespace valkyrie::graphics::api{
     version version;
   };
 
-  class instance : public VulkanObject{
+  class instance : public vulkan_object{
     class Impl;
     Impl* pImpl;
   public:
@@ -42,7 +41,7 @@ namespace valkyrie::graphics::api{
     static LayerID parseLayer(std::string_view layerName) noexcept;
 
 
-    surface createSurface(Extent2D<> extents) const noexcept;
+    surface createSurface(extent2d<> extents) const noexcept;
 
 
     status enable(InstanceExtensionID extensionId) noexcept;
@@ -60,74 +59,173 @@ namespace valkyrie::graphics::api{
     bool isAvailable(ValidationFeatureID validationFeatureId) const noexcept;
 
     span<const physical_device>   physicalDevices() const noexcept;
+  };*/
+
+  VK_declare_struct(instance_create_info);
+  VK_declare_struct(application_info);
+  VK_declare_struct(debug_utils_label_EXT);
+  VK_declare_struct(debug_utils_object_name_info_EXT);
+  VK_declare_struct(debug_utils_messenger_create_info_EXT);
+  VK_declare_struct(validation_features_EXT);
+  VK_declare_struct(debug_utils_messenger_callback_data_EXT);
+
+  VK_define_in_struct(application_info){
+
+    application_info() = default;
+    application_info(utf8_string appName, version appVersion, utf8_string engName, version engVersion) noexcept
+        : applicationName(appName),
+          applicationVersion(appVersion),
+          engineName(engName),
+          engineVersion(engVersion)
+    {}
+
+    application_info& set_application_name(utf8_string name) noexcept {
+      applicationName = name;
+      return *this;
+    }
+    application_info& set_application_version(version appVersion) noexcept {
+      applicationVersion = appVersion;
+      return *this;
+    }
+    application_info& set_engine_name(utf8_string name) noexcept {
+      engineName = name;
+      return *this;
+    }
+    application_info& set_engine_version(version engVersion) noexcept {
+      engineVersion = engVersion;
+      return *this;
+    }
+
+  private:
+    utf8_string        applicationName;
+    version            applicationVersion;
+    utf8_string        engineName;
+    version            engineVersion;
+    version            apiVersion = version(1, 2, 0);
   };
 
-  enum class ValidationFeatureEnable{
-    GpuAssisted = 0,
-    GpuAssistedReserveBindingSlot = 1,
-    BestPractices = 2,
-    DebugPrintf = 3,
-    SynchronizationValidation = 4,
-  };
-  enum class ValidationFeatureDisable{
-    All = 0,
-    Shaders = 1,
-    ThreadSafety = 2,
-    ApiParameters = 3,
-    ObjectLifetimes = 4,
-    CoreChecks = 5,
-    UniqueHandles = 6,
+  VK_define_in_struct(instance_create_info){
+    instance_create_info() = default;
+
+    instance_create_info(const application_info& appInfo,
+                         std::span<const cstring> enabledLayers,
+                         std::span<const cstring> enabledExtensions) noexcept
+        : pApplicationInfo(&appInfo),
+          enabledLayerCount(enabledLayers.size()),
+          ppEnabledLayerNames(enabledLayers.data()),
+          enabledExtensionCount(enabledExtensions.size()),
+          ppEnabledExtensionNames(enabledExtensions.data()){}
+
+  private:
+    u32                     flags = 0;
+    const application_info* pApplicationInfo;
+    u32                     enabledLayerCount;
+    const cstring*          ppEnabledLayerNames;
+    u32                     enabledExtensionCount;
+    const cstring*          ppEnabledExtensionNames;
   };
 
-  class ApplicationInfo : public InputStruct{
-    const utf8*   applicationName = u8"";
-    version applicationVersion{};
-    const utf8*   engineName = u8"";
-    version engineVersion{};
-    version apiVersion{};
-  public:
-    constexpr ApplicationInfo() noexcept : InputStruct((StructureType)0){}
 
-    constexpr ApplicationInfo& setName(string_view appName) noexcept {
-      applicationName = appName.data();
+
+
+  using PFN_debug_utils_messenger_callback_EXT = bool32(VK_stdcall*)(flag_bits::debug_message_severity_EXT severity,
+                                                                     flag_bits::debug_message_type_EXT type,
+                                                                     const debug_utils_messenger_callback_data_EXT* callbackData,
+                                                                     void* userData);
+
+
+  VK_define_in_struct(validation_features_EXT, instance_create_info){
+
+    validation_features_EXT() = default;
+    validation_features_EXT(std::span<const validation_feature_enable_EXT> enabledFeatures,
+                            std::span<const validation_feature_disable_EXT> disabledFeatures) noexcept
+        : enabledValidationFeatureCount(enabledFeatures.size()),
+          pEnabledValidationFeatures(enabledFeatures.data()),
+          disabledValidationFeatureCount(disabledFeatures.size()),
+          pDisabledValidationFeatures(disabledFeatures.data())
+    {}
+
+    validation_features_EXT& set_enabled_features(std::span<const validation_feature_enable_EXT> enabledFeatures) noexcept {
+      enabledValidationFeatureCount = enabledFeatures.size();
+      pEnabledValidationFeatures = enabledFeatures.data();
       return *this;
     }
-    constexpr ApplicationInfo& setVersion(version version) noexcept {
-      this->applicationVersion = version;
+    validation_features_EXT& set_disabled_features(std::span<const validation_feature_disable_EXT> disabledFeatures) noexcept {
+      disabledValidationFeatureCount = disabledFeatures.size();
+      pDisabledValidationFeatures = disabledFeatures.data();
       return *this;
     }
-    constexpr ApplicationInfo& setEngineName(string_view engName) noexcept {
-      engineName = engName.data();
-      return *this;
-    }
-    constexpr ApplicationInfo& setEngineVersion(version version) noexcept {
-      this->engineVersion = version;
-      return *this;
-    }
-    constexpr ApplicationInfo& setApiVersion(version version) noexcept {
-      this->apiVersion = version;
-      return *this;
-    }
-  };
-  class ValidationFeatures : public InputStruct{
+
+  private:
     u32 enabledValidationFeatureCount = 0;
-    const ValidationFeatureEnable* pEnabledValidationFeatures = nullptr;
+    const validation_feature_enable_EXT* pEnabledValidationFeatures = nullptr;
     u32 disabledValidationFeatureCount = 0;
-    const ValidationFeatureDisable* pDisabledValidationFeatures = nullptr;
-  public:
-    constexpr ValidationFeatures() noexcept : InputStruct((StructureType)1000247000){}
-
-    constexpr ValidationFeatures& enable(span<ValidationFeatureEnable> enabled) noexcept {
-      enabledValidationFeatureCount = enabled.size();
-      pEnabledValidationFeatures = enabled.data();
-      return *this;
-    }
-    constexpr ValidationFeatures& disable(span<ValidationFeatureDisable> disabled) noexcept {
-      disabledValidationFeatureCount = disabled.size();
-      pDisabledValidationFeatures = disabled.data();
-      return *this;
-    }
+    const validation_feature_disable_EXT* pDisabledValidationFeatures = nullptr;
   };
+  VK_define_in_struct(debug_utils_messenger_create_info_EXT, instance_create_info){
+
+
+    debug_utils_messenger_create_info_EXT() = default;
+    debug_utils_messenger_create_info_EXT(debug_message_severity_flags_EXT       severities,
+                                          debug_message_type_flags_EXT           types,
+                                          PFN_debug_utils_messenger_callback_EXT callback,
+                                          void*                                  userData) noexcept
+        : messageSeverities(severities),
+          messageTypes(types),
+          callback(callback),
+          pUserData(userData)
+    {}
+
+    debug_utils_messenger_create_info_EXT& set_severity_flags(debug_message_severity_flags_EXT severityFlags) noexcept {
+      messageSeverities = severityFlags;
+      return *this;
+    }
+    debug_utils_messenger_create_info_EXT& set_type_flags(debug_message_type_flags_EXT typeFlags) noexcept {
+      messageTypes = typeFlags;
+      return *this;
+    }
+    debug_utils_messenger_create_info_EXT& set_callback(PFN_debug_utils_messenger_callback_EXT pfnCallback, void* userData) noexcept {
+      callback = pfnCallback;
+      pUserData = userData;
+      return *this;
+    }
+
+  private:
+    u32                                    flags = 0;
+    debug_message_severity_flags_EXT       messageSeverities;
+    debug_message_type_flags_EXT           messageTypes;
+    PFN_debug_utils_messenger_callback_EXT callback;
+    void*                                  pUserData;
+  };
+
+  VK_define_in_struct(debug_utils_label_EXT){
+    utf8_string label_name;
+    struct {
+      f32 r;
+      f32 g;
+      f32 b;
+      f32 a;
+    } color;
+  };
+  VK_define_in_struct(debug_utils_object_name_info_EXT){
+    object_type objectType;
+    u64         objectHandle;
+    utf8_string name;
+  };
+
+  VK_define_in_struct(debug_utils_messenger_callback_data_EXT){
+    u32                                     flags;
+    utf8_string                             pMessageIdName;
+    i32                                     messageIdNumber;
+    utf8_string                             pMessage;
+    u32                                     queueLabelCount;
+    const debug_utils_label_EXT*            pQueueLabels;
+    u32                                     cmdBufLabelCount;
+    const debug_utils_label_EXT*            pCmdBufLabels;
+    u32                                     objectCount;
+    const debug_utils_object_name_info_EXT* pObjects;
+  };
+
 }
 
 #endif//VALKYRIE_GRAPHICS_API_INSTANCE_HPP

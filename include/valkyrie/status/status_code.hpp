@@ -17,6 +17,7 @@ namespace valkyrie{
   template <typename>
   class erased;
 
+  class twine;
 
   class generic_domain;
   template <typename E>
@@ -29,6 +30,8 @@ namespace valkyrie{
   VK_noreturn void panic(const utf8* pMessage) noexcept;
   VK_noreturn void panic(const status_code<void>& statusCode) noexcept;
   VK_noreturn void panic(const status_code<void>& statusCode, const utf8* pMessage) noexcept;
+  VK_noreturn void panic(twine&& message) noexcept;
+  VK_noreturn void panic(const status_code<void>& code, twine&& message) noexcept;
 
 
 

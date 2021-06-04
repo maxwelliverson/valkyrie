@@ -344,7 +344,7 @@ namespace valkyrie{
     };
 
     template <typename From, typename To>
-    concept erasure_castable_to = bitwise_movable<From> || bitwise_movable<To>;
+    concept erasure_castable_to = bitwise_movable_c<From> || bitwise_movable_c<To>;
     template <typename From, typename To>
     concept static_erasure_castable_to = erasure_castable_to<From, To> && static_castable_from<To, From>;
 
@@ -363,14 +363,25 @@ namespace valkyrie{
     concept static_smaller_erasure_castable_to = static_erasure_castable_to<From, To> && smaller_than<From, To>;
 
     template <typename T>
-    using underlying_type = typename std::conditional_t<std::is_enum_v<T>, std::underlying_type_t<T>, identity_type_t<T>>::type;
+    struct maybe_underlying_type{
+      using type = T;
+    };
+    template <typename T> requires (std::is_enum_v<T>)
+    struct maybe_underlying_type<T>{
+      using type = std::underlying_type_t<T>;
+    };
+
+    template <typename T>
+    using _underlying_type = typename maybe_underlying_type<T>::type;
 
     template <typename OfSize, typename OfSign>
-    using erasure_integer_type = std::conditional_t<std::signed_integral<underlying_type<OfSign>>, std::make_signed_t<underlying_type<OfSize>>, std::make_unsigned_t<underlying_type<OfSize>>>;
+    using erasure_integer_type = std::conditional_t<std::signed_integral<_underlying_type<OfSign>>,
+                                                    std::make_signed_t<_underlying_type<OfSize>>,
+                                                    std::make_unsigned_t<_underlying_type<OfSize>>>;
 
     template <typename ErasedType, size_t N>
     struct padded_erasure_object{
-      static_assert(bitwise_movable<ErasedType>, "ErasedType must be BitCopyMovable");
+      static_assert(bitwise_movable_c<ErasedType>, "ErasedType must be BitCopyMovable");
       static_assert(alignof(ErasedType) <= sizeof(ErasedType), "ErasedType must not be over-aligned");
 
       ErasedType Val;
@@ -386,7 +397,7 @@ namespace valkyrie{
     };
 
     template <typename To, typename From>
-    concept safely_erasable_from = bitwise_movable<From> && (sizeof(status_sizer<From>) <= sizeof(status_sizer<To>));
+    concept safely_erasable_from = bitwise_movable_c<From> && (sizeof(status_sizer<From>) <= sizeof(status_sizer<To>));
 
     template <typename Arg, typename ...Args>
     concept has_make_status_code = requires(Arg&& arg, Args&& ...args){
@@ -479,8 +490,6 @@ namespace valkyrie{
   }
 
 
-
-
   /*template <typename T, typename U>
   requires(std::convertible_to<T*, U*> && sizeof(T) == sizeof(U) && alignof(T) == alignof(U))
   struct traits::Alias<T, U>{
@@ -567,13 +576,6 @@ namespace valkyrie{
       return reified_ptr_traits_t<From>::toPointer(*ptr_cast<const T>(ptr_traits_t<From>::toAddress(std::forward<From>(pValue))));
     }
   };*/
-
-
-
-
-
-
-
 
 
 }

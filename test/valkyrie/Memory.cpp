@@ -2,8 +2,8 @@
 // Created by Maxwell on 2021-01-01.
 //
 
-#include <valkyrie/Memory/small_object_allocator.hpp>
 #include <valkyrie/adt/interval.hpp>
+#include <valkyrie/memory/allocators/small_object_allocator.hpp>
 
 namespace detail{
 

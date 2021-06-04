@@ -36,7 +36,7 @@ namespace valkyrie{
     }
   };
 
-  constexpr version decodeCompactVersion(u32 version_) noexcept{
+  constexpr version decode_compact_version(u32 version_) noexcept{
     return version(version_ >> 22, (version_ >> 12) & 0x0000'03FFu, version_ & 0x0000'0FFFu);
   }
 }

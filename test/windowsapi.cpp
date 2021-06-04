@@ -238,11 +238,6 @@ namespace lfpAlloc {
       PoolDispatcher<NumPools>::pools_;
 }*/
 
-
-
-
-
-
 #include <valkyrie/status/result.hpp>
 
 
@@ -251,15 +246,261 @@ namespace lfpAlloc {
 #include <windows.h>
 #include <memoryapi.h>
 
+#pragma comment(lib, "mincore")
+
+#define COLOR(FGBG, CODE, BOLD) "\033[0;" BOLD FGBG CODE "m"
+
+#define ALLCOLORS(FGBG,BOLD) {\
+COLOR(FGBG, "0", BOLD),\
+COLOR(FGBG, "1", BOLD),\
+COLOR(FGBG, "2", BOLD),\
+COLOR(FGBG, "3", BOLD),\
+COLOR(FGBG, "4", BOLD),\
+COLOR(FGBG, "5", BOLD),\
+COLOR(FGBG, "6", BOLD),\
+COLOR(FGBG, "7", BOLD)\
+}
+
+constexpr static const char colorcodes[2][2][8][10] = {
+    { ALLCOLORS("3",""), ALLCOLORS("3","1;") },
+    { ALLCOLORS("4",""), ALLCOLORS("4","1;") }
+};
+
+void setup_color_output() {
+  HANDLE Console = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD Mode;
+  GetConsoleMode(Console, &Mode);
+  Mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  SetConsoleMode(Console, Mode);
+}
+
+enum class color {
+  black = 0,
+  red,
+  green,
+  yellow,
+  blue,
+  magenta,
+  cyan,
+  white,
+  savedcolor,
+  reset
+  };
+
+constexpr static struct bold_{} bold;
+
+template <bool IsBold>
+struct background{
+  color colorCode;
+
+  background(color c) : colorCode(c){}
+  background(color c, bold_) : colorCode(c){}
+};
+template <bool IsBold>
+struct foreground{
+  color colorCode;
+
+  foreground(color c) : colorCode(c){}
+  foreground(color c, bold_) : colorCode(c){}
+};
+
+background(color)        -> background<false>;
+background(color, bold_) -> background<true>;
+
+foreground(color)        -> foreground<false>;
+foreground(color, bold_) -> foreground<true>;
+
+
+
+std::pair<color, bool> get_current_color(bool bg) noexcept {
+  WORD colorWord = 0;
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+    colorWord = csbi.wAttributes;
+  }
+  WORD colors;
+  bool isBold;
+  if (bg) {
+    colors = ((colorWord&BACKGROUND_RED) ? 0x1 : 0) |
+             ((colorWord&BACKGROUND_GREEN) ? 0x2 : 0) |
+             ((colorWord&BACKGROUND_BLUE) ? 0x4 : 0);
+    isBold = (colorWord&BACKGROUND_INTENSITY);
+  } else {
+    colors = ((colorWord&1) ? FOREGROUND_RED : 0) |
+        ((colorWord&2) ? FOREGROUND_GREEN : 0 ) |
+        ((colorWord&4) ? FOREGROUND_BLUE : 0);
+    isBold = (colorWord&FOREGROUND_INTENSITY);
+  }
+  return { static_cast<color>(colors), isBold };
+}
+
+class formatted_output{
+  const char* originalFgColorCode;
+  const char* originalBgColorCode;
+
+  color foregroundColor;
+  color backgroundColor;
+
+  bool  foregroundIsBold;
+  bool  backgroundIsBold;
+
+
+  std::ostream& os;
+
+  static const char* colorCode(color code, bool isBold, bool background) noexcept {
+    return colorcodes[background][isBold][static_cast<std::underlying_type_t<color>>(code)&0x7];
+  }
+
+public:
+  formatted_output(std::ostream& os)
+      : os(os){
+    std::tie(foregroundColor, foregroundIsBold) = get_current_color(false);
+    std::tie(backgroundColor, backgroundIsBold) = get_current_color(true);
+    originalFgColorCode = colorCode(foregroundColor, foregroundIsBold, false);
+    originalBgColorCode = colorCode(backgroundColor, backgroundIsBold, true);
+  }
+
+  friend formatted_output& operator<<(formatted_output& OS, const valkyrie::string_ref& string) {
+    OS.os.write(string.c_str(), string.size());
+    return OS;
+  }
+
+  template <bool IsBold>
+  friend formatted_output& operator<<(formatted_output& OS, background<IsBold> bg) noexcept {
+    if ( bg.colorCode == color::reset )
+      OS.os << OS.originalBgColorCode;
+    else
+      OS.os << colorCode(bg.colorCode, IsBold, true);
+    return OS;
+  }
+  template <bool IsBold>
+  friend formatted_output& operator<<(formatted_output& OS, foreground<IsBold> fg) noexcept {
+    if ( fg.colorCode == color::reset )
+      OS.os << OS.originalFgColorCode;
+    else
+      OS.os << colorCode(fg.colorCode, IsBold, false);
+    return OS;
+  }
+  template <typename T> requires(requires(std::ostream& o, T&& t){ o << std::forward<T>(t); })
+  friend formatted_output& operator<<(formatted_output& OS, T&& t) noexcept {
+    OS.os << std::forward<T>(t);
+    return OS;
+  }
+};
+
+
 int main(){
 
-  LARGE_INTEGER freq;
+  setup_color_output();
+
+  formatted_output os(std::cout);
+
+  /*HMODULE kernel = GetModuleHandle("KernelBase");
+  auto* const VirtualAlloc2 = (PVOID(*)(HANDLE,PVOID,SIZE_T,ULONG,ULONG,PMEM_EXTENDED_PARAMETER,ULONG))GetProcAddress(kernel, "VirtualAlloc2");
+  auto* const VirtualFree   = (BOOL(*)(PVOID, ULONG, SIZE_T))GetProcAddress(kernel, "VirtualFree");
+*/
+
+  /*LARGE_INTEGER freq;
   if (!QueryPerformanceFrequency(&freq))
     panic(valkyrie::sys::win32::get_last_error());
 
   std::cout << "PerfCounterFrequency => " << freq.QuadPart << std::endl;
   std::cout << "Large Page Size: " << GetLargePageMinimum() << std::endl;
-  std::cout << "Hello World" << std::endl;
+  std::cout << "Hello World" << std::endl;*/
+
+  using valkyrie::sys::win32::get_last_error;
+  using valkyrie::system_status;
+
+  system_status status;
+  SYSTEM_INFO sysInfo;
+  HANDLE procHandle;
+  HANDLE mappedFile;
+  size_t oneSize;
+  size_t twoSize;
+  size_t threeSize;
+  void*  placeholderOne;
+  void*  placeholderTwo;
+  void*  placeholderThree;
+  void*  committedOne;
+  void*  committedTwo;
+  void*  committedThree;
+  size_t pageSize;
+  size_t totalAllocSize;
+  BOOL boolResult;
+
+#define print_results(Func, b) Func; do {        \
+              os << foreground(color::magenta, bold); \
+              os << #Func ": ";                       \
+                                                 \
+              if ( b ) {                         \
+                status = system_status(NO_ERROR);  \
+                os << foreground(color::green);                                \
+              }             \
+              else {                             \
+                status = get_last_error();                                  \
+                os << foreground(color::red);                                 \
+              }\
+              os << status.message() << "\n";                                   \
+              } while(false);
+  
+
+
+  committedOne = nullptr;
+  committedTwo = nullptr;
+  committedThree = nullptr;
+
+  GetSystemInfo(&sysInfo);
+
+  pageSize         = sysInfo.dwAllocationGranularity;
+  totalAllocSize   = pageSize * 64;
+
+
+  oneSize          = pageSize * 4;
+  twoSize          = pageSize * 16;
+  threeSize        = totalAllocSize - (oneSize + twoSize);
+  placeholderOne   = print_results(VirtualAlloc2(nullptr,
+                                      nullptr,
+                                      totalAllocSize,
+                                      MEM_RESERVE | MEM_RESERVE_PLACEHOLDER,
+                                      PAGE_NOACCESS,
+                                      nullptr,
+                                      0), placeholderOne);
+
+  mappedFile       = print_results(CreateFileMapping(GetCurrentProcess(), nullptr, PAGE_READWRITE, 0, totalAllocSize, nullptr), mappedFile);
+
+  committedOne     = print_results(MapViewOfFile3(mappedFile, nullptr, placeholderOne, 0, totalAllocSize, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0), committedOne);
+
+  boolResult       = print_results(UnmapViewOfFile2(GetCurrentProcess(), committedOne, MEM_PRESERVE_PLACEHOLDER), boolResult);
+
+  boolResult       = print_results(VirtualFree(placeholderOne, oneSize, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER), boolResult);
+  placeholderTwo   = static_cast<char*>(placeholderOne) + oneSize;
+  boolResult       = print_results(VirtualFree(placeholderTwo, twoSize, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER), boolResult);
+  placeholderThree = static_cast<char*>(placeholderTwo) + twoSize;
+
+  committedOne     = print_results(VirtualAlloc2(nullptr, placeholderOne, oneSize,     MEM_RESERVE | MEM_COMMIT | MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0), committedOne);
+  committedTwo     = print_results(VirtualAlloc2(nullptr, placeholderTwo, twoSize,     MEM_RESERVE | MEM_COMMIT | MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0), committedTwo);
+  committedThree   = print_results(VirtualAlloc2(nullptr, placeholderThree, threeSize, MEM_RESERVE | MEM_COMMIT | MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0), committedThree);
+
+  boolResult       = print_results(VirtualFree(placeholderOne, oneSize + twoSize, MEM_RELEASE | MEM_COALESCE_PLACEHOLDERS), boolResult);
+  boolResult       = print_results(VirtualFree(placeholderTwo, twoSize, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER), boolResult);
+  boolResult       = print_results(VirtualFree(placeholderOne, oneSize + twoSize, MEM_RELEASE | MEM_COALESCE_PLACEHOLDERS), boolResult);
+  boolResult       = print_results(VirtualFree(placeholderOne, oneSize, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER), boolResult);
+  boolResult       = print_results(VirtualFree(placeholderOne, oneSize + twoSize, MEM_RELEASE | MEM_COALESCE_PLACEHOLDERS), boolResult);
+
+  if ( committedOne )
+    boolResult = print_results(VirtualFree(committedOne, oneSize, MEM_PRESERVE_PLACEHOLDER), boolResult);
+  if ( committedTwo )
+    boolResult = print_results(VirtualFree(committedTwo, twoSize, MEM_PRESERVE_PLACEHOLDER), boolResult);
+  if ( committedThree )
+    boolResult = print_results(VirtualFree(committedThree, threeSize, MEM_PRESERVE_PLACEHOLDER), boolResult);
+  
+  if ( placeholderOne )
+    boolResult = print_results(VirtualFree(placeholderOne, 0, MEM_RELEASE), boolResult);
+  if ( placeholderTwo )
+    boolResult = print_results(VirtualFree(placeholderTwo, 0, MEM_RELEASE), boolResult);
+  if ( placeholderThree )
+    boolResult = print_results(VirtualFree(placeholderThree, 0, MEM_RELEASE), boolResult);
+
 
   return 0;
 }

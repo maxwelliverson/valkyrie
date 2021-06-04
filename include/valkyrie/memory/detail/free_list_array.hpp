@@ -5,6 +5,8 @@
 #ifndef VALKYRIE_MEMORY_DETAIL_FREE_LIST_ARRAY_HPP
 #define VALKYRIE_MEMORY_DETAIL_FREE_LIST_ARRAY_HPP
 
+#include "memory_stack.hpp"
+
 namespace valkyrie::detail{
   // an array of free_memory_list types
   // indexed via size, AccessPolicy does necessary conversions

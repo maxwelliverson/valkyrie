@@ -6,8 +6,8 @@
 #define VALKYRIE_GRAPHICS_API_RENDER_PASS_HPP
 
 namespace valkyrie::graphics::api{
-  class RenderPass{};
-  class SubPass{};
+  class render_pass{};
+  class subpass{};
 }
 
 

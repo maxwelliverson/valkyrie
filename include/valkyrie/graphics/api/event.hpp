@@ -8,7 +8,7 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class Event{};
+  class event : public vulkan_object{};
 }
 
 #endif//VALKYRIE_GRAPHICS_API_EVENT_HPP

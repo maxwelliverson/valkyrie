@@ -27,98 +27,96 @@
 
 
 
-namespace valkyrie::graphics::api::Internal{
+namespace valkyrie::graphics::api::internal{
   
-  using InstanceAPI       = const InstanceFunctions*;
-  using PhysicalDeviceAPI = const PhysicalDeviceFunctions*;
-  using DeviceAPI         = const DeviceFunctions*;
-  using QueueAPI          = const QueueFunctions*;
-  using CommandBufferAPI  = const CommandBufferFunctions*;
+  using instance_api        = const InstanceFunctions*;
+  using physical_device_api = const PhysicalDeviceFunctions*;
+  using device_api          = const DeviceFunctions*;
+  using queue_api           = const QueueFunctions*;
+  using command_buffer_api  = const CommandBufferFunctions*;
 
-  using InternalAllocator = const VkAllocationCallbacks*;
+  using internal_allocator = const VkAllocationCallbacks*;
 
-  using PhysicalDeviceNameString = boost::static_string<VK_MAX_PHYSICAL_DEVICE_NAME_SIZE>;
-  using NameString               = boost::static_string<VK_MAX_EXTENSION_NAME_SIZE>;
-  using DescriptionString        = boost::static_string<VK_MAX_DESCRIPTION_SIZE>;
+  using physical_device_name_string = boost::static_string<VK_MAX_PHYSICAL_DEVICE_NAME_SIZE>;
+  using extension_name_string       = boost::static_string<VK_MAX_EXTENSION_NAME_SIZE>;
+  using description_string          = boost::static_string<VK_MAX_DESCRIPTION_SIZE>;
 
-  struct InstanceImpl;
+  struct instance_impl;
   struct ApplicationImpl;
-  struct DeviceImpl;
-  struct QueueImpl;
-  struct CommandBufferImpl;
+  struct device_impl;
+  struct queue_impl;
+  struct command_buffer_impl;
 
 
 
 
-  struct InstanceExtension{
-    std::string             name;
-    InstanceExtensionID     id;
-    valkyrie::version specVersion;
-    bool                    isEnabled;
+  struct instance_extension {
+    
+    extension_name_string name;
+    InstanceExtensionID  id;
+    version               specVersion;
+    bool                  isEnabled;
 
 
-    InstanceExtension(const VkExtensionProperties& props) noexcept
+    instance_extension(const VkExtensionProperties& props) noexcept
         : name(props.extensionName, std::strlen(props.extensionName)),
-          id(getInstanceExtensionID(name)),
+          id(getInstanceExtensionID(std::string_view(name.data(), name.length()))),
           specVersion(props.specVersion),
           isEnabled(false){}
 
-    friend bool operator==(const InstanceExtension& A, InstanceExtensionID extensionId) noexcept {
+    friend bool operator==(const instance_extension& A, InstanceExtensionID extensionId) noexcept {
       return A.id == extensionId;
     }
-    friend auto operator<=>(const InstanceExtension& A, InstanceExtensionID extensionId) noexcept {
+    friend auto operator<=>(const instance_extension& A, InstanceExtensionID extensionId) noexcept {
       return A.id <=> extensionId;
     }
-    friend bool operator==(const InstanceExtension& A, const InstanceExtension& B) noexcept {
+    friend bool operator==(const instance_extension& A, const instance_extension& B) noexcept {
       return A.id == B.id;
     }
-    friend auto operator<=>(const InstanceExtension& A, const InstanceExtension& B) noexcept {
+    friend auto operator<=>(const instance_extension& A, const instance_extension& B) noexcept {
       return A.id <=> B.id;
     }
   };
-  struct DeviceExtension{
-    std::string             name;
-    DeviceExtensionID       id;
-    valkyrie::version specVersion;
-    bool                    isEnabled;
+  struct device_extension{
+    
+    extension_name_string name;
+    DeviceExtensionID     id;
+    version               specVersion;
+    bool                  isEnabled;
 
 
-    DeviceExtension(const VkExtensionProperties& props) noexcept
+    device_extension(const VkExtensionProperties& props) noexcept
         : name(props.extensionName, std::strlen(props.extensionName)),
-          id(getDeviceExtensionID(name)),
+          id(getDeviceExtensionID(std::string_view(name.data(), name.length()))),
           specVersion(props.specVersion),
           isEnabled(false){}
 
-    friend bool operator==(const DeviceExtension& A, DeviceExtensionID extensionId) noexcept {
+    friend bool operator==(const device_extension& A, DeviceExtensionID extensionId) noexcept {
       return A.id == extensionId;
     }
-    friend auto operator<=>(const DeviceExtension& A, DeviceExtensionID extensionId) noexcept {
+    friend auto operator<=>(const device_extension& A, DeviceExtensionID extensionId) noexcept {
       return A.id <=> extensionId;
     }
-    friend bool operator==(const DeviceExtension& A, const DeviceExtension& B) noexcept {
+    friend bool operator==(const device_extension& A, const device_extension& B) noexcept {
       return A.id == B.id;
     }
-    friend auto operator<=>(const DeviceExtension& A, const DeviceExtension& B) noexcept {
+    friend auto operator<=>(const device_extension& A, const device_extension& B) noexcept {
       return A.id <=> B.id;
     }
   };
-  struct Layer{
-    NameString        name;
-    DescriptionString description;
-    LayerID           id;
-    version specVersion;
-    version implementationVersion;
-    bool              isEnabled;
+  struct layer{
+    extension_name_string name;
+    description_string    description;
+    LayerID               id;
+    version               specVersion;
+    version               implementationVersion;
+    bool                  isEnabled;
   };
 
-  struct PhysicalDeviceFeatures{
-    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilitySubset{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR,
-        .pNext = nullptr
-    };
+  struct physical_device_features{
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-        .pNext = &portabilitySubset
+        .pNext = nullptr
     };
     VkPhysicalDeviceRayQueryFeaturesKHR rayQuery{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
@@ -320,7 +318,7 @@ namespace valkyrie::graphics::api::Internal{
         .pNext = &vulkan11
     };
   };
-  struct PhysicalDeviceProperties{
+  struct physical_device_properties{
     /*VkPhysicalDevicePortabilitySubsetPropertiesKHR portabilitySubset{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR,
         .pNext = nullptr
@@ -458,7 +456,7 @@ namespace valkyrie::graphics::api::Internal{
         .pNext = &vulkan11
     };
   };
-  struct MemoryProperties{
+  struct memory_properties{
     VkPhysicalDeviceMemoryBudgetPropertiesEXT budgetProperties{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT,
         .pNext = nullptr
@@ -468,7 +466,7 @@ namespace valkyrie::graphics::api::Internal{
         .pNext = &budgetProperties
     };
   };
-  struct SurfaceCapabilities{
+  struct surface_capabilities{
     VkSharedPresentSurfaceCapabilitiesKHR sharedPresent{
         .sType = VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR,
         .pNext = nullptr
@@ -481,7 +479,7 @@ namespace valkyrie::graphics::api::Internal{
         .sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR,
         .pNext = &fullScreen};
   };
-  struct SurfaceInfo{
+  struct surface_info{
     VkSurfaceFullScreenExclusiveWin32InfoEXT fullscreenWin32Info{
       .sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT,
       .pNext = nullptr
@@ -496,15 +494,16 @@ namespace valkyrie::graphics::api::Internal{
     };
   };
 
-  struct PerformanceCounter{
+  struct performance_counter{
 
-    VkPerformanceCounterKHR handle;
-    PerformanceCounterFlags flags;
-    NameString              name;
-    DescriptionString       category;
-    DescriptionString       description;
+    VkPerformanceCounterKHR   handle;
+    performance_counter_flags flags;
+    extension_name_string     name;
+    description_string        category;
+    description_string        description;
 
-    PerformanceCounter(VkPerformanceCounterKHR counter, VkPerformanceCounterDescriptionKHR desc) noexcept
+    performance_counter(VkPerformanceCounterKHR counter,
+                        const VkPerformanceCounterDescriptionKHR& desc) noexcept
         : handle(counter),
           flags(desc.flags),
           name(desc.name),
@@ -512,30 +511,32 @@ namespace valkyrie::graphics::api::Internal{
           description(desc.description){}
   };
 
-  struct QueueFamily{
-    QueueFlags                   queueFlags;
-    u32                          queueCount;
-    u32                          timestampValidBits;
-    Extent3D<MinU32> imageTransferGranularity;
-    PipelineStageFlags           checkpointExecutionStageMask;
-    //small_vector<PerformanceCounter> performanceCounters{};
+  struct queue_family{
+    queue_flags                      queueFlags;
+    u32                              queueCount;
+    u32                              timestampValidBits;
+    extent3d<lower_bound<u32>>       imageTransferGranularity;
+    pipeline_stage2_flags            checkpointExecutionStageMask;
+    small_array<performance_counter, 0> performanceCounters;
 
-    explicit QueueFamily(const VkQueueFamilyProperties& props) noexcept
+    explicit queue_family(const VkQueueFamilyProperties& props) noexcept
         : queueFlags(props.queueFlags),
           queueCount(props.queueCount),
           timestampValidBits(props.timestampValidBits),
           imageTransferGranularity{ props.minImageTransferGranularity.width,
                                     props.minImageTransferGranularity.height,
                                     props.minImageTransferGranularity.depth },
-          checkpointExecutionStageMask{}{}
-    QueueFamily(const VkQueueFamilyProperties& props, const VkQueueFamilyCheckpointPropertiesNV& checkpointProps) noexcept
+          checkpointExecutionStageMask{},
+          performanceCounters(){}
+    queue_family(const VkQueueFamilyProperties& props, const VkQueueFamilyCheckpointPropertiesNV& checkpointProps) noexcept
         : queueFlags(props.queueFlags),
           queueCount(props.queueCount),
           timestampValidBits(props.timestampValidBits),
           imageTransferGranularity{ props.minImageTransferGranularity.width,
                                     props.minImageTransferGranularity.height,
                                     props.minImageTransferGranularity.depth },
-          checkpointExecutionStageMask(checkpointProps.checkpointExecutionStageMask){}
+          checkpointExecutionStageMask(checkpointProps.checkpointExecutionStageMask),
+          performanceCounters(){}
   };
 
   
@@ -546,11 +547,11 @@ namespace valkyrie::graphics::api::Internal{
 
   };
 
-  struct SurfaceImpl{
+  struct surface_impl{
     VkSurfaceKHR  handle;
-    InstanceImpl* pInstance;
+    instance_impl* pInstance;
 
-    InternalAllocator allocator;
+    internal_allocator allocator;
 
     std::atomic_uint32_t refCount;
 
@@ -560,29 +561,29 @@ namespace valkyrie::graphics::api::Internal{
 
     system_status lastResult;
 
-    Extent2D<> dims;
+    extent2d<> dims;
   };
 
-  void destroySurfaceRef(Internal::SurfaceImpl* pImpl) noexcept;
+  void destroySurfaceRef(internal::surface_impl* pImpl) noexcept;
 
-  struct PhysicalDeviceImpl{
+  struct physical_device_impl{
     VkPhysicalDevice  handle;
-    InstanceImpl*     pInstance;
-    PhysicalDeviceAPI pInterface;
+    instance_impl*     pInstance;
+    physical_device_api pInterface;
 
-    InternalAllocator internalAllocator;
+    internal_allocator internalAllocator;
 
 
-    mutable PhysicalDeviceFeatures availableFeatures;
-    PhysicalDeviceFeatures enabledFeatures;
-    mutable PhysicalDeviceProperties properties;
-    mutable MemoryProperties memoryProperties;
+    mutable physical_device_features availableFeatures;
+    physical_device_features enabledFeatures;
+    mutable physical_device_properties properties;
+    mutable memory_properties memoryProperties;
 
-    mutable flat_set<DeviceExtension> extensions;
+    mutable flat_set<device_extension> extensions;
 
     mutable flat_map<VkFormat, VkFormatProperties2> formatProperties;
-    mutable static_vector<QueueFamily, 8> queueFamilies;
-    mutable flat_map<FlagBits::SampleCount, Extent2D<MaxU32>> sampleLocationMap;
+    mutable static_vector<queue_family, 8> queueFamilies;
+    mutable flat_map<flag_bits::sample_count, extent2d<upper_bound<u32>>> sampleLocationMap;
     mutable static_vector<VkTimeDomainEXT, 4> timeDomains;
     mutable vector<VkCooperativeMatrixPropertiesNV> cooperativeMatrixProperties;
 
@@ -592,10 +593,10 @@ namespace valkyrie::graphics::api::Internal{
     mutable bool queueFamiliesLoaded = false;
   };
 
-  struct InstanceImpl{
+  struct instance_impl{
     VkInstance handle;
     FreeFunctions freeFunctions;
-    InstanceAPI instanceFunctions;
+    instance_api instanceFunctions;
 
     VkAllocationCallbacks allocationCallbacks = VkAllocationCallbacks{
       .pUserData             = nullptr,
@@ -612,16 +613,16 @@ namespace valkyrie::graphics::api::Internal{
     std::u8string engineName;
 
 
-    mutable flat_set<Layer>             layers;
-    mutable flat_set<InstanceExtension> extensions;
+    mutable small_array<layer, 0> layers;
+    mutable small_array<instance_extension, 0> extensions;
 
-    small_vector<PhysicalDeviceImpl, 4> physicalDevices;
-    version version;
+    small_array<physical_device_impl, 4> physicalDevices;
+    version                              version;
   };
 
-  void destroyInstanceRef(Internal::InstanceImpl* pImpl) noexcept;
+  void destroyInstanceRef(internal::instance_impl* pImpl) noexcept;
 
-  struct QueueImpl{
+  struct queue_impl{
 
     /*inline constexpr static QueueFlags Graphics      { QueueBits::Graphics      };
     inline constexpr static QueueFlags Compute       { QueueBits::Compute       };
@@ -629,61 +630,66 @@ namespace valkyrie::graphics::api::Internal{
     inline constexpr static QueueFlags SparseBinding { QueueBits::SparseBinding };
     inline constexpr static QueueFlags Protected     { QueueBits::Protected     };*/
 
-    VkQueue handle;
-    PhysicalDeviceImpl* pPhysicalDevice;
-    QueueAPI api;
-    u32      familyIndex;
-    float    priority;
+    VkQueue               handle;
+    physical_device_impl* pPhysicalDevice;
+    queue_api             api;
+    u32                   familyIndex;
+    float                 priority;
   };
 
-  struct DeviceImpl{
+  struct device_impl{
     VkDevice            handle;
-    PhysicalDeviceImpl* pPhysicalDevice;
+    physical_device_impl* pPhysicalDevice;
 
-    InternalAllocator internalAllocator;
+    internal_allocator internalAllocator;
 
     mutable std::atomic_uint32_t refCount;
 
 
   };
 
-  void destroyDeviceRef(Internal::InstanceImpl* pImpl) noexcept;
+  void destroyDeviceRef(internal::instance_impl* pImpl) noexcept;
 
-  struct CommandPoolImpl{
-    VkCommandPool    handle;
-    DeviceImpl*      pDevice;
-    CommandPoolFlags flags;
-    u32              queueFamilyIndex;
+  struct command_pool_impl{
+    VkCommandPool      handle;
+    device_impl*       pDevice;
+    command_pool_flags flags;
+    u32                queueFamilyIndex;
   };
 
-  struct CommandBufferImpl{
-    VkCommandBuffer   handle;
-    DeviceImpl*       pDevice;
-    CommandPoolImpl*  pCommandPool;
+  struct command_buffer_impl{
+    VkCommandBuffer    handle;
+    device_impl*       pDevice;
+    command_pool_impl* pCommandPool;
 
-    InternalAllocator internalAllocator;
+    internal_allocator internalAllocator;
   };
 
-  struct SwapchainImpl{
-    VkSwapchainKHR handle;
-    VkSwapchainCreateInfoKHR createInfo;
-    SwapchainFlags   flags;
-    SurfaceImpl*     surface;
-    uint32_t         minImageCount;
-    Format           imageFormat;
-    ColorSpace       imageColorSpace;
-    Extent2D<> imageExtent;
-    uint32_t         imageArrayLayers;
-    ImageUsageFlags  imageUsage;
-    SharingMode      imageSharingMode;
-    uint32_t         queueFamilyIndexCount;
-    const uint32_t*  pQueueFamilyIndices;
-    FlagBits::SurfaceTransform preTransform;
-    FlagBits::CompositeAlpha   compositeAlpha;
-    PresentMode          presentMode;
-    bool                 clipped;
-    VkSwapchainKHR       oldSwapchain;
+  struct swapchain_impl{
+    VkSwapchainKHR          handle;
+    swapchain_flags         flags;
+    surface_impl*           surface;
+    lower_bound<u32>        imageCount;
+    format                  imageFormat;
+    colorspace              imageColorSpace;
+    extent2d<>              imageExtent;
+    u32                     imageArrayLayers;
+    image_usage_flags       imageUsage;
+    sharing_mode            imageSharingMode;
+    std::span<const u32>    queueFamilyIndices;
+    surface_transform_flags preTransform;
+    composite_alpha_flags   compositeAlpha;
+    present_mode            presentMode;
+    bool                    clipped;
+    bool                    out_of_date;
   };
+  
+  
+  inline void do_recreate_swapchain(swapchain_impl* swapchain) noexcept {
+    
+  }
+  
+  
 }
 
 

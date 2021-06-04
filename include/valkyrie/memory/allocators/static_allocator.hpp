@@ -6,12 +6,12 @@
 #define VALKYRIE_MEMORY_STATIC_ALLOCATOR_HPP
 
 
-#include <valkyrie/utility/align.hpp>
-#include "detail/memory_stack.hpp"
-#include "detail/utility.hpp"
-#include <valkyrie/traits.hpp>
+#include "../../traits.hpp"
+#include "../../utility/align.hpp"
+#include "../detail/memory_stack.hpp"
+#include "../detail/utility.hpp"
 
-#include <valkyrie/traits.hpp>
+#include "../../traits.hpp"
 
 namespace valkyrie{
   /// Storage for a \ref static_allocator.

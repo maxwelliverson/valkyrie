@@ -8,7 +8,7 @@
 #include "interval_map.hpp"
 
 namespace valkyrie{
-  template <typename T, raw_allocator Alloc = default_allocator>
+  template <typename T, allocator_c Alloc = default_allocator>
   class interval_set{
 
   };

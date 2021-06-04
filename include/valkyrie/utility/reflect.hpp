@@ -91,11 +91,11 @@ namespace valkyrie{
 
   inline namespace concepts{
     template <typename Struct>
-    concept record = std::is_aggregate_v<Struct>;
+    concept record_c = std::is_aggregate_v<Struct>;
   }
 
 
-  template <record Struct>
+  template <record_c Struct>
   inline constexpr static size_t member_count = impl::get_member_count_<Struct>::type::value;
 
 
@@ -185,14 +185,14 @@ namespace valkyrie{
 
     template <>
     struct to_tuple<0>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         return reference_tuple<>{};
       }
     };
     template <>
     struct to_tuple<1>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a] = std::forward<Struct>(str);
         return reference_tuple{a};
@@ -200,7 +200,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<2>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b] = std::forward<Struct>(str);
         return reference_tuple{a, b};
@@ -208,7 +208,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<3>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c] = std::forward<Struct>(str);
         return reference_tuple{a, b, c};
@@ -216,7 +216,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<4>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d};
@@ -224,7 +224,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<5>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e};
@@ -232,7 +232,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<6>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f};
@@ -240,7 +240,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<7>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g};
@@ -248,7 +248,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<8>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h};
@@ -256,7 +256,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<9>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i};
@@ -264,7 +264,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<10>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j};
@@ -272,7 +272,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<11>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k};
@@ -280,7 +280,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<12>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l};
@@ -288,7 +288,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<13>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m};
@@ -296,7 +296,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<14>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n};
@@ -304,7 +304,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<15>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o};
@@ -312,7 +312,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<16>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p};
@@ -320,7 +320,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<17>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q};
@@ -328,7 +328,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<18>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r};
@@ -336,7 +336,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<19>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s};
@@ -344,7 +344,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<20>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t};
@@ -352,7 +352,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<21>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u};
@@ -360,7 +360,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<22>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v};
@@ -368,7 +368,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<23>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w};
@@ -376,7 +376,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<24>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x};
@@ -384,7 +384,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<25>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y] = std::forward<Struct>(str);
         return reference_tuple{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y};
@@ -392,7 +392,7 @@ namespace valkyrie{
     };
     template <>
     struct to_tuple<26>{
-      template <typename Struct> requires record<remove_cvref_t<Struct>>
+      template <typename Struct> requires record_c<remove_cvref_t<Struct>>
       inline static decltype(auto) call(Struct&& str) noexcept {
         auto& [a, b, c, d, e,
                f, g, h, i, j,
@@ -408,14 +408,14 @@ namespace valkyrie{
     };
 
 
-    template <typename Struct> requires record<remove_cvref_t<Struct>>
+    template <typename Struct> requires record_c<remove_cvref_t<Struct>>
     inline static constexpr decltype(auto) to_ref_tuple(Struct&& str) noexcept {
       return to_tuple<member_count<remove_cvref_t<Struct>>>::call(std::forward<Struct>(str));
     }
   }
 
 
-  template <size_t N, typename Struct> requires record<remove_cvref_t<Struct>>
+  template <size_t N, typename Struct> requires record_c<remove_cvref_t<Struct>>
   inline constexpr static decltype(auto) get(Struct&& str) /* noexcept */ {
     return get<N>(impl::to_ref_tuple(std::forward<Struct>(str)));
   }

@@ -8,36 +8,14 @@
 #include <iterator>
 #include <utility>
 
+#include <valkyrie/traits.hpp>
+
 namespace valkyrie{
-
-  /// A range adaptor for a pair of iterators.
-///
-/// This just wraps two iterators into a range-compatible interface. Nothing
-/// fancy at all.
-  template <typename IteratorT>
-  class iterator_range {
-    IteratorT begin_iterator, end_iterator;
-
-  public:
-    //TODO: Add SFINAE to test that the Container's iterators match the range's
-    //      iterators.
-    template <typename Container>
-    iterator_range(Container &&c)
-    //TODO: Consider ADL/non-member begin/end calls.
-        : begin_iterator(c.begin()), end_iterator(c.end()) {}
-    iterator_range(IteratorT begin_iterator, IteratorT end_iterator)
-        : begin_iterator(std::move(begin_iterator)),
-          end_iterator(std::move(end_iterator)) {}
-
-    IteratorT begin() const { return begin_iterator; }
-    IteratorT end() const { return end_iterator; }
-    bool empty() const { return begin_iterator == end_iterator; }
-  };
 
   template <typename Iterator, typename Sentinel = Iterator>
   class range_view{
-    Iterator begin_;
-    Sentinel end_;
+                          Iterator begin_;
+    [[no_unique_address]] Sentinel end_;
   public:
     using iterator = Iterator;
     using sentinel = Sentinel;
@@ -67,12 +45,14 @@ namespace valkyrie{
 ///
 /// This provides a bit of syntactic sugar to make using sub-ranges
 /// in for loops a bit easier. Analogous to std::make_pair().
-  template <class T> iterator_range<T> make_range(T x, T y) {
-    return iterator_range<T>(std::move(x), std::move(y));
+  template <typename T, typename S>
+  range_view<T, S> make_range(T x, S y) {
+    return range_view<T, S>(std::move(x), std::move(y));
   }
 
-  template <typename T> iterator_range<T> make_range(std::pair<T, T> p) {
-    return iterator_range<T>(std::move(p.first), std::move(p.second));
+  template <typename T, typename S>
+  range_view<T, S> make_range(std::pair<T, S> p) {
+    return range_view<T, S>(std::move(p.first), std::move(p.second));
   }
 
   template <typename DerivedT, 
@@ -266,7 +246,7 @@ namespace valkyrie{
   };
 
   template <std::ranges::range RangeT, typename WrappedIteratorT = decltype(std::begin(std::declval<RangeT>()))>
-  iterator_range<pointee_iterator<WrappedIteratorT>> make_pointee_range(RangeT &&Range) {
+  range_view<pointee_iterator<WrappedIteratorT>> make_pointee_range(RangeT &&Range) {
     using PointeeIteratorT = pointee_iterator<WrappedIteratorT>;
     return make_range(PointeeIteratorT(std::begin(std::forward<RangeT>(Range))),
                       PointeeIteratorT(std::end(std::forward<RangeT>(Range))));
@@ -288,7 +268,7 @@ namespace valkyrie{
 
   template <typename RangeT, typename WrappedIteratorT =
   decltype(std::begin(std::declval<RangeT>()))>
-  iterator_range<pointer_iterator<WrappedIteratorT>> make_pointer_range(RangeT &&Range) {
+  range_view<pointer_iterator<WrappedIteratorT>> make_pointer_range(RangeT &&Range) {
     using PointerIteratorT = pointer_iterator<WrappedIteratorT>;
     return make_range(PointerIteratorT(std::begin(std::forward<RangeT>(Range))),
                       PointerIteratorT(std::end(std::forward<RangeT>(Range))));

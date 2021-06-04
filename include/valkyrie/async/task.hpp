@@ -5,10 +5,10 @@
 #ifndef VALKYRIE_ADT_TASK_HPP
 #define VALKYRIE_ADT_TASK_HPP
 
-#include <valkyrie/traits.hpp>
+#include <valkyrie/adt/function_ref.hpp>
 #include <valkyrie/async/semaphore.hpp>
-#include <valkyrie/utility/function_ref.hpp>
 #include <valkyrie/status/generic_code.hpp>
+#include <valkyrie/traits.hpp>
 
 #include <csetjmp>
 #include <chrono>

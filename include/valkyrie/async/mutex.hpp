@@ -5,8 +5,6 @@
 #ifndef VALKYRIE_ASYNC_MUTEX_HPP
 #define VALKYRIE_ASYNC_MUTEX_HPP
 
-#include <valkyrie/utility/time.hpp>
-
 #include "semaphore.hpp"
 
 

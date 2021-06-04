@@ -13,7 +13,7 @@
 #include <plf_colony.h>
 
 namespace valkyrie{
-  template <typename T, raw_allocator Alloc = default_allocator, typename FieldSkipType = u16>
+  template <typename T, allocator_c Alloc = default_allocator, typename FieldSkipType = u16>
   using colony = plf::colony<T, std_allocator<T, Alloc>, FieldSkipType>;
 }
 

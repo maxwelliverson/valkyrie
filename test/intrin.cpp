@@ -88,15 +88,9 @@ union aligned_t{
 
 
 std::ostream& operator<<(std::ostream& ss, const __m128i& bigNum) {
-
-  aligned_t aligned;
-  _mm_store_si128(&aligned.vector, bigNum);
-
-  //unsigned bytes = 0;
-
-  ss << "0x";
-
-#define SWITCH_CASE_(val) case 0x##val : ss << #val; break;
+  ss << "0b" << *(const std::bitset<128>*)((const void*)&bigNum);
+  return ss;
+/*#define SWITCH_CASE_(val) case 0x##val : ss << #val; break;
 #define SWITCH_CASE SWITCH_CASE_
 
   for (auto byte : aligned.buffer | std::views::reverse) {
@@ -108,11 +102,8 @@ std::ostream& operator<<(std::ostream& ss, const __m128i& bigNum) {
         __assume(false);
       }
     }
-    /*bytes += 1;
-    if (bytes < 16 && !(bytes % 2))
-      ss << ' ';*/
   }
-  return ss;
+  return ss;*/
 }
 
 
@@ -132,8 +123,8 @@ void compare_explicit_index(std::string_view strA, std::string_view strB, std::s
 
   const int result = _mm_cmpestri(aBuffer, aLength, bBuffer, bLength, Mode);
 
-  ss << R"({ "op": "cmpestri", "result": )" << result << R"(, "bits": ")" << *(std::bitset<32>*)&result;
-  ss << " }";
+  ss << R"({ "op": "cmpestri", "result": )" << result /*<< R"(, "bits": ")" << *(std::bitset<32>*)&result;
+  ss*/ << " }";
 }
 template <int32_t Mode>
 void compare_implicit_index(std::string_view strA, std::string_view strB, std::stringstream& ss) {
@@ -146,7 +137,7 @@ void compare_implicit_index(std::string_view strA, std::string_view strB, std::s
 
   const int result = _mm_cmpistri(aBuffer, bBuffer, Mode);
 
-  ss << R"({ "op": "cmpistri", "result": )" << result << R"(, "bits": ")" << *(std::bitset<32>*)&result << " }";
+  ss << R"({ "op": "cmpistri", "result": )" << result /*<< R"(, "bits": ")" << *(std::bitset<32>*)&result*/ << " }";
 }
 template <int32_t Mode>
 void compare_explicit_mask(std::string_view strA, std::string_view strB, std::stringstream& ss) {
@@ -195,14 +186,14 @@ void compare_each(std::string_view a, std::string_view b, std::stringstream& ss)
 }
 
 
-VK_constant int mode_a = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_POSITIVE_POLARITY | _SIDD_BIT_MASK;
-VK_constant int mode_b = _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_POSITIVE_POLARITY | _SIDD_BIT_MASK;
-VK_constant int mode_c = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_POSITIVE_POLARITY | _SIDD_BIT_MASK;
-VK_constant int mode_d = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ORDERED | _SIDD_POSITIVE_POLARITY | _SIDD_BIT_MASK;
-VK_constant int mode_e = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
-VK_constant int mode_f = _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
-VK_constant int mode_g = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
-VK_constant int mode_h = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ORDERED | _SIDD_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
+VK_constant int mode_a = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_BIT_MASK;
+VK_constant int mode_b = _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_BIT_MASK;
+VK_constant int mode_c = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_BIT_MASK;
+VK_constant int mode_d = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ORDERED | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_BIT_MASK;
+VK_constant int mode_e = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
+VK_constant int mode_f = _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
+VK_constant int mode_g = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
+VK_constant int mode_h = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ORDERED | _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_UNIT_MASK;
 
 int main(){
 
@@ -228,7 +219,8 @@ int main(){
 
     std::string stringA;
     std::string stringB;
-
+    std::string_view stringA_view;
+    std::string_view stringB_view;
 
     std::cin >> inputString;
 
@@ -248,12 +240,18 @@ int main(){
     stringA = matches[1];
     stringB = matches[2];
 
+    stringA_view = stringA;
+    stringA_view = stringA_view.substr(0, 16);
+    stringB_view = stringB;
+    stringB_view = stringB_view.substr(0, 16);
+
+
     std::stringstream resultString;
     resultString <<
-        "{\n\t\"stringA\": \"" << stringA <<
-        "\",\n\t\"stringB\": \"" << stringB <<
+        "{\n\t\"stringA\": \"" << stringA_view <<
+        "\",\n\t\"stringB\": \"" << stringB_view <<
         "\",\n\t\"results\": [\n";
-#define compare_fn(i) compare_each<mode_##i>(stringA, stringB, resultString);
+#define compare_fn(i) compare_each<mode_##i>(stringA_view, stringB_view, resultString);
     VK_foreach(compare_fn, a, b, c, d, e, f, g, h)
 #undef compare_fn
     resultString << "\b\b\n\t]\n}\n\n\n";

@@ -6,12 +6,15 @@
 #define VALKYRIE_PHYSICAL_DEVICE_HPP
 
 #include <valkyrie/adt/interval.hpp>
-#include <valkyrie/graphics/api/queue.hpp>
-#include <valkyrie/graphics/api/vulkan.hpp>
+#include "queue.hpp"
+
 
 //#include <wayland-client-protocol.hpp>
 
 namespace valkyrie::graphics::api{
+
+
+
 
 
   //class PhysicalDeviceFeatures;
@@ -25,7 +28,7 @@ namespace valkyrie::graphics::api{
   class PhysicalDeviceExternalFenceProperties;
   class PhysicalDeviceExternalSemaphoreProperties;*/
 
-  class InstanceObject{
+  /*class InstanceObject{
   protected:
 
   };
@@ -47,9 +50,9 @@ namespace valkyrie::graphics::api{
 
   private:
     Handle* pData;
-  };
+  };*/
 
-  class physical_device : public VulkanObject{
+  /*class physical_device : public instance_object{
 
     friend class PhysicalDeviceObject;
 
@@ -80,7 +83,7 @@ namespace valkyrie::graphics::api{
     friend auto operator<=>(physical_device A, physical_device B) noexcept {
       return A.pImpl <=> B.pImpl;
     }
-  };
+  };*/
 
 
 

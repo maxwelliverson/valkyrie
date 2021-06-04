@@ -10,27 +10,36 @@
 #include <valkyrie/adt/flat_map.hpp>
 #include <valkyrie/adt/temp_array.hpp>
 #include <valkyrie/adt/string.hpp>
+#include <valkyrie/adt/interval.hpp>
+#include <valkyrie/utility/version.hpp>
 
 
 namespace valkyrie::graphics::engine{
 
   class option;
-  class Feature;
-  class EnumeratedSetting;
-  class InstanceExtension;
-  class DeviceExtension;
-  class Configuration{
+  class feature;
+  class enumerated_setting;
+  class instance_extension;
+  class device_extension;
+  class configuration{
     struct InternalState;
     InternalState* pState;
   public:
 
   };
 
+  template <std::derived_from<option> O>
+  auto dependencies(const O& option) noexcept;
+
 
   class option {
+    virtual option* doGetDependencies(u32& arraySize) const noexcept = 0;
   public:
-    virtual option * doGetDependencies(u32& arraySize) const noexcept = 0;
-    virtual bool    doIsSupported()     const noexcept = 0;
+
+    virtual bool    doIsSupported()                   const noexcept = 0;
+
+    template <std::derived_from<option> O>
+    friend auto dependencies(const O& option) noexcept;
   };
 
   template <std::derived_from<option> O>
@@ -40,46 +49,49 @@ namespace valkyrie::graphics::engine{
     return array_ref{pDeps, depSize};
   }
 
-  class Enumeration{
+  class enumeration{
     flat_map<u32, string> entries;
   };
-  class BitFlags{
+  class flags{
     flat_map<u32, string> entries;
   };
-  class Group{};
+  class group{};
 
 
   template <typename>
-  class Field;
+  class field;
   template <>
-  class Field<void> : public option {
+  class field<void> : public option {
     string_view name_;
   protected:
-    constexpr Field() = default;
-    constexpr explicit Field(string_view name) noexcept : name_(name){}
+    constexpr field() = default;
+    constexpr explicit field(string_view name) noexcept : name_(name){}
   public:
     string_view name() const noexcept {
       return {name_.data(), static_cast<u32>(name_.size())};
     }
     option * doGetDependencies(u32& arraySize) const noexcept override;
-    bool    doIsSupported()     const noexcept override;
+    bool     doIsSupported()     const noexcept override;
   };
   template <>
-  class Field<string> : public Field<void>{
+  class field<string> : public field<void>{
   public:
-    Field() = default;
+    field() = default;
   };
   template <>
-  class Field<bool> : public Field<void>{
+  class field<bool> : public field<void>{
   public:
-    Field() = default;
+    field() = default;
   };
+
+
+
   template <typename T, typename ...Opt>
-  class Field<Interval<T, Opt...>> : public Field<void>{
-    Interval<T, Opt...> value_;
+  class field<interval<T, Opt...>> : public field<void>{
+    interval<T, Opt...> value_;
   public:
-    constexpr Field() = default;
-    constexpr Field(StringView name) noexcept : Field<void>(name), value_(){}
+    constexpr field() = default;
+    constexpr field(string_view name) noexcept : field<void>(name), value_(){}
 
     constexpr auto& value() noexcept {
       return value_;
@@ -89,42 +101,44 @@ namespace valkyrie::graphics::engine{
     }
   };
 
-  class EnumeratedField : public Field<void>{
-    Enumeration enumeration;
+  class enumerated_field : public field<void>{
+    enumeration enumeration;
 
   protected:
-    EnumeratedField();
+    enumerated_field();
   };
-  template <enumerator E>
-  class Field<E> : public EnumeratedField{
+  
+  template <enumerator_c E>
+  class field<E> : public enumerated_field{
   public:
-    Field() = default;
+    field() = default;
   };
 
-  class BitFlagField : public Field<void>{};
+  class bitflag_field : public field<void>{};
 
-  template <bitflag_enum_type E>
-  class Field<E> : public BitFlagField{
+  template <bitflag_c E>
+  class field<E> : public bitflag_field{
   public:
-    Field() = default;
+    field() = default;
   };
   template <>
-  class Field<Group> : public Field<void>{
-    FlatSet<Field<void>*> enabledFields;
-    FlatSet<Field<void>*> disabledFields;
+  class field<group> : public field<void>{
+    flat_set<field<void>*> enabledFields;
+    flat_set<field<void>*> disabledFields;
+    vector<field<void>*>   members;
   public:
-    Field() = default;
+    field() = default;
   };
 
-  class EnabledOption : public Option{
-    StringView name_;
+  class enabled_option : public option{
+    string_view name_;
     bool isSupported_ = false;
     bool isEnabled_ = false;
     virtual status doSetEnabled(bool enabled) noexcept = 0;
   protected:
-    constexpr explicit EnabledOption(StringView name) noexcept : name_(name){}
+    constexpr explicit enabled_option(string_view name) noexcept : name_(name){}
   public:
-    inline StringView name() const noexcept {
+    inline string_view name() const noexcept {
       return {name_.data(), u32(name_.size())};
     }
     inline status enable(bool b = true)  noexcept {
@@ -156,24 +170,24 @@ namespace valkyrie::graphics::engine{
     }
   };
 
-  class Feature : public EnabledOption{
+  class feature : public enabled_option{
 
     status doSetEnabled(bool enabled) noexcept override;
 
   public:
 
-    constexpr Feature(StringView name) noexcept : EnabledOption(name){}
+    constexpr feature(string_view name) noexcept : enabled_option(name){}
 
-    EnabledOption* doGetDependencies(u32& arraySize) const noexcept override;
+    enabled_option* doGetDependencies(u32& arraySize) const noexcept override;
 
   };
 
-  class Extension : public EnabledOption{
-    Version specVersion_;
+  class extension : public enabled_option{
+    version specVersion_;
 
     status doSetEnabled(bool enabled) noexcept override {
 
-      for (Extension& dep : dependencies(*this)){
+      for (extension& dep : dependencies(*this)){
         auto result = dep.enable(enabled);
         if (result.failure())
           return std::move(result);
@@ -183,170 +197,50 @@ namespace valkyrie::graphics::engine{
     }
 
   protected:
-    constexpr Extension(StringView name, Version specVersion) noexcept
-        : EnabledOption(name), specVersion_(specVersion){}
+    constexpr extension(string_view name, version specVersion) noexcept
+        : enabled_option(name), specVersion_(specVersion){}
   public:
-    inline Version version() const noexcept {
+    inline version version() const noexcept {
       return specVersion_;
     }
 
-    Extension* doGetDependencies(u32& arraySize) const noexcept override = 0;
+    extension* doGetDependencies(u32& arraySize) const noexcept override = 0;
 
-    virtual array_ref<Feature>     features() noexcept;
-    virtual array_ref<Field<void>> properties() noexcept;
+    virtual array_ref<feature>     features() noexcept;
+    virtual array_ref<field<void>> properties() noexcept;
   };
 
 
 
 
 
-  class InstanceExtension : public Extension{
+  class instance_extension : public extension{
   public:
-    using Extension::Extension;
+    using extension::extension;
   };
-  class DeviceExtension : public Extension{
+  class device_extension : public extension{
   public:
-    using Extension::Extension;
+    using extension::extension;
   };
 
-  class Layer : public Option{
-    StringView name_;
-    Version specVersion_;
-    Version implVersion_;
-    small_vector<Extension*, 2> enabledExtensions_;
+  class layer : public option{
+    string_view name_;
+    version specVersion_;
+    version implVersion_;
+    small_vector<extension*, 2> enabledExtensions_;
   public:
-    inline StringView name() const noexcept {
+    inline string_view name() const noexcept {
       return name_;
     }
-    inline Version implVersion() const noexcept {
+    inline version implVersion() const noexcept {
       return implVersion_;
     }
-    inline Version specVersion() const noexcept {
+    inline version specVersion() const noexcept {
       return specVersion_;
     }
 
   };
 }
-
-
-#define PP_VK_impl_EXTENSION_EXPANDS_requires(...)
-
-#define PP_VK_impl_WRAP_FEATURE_NAME(name) Feature(VK_string(#name))
-
-#define VK_expand_features(...) VK_if(VK_not(VK_pack_is_empty(__VA_ARGS__))(Feature features_[VK_get_arg_count(__VA_ARGS__)]{ \
-    VK_foreach_delimit(PP_VK_impl_WRAP_FEATURE_NAME, VK_comma_delimiter, __VA_ARGS__) };))
-
-
-#define VK_instance_extension(name_, vendor_, version_, ...) inline constexpr static struct : InstanceExtension { \
-  StringView name() const noexcept override { return "VK_"#vendor_"_"#name_; }                                   \
-  Version specVersion() const noexcept override { return Version(version_); }                         \
-  } name_
-#define VK_device_extension(name_, vendor_, version_, ...) inline constexpr static struct : DeviceExtension {  \
-  StringView name() const noexcept override { return "VK_"#vendor_"_"#name_; }                                   \
-  Version specVersion() const noexcept override { return Version(version_); }                         \
-   } name_
-//#define VK_layer(name_, vendor_, )
-
-namespace valkyrie::graphics::engine::Options{
-  /*VK_instance_extension(surface,                        KHR, 25);
-  VK_instance_extension(surface_protected_capabilities, KHR, 1);
-  VK_instance_extension(win32_surface,                  KHR, 6);
-  VK_instance_extension(debug_report,                   EXT, 9);
-  VK_instance_extension(debug_utils,                    EXT, 2);
-  VK_instance_extension(swapchain_colorspace,           EXT, 4);
-
-  VK_device_extension(  swapchain,                      KHR, 8);*/
-
-  namespace detail{
-
-    namespace {
-      template <size_t N>
-      class Padding{
-        char padding_BUFFER_[N];
-        template <size_t ...I>
-        constexpr explicit Padding(const Padding& other, std::index_sequence<I...>) noexcept : padding_BUFFER_{ other.padding_BUFFER_[I]... }{}
-      public:
-        constexpr Padding() = default;
-        constexpr Padding(const Padding& other) noexcept : Padding(other, std::make_index_sequence<N>{}){}
-      };
-      template <>
-      class Padding<0>{};
-
-      template <size_t N>
-      struct aligned_storage : std::aligned_storage<N>{};
-      template <>
-      struct aligned_storage<0> : std::aligned_storage<1>{};
-
-      template <size_t N>
-      using aligned_storage_t = typename aligned_storage<N>::type;
-
-      template <typename T, size_t N>
-      class Padded : public T/*, public Padding<N - sizeof(T)>*/{
-        [[no_unique_address]] aligned_storage_t<N - sizeof(T)> paddingLMAO{};
-      public:
-        using T::T;
-      };
-      class EXTDescriptorIndexing : public DeviceExtension{};
-      class KHRBufferDeviceAddress : public DeviceExtension{};
-      class KHRDeferredHostOperations : public DeviceExtension{};
-      class KHRAccelerationStructure : public DeviceExtension{
-        VK_expand_features(
-            accelerationStructure,
-            captureReplay,
-            indirectBuild,
-            hostCommands,
-            descriptorBindingUpdateAfterBind
-        )
-
-        VK_constant size_t MaxSize = std::max({ sizeof(Field<MaxU64>), sizeof(Field<MaxU32>), sizeof(Field<MinU32>) });
-
-        template <typename T>
-        using PaddedField = Padded<Field<T>, MaxSize>;
-
-        using MaxU64Field = Padded<Field<MaxU64>, MaxSize>;
-        using MaxU32Field = Padded<Field<MaxU32>, MaxSize>;
-        using MinU32Field = Padded<Field<MinU32>, MaxSize>;
-
-        MaxU64Field geometryCount;
-        MaxU64Field instanceCount;
-        MaxU64Field primitiveCount;
-        MaxU32Field perStageDescriptor;
-        MaxU32Field perStageDescriptorUpdateAfterBind;
-        MaxU32Field descriptorSet;
-        MaxU32Field descriptorSetUpdateAfterBind;
-        MinU32Field scratchOffsetAlignment;
-
-      public:
-        constexpr KHRAccelerationStructure() noexcept : DeviceExtension(VK_raw_string(KHR_acceleration_structure), Version(11)){}
-
-        array_ref<Feature> features() noexcept override {
-          return features_;
-        }
-        array_ref<Field<void>> properties() noexcept override {
-          return array_ref<Field<void>, 8>(&geometryCount);
-        }
-
-        DeviceExtension* doGetDependencies(u32& arraySize) const noexcept override{
-          //EXTDescriptorIndexing
-          //KHRBufferDeviceAddress
-          //KHRDeferredHostOperations
-          arraySize = 3;
-          return nullptr;
-        }
-      };
-    }
-
-
-  }
-
-
-  //inline constexpr static detail::KHRAccelerationStructure KHR_acceleration_structure;
-}
-
-#undef VK_instance_extension
-#undef VK_device_extension
-#undef VK_layer
-
 
 
 #endif//VALKYRIE_GRAPHICS_OPTION_HPP

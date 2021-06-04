@@ -117,10 +117,10 @@ namespace valkyrie{
     explicit basic_mailbox(u64 size, status& status) noexcept
         : base(max_writers, max_readers, size, status){ }
 
-    template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
+    template <allocator_c Alloc> requires (!traits::message_size_is_dynamic)
     basic_mailbox(u64 size, Alloc&& allocator, status& status) noexcept
         : base(max_writers, max_readers, size, std::forward<Alloc>(allocator), status){}
-    template <raw_allocator Alloc> requires (!traits::message_size_is_dynamic)
+    template <allocator_c Alloc> requires (!traits::message_size_is_dynamic)
     explicit basic_mailbox(Alloc&& allocator, status& status) noexcept
         : base(max_writers, max_readers, std::forward<Alloc>(allocator), status){}
 

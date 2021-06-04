@@ -8,8 +8,8 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class Image : public VulkanResource{};
-  class ImageView : public VulkanResource{};
+  class image      : public vulkan_object{};
+  class image_view : public vulkan_object{};
 }
 
 #endif//VALKYRIE_RESOURCE_IMAGE_HPP

@@ -5,26 +5,24 @@
 #ifndef VALKYRIE_EXTENDED_NUMERIC_TYPES_HPP
 #define VALKYRIE_EXTENDED_NUMERIC_TYPES_HPP
 
-#include <valkyrie/Types.hpp>
-#include <valkyrie/Meta.hpp>
 #include <valkyrie/traits.hpp>
 
 namespace valkyrie{
 
-  template <typename Num, typename Den>
-  class Rational;
-  class Float16;
 
 
 
 
-  class Float16{};
+  class f16{
+  public:
 
-  template <bool Signed, u32 Bits>
-  class NormalizedFloat{};
 
-  template <typename Num, typename Den>
-  class Rational{
+  private:
+    u16 value;
+  };
+
+  /*template <typename Num, typename Den>
+  class rational{
     Num num;
     Den den;
 
@@ -33,39 +31,42 @@ namespace valkyrie{
 
     inline constexpr static bool NoexceptCopyConstructible = std::is_nothrow_constructible_v<Num, InNum> && std::is_nothrow_constructible_v<Den, InDen>;
   public:
-    constexpr Rational() = default;
-    constexpr Rational(InNum num, InDen den) noexcept(NoexceptCopyConstructible)
+    constexpr rational() = default;
+    constexpr rational(InNum num, InDen den) noexcept(NoexceptCopyConstructible)
         : num(num), den(den){}
+  };*/
+
+
+  class norm16{};
+  class norm32{};
+  class norm64{};
+
+  class fixed8{};
+  class fixed16{};
+  class fixed32{};
+  class fixed64{};
+
+
+  class bool32{
+  public:
+    constexpr bool32() = default;
+    constexpr bool32(bool value) noexcept : value(value){}
+
+
+    operator bool() const noexcept {
+      return value;
+    }
+    bool32 operator!() const noexcept {
+      return bool32(!value);
+    }
+
+  private:
+    u32 value = 0;
   };
-  /*template <decltype(auto) V, typename Den>
-  class Rational<meta::ValueWrapper<V>, Den>{
 
-};*/
+  VK_constant bool32 true32  = true;
+  VK_constant bool32 false32 = false;
 
-
-
-
-
-
-  class NormalizedFloat64{};
-  class NormalizedFloat32{};
-  class NormalizedFloat16{};
-
-  class FixedPoint64{};
-  class FixedPoint32{};
-  class FixedPoint16{};
-  class FixedPoint8 {};
-
-  using f16 = Float16;
-
-  using norm64 = NormalizedFloat64;
-  using norm32 = NormalizedFloat32;
-  using norm16 = NormalizedFloat16;
-
-  using fixed64 = FixedPoint64;
-  using fixed32 = FixedPoint32;
-  using fixed16 = FixedPoint16;
-  using fixed8  = FixedPoint8;
 }
 
 

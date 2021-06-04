@@ -8,11 +8,11 @@
 #include <valkyrie/graphics/api/vulkan.hpp>
 
 namespace valkyrie::graphics::api{
-  class surface {
+  /*class surface {
     class Impl;
     Impl* pImpl;
   public:
-    surface(const instance & instance, Extent2D<> extent) noexcept;
+    surface(const instance & instance, extent2d<> extent) noexcept;
     surface(const surface &);
     surface(surface &&) noexcept;
     surface & operator=(const surface &);
@@ -23,8 +23,8 @@ namespace valkyrie::graphics::api{
 
 
     bool isValid() const noexcept;
-    Extent2D<> getExtents() const noexcept;
-  };
+    extent2d<> getExtents() const noexcept;
+  };*/
 }
 
 #endif//VALKYRIE_GRAPHICS_API_SURFACE_HPP

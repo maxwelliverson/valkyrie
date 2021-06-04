@@ -6,7 +6,7 @@
 #define VALKYRIE_ASYNC_AGENT_HPP
 
 #include "atomic.hpp"
-#include <valkyrie/utility/function_ref.hpp>
+#include <valkyrie/adt/function_ref.hpp>
 #include <valkyrie/status/result.hpp>
 
 #include <concepts>

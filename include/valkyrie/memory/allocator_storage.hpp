@@ -5,14 +5,14 @@
 #ifndef VALKYRIE_MEMORY_ALLOCATOR_STORAGE_HPP
 #define VALKYRIE_MEMORY_ALLOCATOR_STORAGE_HPP
 
-#include <new>
+
 
 #include <valkyrie/adt/locked_ptr.hpp>
-#include <valkyrie/traits.hpp>
 
+#include <new>
 
 namespace valkyrie {
-  namespace detail {
+  /*namespace detail {
     template <class Alloc>
     void *try_allocate_node(std::true_type, Alloc &alloc, u64 size, u64 alignment) noexcept {
       return composable_allocator_traits<Alloc>::try_allocate_node(alloc, size,
@@ -61,26 +61,41 @@ namespace valkyrie {
       VK_unreachable;
       return false;
     }
-  }  // namespace detail
+  }*/  // namespace detail
+  
+  
+  namespace impl{
+    template <memory_storage_policy_c Pol, mutex_c Mtx>
+    using mutex_actual_type = std::conditional_t<
+        allocator_traits<typename Pol::allocator_type>::is_thread_safe,
+        noop_mutex,
+        Mtx>;
+  }
 
   /// A \concept{concept_rawallocator,RawAllocator} that stores another allocator.
   /// The \concept{concept_storagepolicy,StoragePolicy} defines the allocator type being stored and how it is stored.
   /// The \c Mutex controls synchronization of the access.
   /// \ingroup storage
-  template <memory_storage_policy_c StoragePolicy, mutex_c Mutex = mutex>
-  class allocator_storage : StoragePolicy {
+  template <memory_storage_policy_c StoragePolicy,
+            mutex_c Mutex = mutex>
+  class VK_empty_bases allocator_storage : StoragePolicy, impl::mutex_actual_type<StoragePolicy, Mutex> {
   public:
     using allocator_type         = typename StoragePolicy::allocator_type;
     using storage_policy         = StoragePolicy;
-    using mutex_type             = Mutex;
+    using mutex_type             = impl::mutex_actual_type<StoragePolicy, Mutex>;
+
+    template <memory_storage_policy_c, mutex_c>
+    friend class allocator_storage;
 
   private:
-    using traits       = allocator_traits<allocator_type>;
-    using actual_mutex = std::conditional_t<traits::is_thread_safe, noop_mutex, mutex_type>;
+    using trt          = allocator_traits<allocator_type>;
+
 
   public:
 
-    VK_constant bool is_stateful = traits::is_stateful;
+    VK_constant bool is_stateful           = trt::is_stateful;
+    VK_constant bool is_always_composable  = trt::is_composable;
+    VK_constant bool is_always_thread_safe = trt::is_thread_safe || not_same_as<Mutex, noop_mutex>;
 
 
 
@@ -95,10 +110,10 @@ namespace valkyrie {
     /// \requires The expression <tt>new storage_policy(std::forward<Alloc>(alloc))</tt> must be well-formed,
     /// otherwise this constructor does not participate in overload resolution.
     template <typename Alloc>
-    allocator_storage(Alloc &&alloc) requires(!std::derived_from<std::remove_cvref_t<Alloc>, allocator_storage> &&
-                                              std::is_constructible_v<storage_policy, Alloc &&>)
-        : storage_policy(std::forward<Alloc>(alloc)) {
-    }
+    allocator_storage(Alloc &&alloc) requires(!pointer_convertible_to<remove_cvref_t<Alloc>, allocator_storage>
+        /*&& constructible_from<storage_policy, Alloc>*/)
+        : storage_policy(std::forward<Alloc>(alloc)),
+          mutex_type(){ }
 
     /// \effects Creates it by passing it another \c allocator_storage with a different \c StoragePolicy but the same \c Mutex type.
     /// Initializes it with the result of \c other.get_allocator().
@@ -106,19 +121,19 @@ namespace valkyrie {
     /// otherwise this constructor does not participate in overload resolution.
     template <class OtherPolicy>
     allocator_storage(const allocator_storage<OtherPolicy, Mutex> &other) requires(requires { storage_policy(other.get_allocator()); })
-        : storage_policy(other.get_allocator()) {
-    }
+        : storage_policy(other.get_allocator()),
+          mutex_type() { }
 
     /// @{
     /// \effects Moves the \c allocator_storage object.
     /// A moved-out \c allocator_storage object must still store a valid allocator object.
     allocator_storage(allocator_storage &&other) noexcept
         : storage_policy(std::move(other)),
-          mutex(std::move(other.mutex)) { }
+          mutex_type(std::move(other.mutex)) { }
 
     allocator_storage &operator=(allocator_storage &&other) noexcept {
       storage_policy::operator=(std::move(other));
-      mutex = std::move(other.mutex);
+      mutex_type::operator=(std::move(other));
       return *this;
     }
     /// @}
@@ -126,55 +141,55 @@ namespace valkyrie {
     /// @{
     /// \effects Copies the \c allocator_storage object.
     /// \requires The \c StoragePolicy must be copyable.
-    allocator_storage(const allocator_storage &) = default;
-    allocator_storage &operator=(const allocator_storage &) = default;
+    allocator_storage(const allocator_storage & other) : storage_policy(other), mutex_type(){}
+    allocator_storage& operator=(const allocator_storage& other) {
+      if (std::addressof(other) == this)
+        return *this;
+      this->~allocator_storage();
+      new((void*)this) allocator_storage(other);
+      return *this;
+    }
     /// @}
 
     /// @{
     /// \effects Calls the function on the stored allocator.
     /// The \c Mutex will be locked during the operation.
-    void *allocate_node(u64 size, u64 alignment) {
-      VK_scope_lock(mutex, write_access);
-      auto &&alloc = get_allocator();
-      return traits::allocate_node(alloc, size, alignment);
+    void*   allocate_node(u64 size, u64 alignment) {
+      VK_scope_lock(get_mutex(), write_access);
+      return trt::allocate_node(get_allocator(), size, alignment);
+    }
+    void  deallocate_node(void *ptr, u64 size, u64 alignment) noexcept {
+      VK_scope_lock(get_mutex(), write_access);
+      trt::deallocate_node(get_allocator(), ptr, size, alignment);
     }
 
-    void *allocate_array(u64 count, u64 size, u64 alignment) {
-      VK_scope_lock(mutex, write_access);
-      auto &&alloc = get_allocator();
-      return traits::allocate_array(alloc, count, size, alignment);
+    void*   allocate_array(u64 count, u64 size, u64 alignment) {
+      VK_scope_lock(get_mutex(), write_access);
+      return trt::allocate_array(get_allocator(), count, size, alignment);
+    }
+    void* reallocate_array(void* ptr, u64 new_count, u64 old_count, u64 size, u64 align) noexcept {
+      VK_scope_lock(get_mutex(), write_access);
+      return trt::reallocate_array(get_allocator(), ptr, new_count, old_count, size, align);
+    }
+    void  deallocate_array(void *ptr, u64 count, u64 size, u64 alignment) noexcept {
+      VK_scope_lock(get_mutex(), write_access);
+      trt::deallocate_array(get_allocator(), ptr, count, size, alignment);
     }
 
-    void deallocate_node(void *ptr, u64 size, u64 alignment) noexcept {
-      VK_scope_lock(mutex, write_access);
-      auto &&alloc = get_allocator();
-      traits::deallocate_node(alloc, ptr, size, alignment);
+    VK_nodiscard u64 max_node_size() const noexcept {
+      VK_scope_lock(get_mutex(), read_access);
+      return trt::max_node_size(get_allocator());
     }
-
-    void deallocate_array(void *ptr, u64 count, u64 size, u64 alignment) noexcept {
-      VK_scope_lock(mutex, write_access);
-      auto &&alloc = get_allocator();
-      traits::deallocate_array(alloc, ptr, count, size, alignment);
+    VK_nodiscard u64 max_array_size() const noexcept {
+      VK_scope_lock(get_mutex(), read_access);
+      return trt::max_array_size(get_allocator());
     }
-
-    u64 max_node_size() const noexcept {
-      VK_scope_lock(mutex, read_access);
-      auto &&alloc = get_allocator();
-      return traits::max_node_size(alloc);
-    }
-
-    u64 max_array_size() const noexcept {
-      VK_scope_lock(mutex, read_access);
-      auto &&alloc = get_allocator();
-      return traits::max_array_size(alloc);
-    }
-
-    u64 max_alignment() const noexcept {
-      VK_scope_lock(mutex, read_access);
-      auto &&alloc = get_allocator();
-      return traits::max_alignment(alloc);
+    VK_nodiscard u64 max_alignment() const noexcept {
+      VK_scope_lock(get_mutex(), read_access);
+      return trt::max_alignment(get_allocator());
     }
     /// @}
+
 
     /// @{
     /// \effects Calls the function on the stored composable allocator.
@@ -183,79 +198,134 @@ namespace valkyrie {
     /// i.e. \ref is_composable() must return `true`.
     /// \note This check is done at compile-time where possible,
     /// and at runtime in the case of type-erased storage.
-    void *try_allocate_node(u64 size, u64 alignment) noexcept requires(traits::is_composable) {
+    VK_nodiscard void* try_allocate_node(u64 size, u64 alignment) noexcept {
       VK_assert(is_composable());
-      VK_scope_lock(mutex, write_access);
+      VK_scope_lock(get_mutex(), write_access);
       auto &&alloc = get_allocator();
-      return traits::try_allocate_node(alloc, size, alignment);
+      return trt::try_allocate_node(alloc, size, alignment);
+    }
+    VK_nodiscard void* try_allocate_array(u64 count, u64 size, u64 alignment) noexcept {
+      VK_assert(is_composable());
+      VK_scope_lock(get_mutex(), write_access);
+      auto &&alloc = get_allocator();
+      return trt::try_allocate_array(alloc, count, size, alignment);
     }
 
-    void *try_allocate_array(u64 count, u64 size,
-                             u64 alignment) noexcept requires(traits::is_composable) {
+    VK_nodiscard bool try_deallocate_node(void *ptr, u64 size, u64 alignment) noexcept {
       VK_assert(is_composable());
-      VK_scope_lock(mutex, write_access);
+      VK_scope_lock(get_mutex(), write_access);
       auto &&alloc = get_allocator();
-      return traits::try_allocate_array(alloc, count, size, alignment);
+      return trt::try_deallocate_node(alloc, ptr, size, alignment);
     }
-
-    bool try_deallocate_node(void *ptr, u64 size, u64 alignment) noexcept requires(traits::is_composable) {
+    VK_nodiscard bool try_deallocate_array(void *ptr, u64 count, u64 size, u64 alignment) noexcept {
       VK_assert(is_composable());
-      VK_scope_lock(mutex, write_access);
+      VK_scope_lock(get_mutex(), write_access);
       auto &&alloc = get_allocator();
-      return traits::try_deallocate_node(alloc, ptr, size, alignment);
-    }
-
-    bool try_deallocate_array(void *ptr, u64 count, u64 size,
-                              u64 alignment) noexcept requires(traits::is_composable) {
-      VK_assert(is_composable());
-      VK_scope_lock(mutex, write_access);
-      auto &&alloc = get_allocator();
-      return traits::try_deallocate_array(alloc, ptr, count, size, alignment);
+      return trt::try_deallocate_array(alloc, ptr, count, size, alignment);
     }
     /// @}
+
 
     /// @{
     /// \effects Forwards to the \c StoragePolicy.
     /// \returns Returns a reference to the stored allocator.
     /// \note This does not lock the \c Mutex.
-    decltype(auto) get_allocator() noexcept {
+    decltype(auto) get_allocator()       noexcept {
       return storage_policy::get_allocator();
     }
-
     decltype(auto) get_allocator() const noexcept {
       return storage_policy::get_allocator();
     }
     /// @}
 
+
+
     /// @{
     /// \returns A proxy object that acts like a pointer to the stored allocator.
     /// It cannot be reassigned to point to another allocator object and only moving is supported, which is destructive.
     /// As long as the proxy object lives and is not moved from, the \c Mutex will be kept locked.
-    auto lock() noexcept {
-      return locked_ptr(std::addressof(get_allocator()), mutex);
+    auto lock()       noexcept {
+      return locked_ptr(std::addressof(get_allocator()), get_mutex());
     }
-
     auto lock() const noexcept {
-      return locked_ptr(std::addressof(get_allocator()), mutex);
+      return locked_ptr(std::addressof(get_allocator()), get_mutex());
     }
     /// @}.
 
     /// \returns Whether or not the stored allocator is composable,
-    /// that is you can use the compositioning functions.
+    /// that is you can use the composing functions.
     /// \note Due to type-erased allocators,
     /// this function can not be `constexpr`.
-    bool is_composable() const noexcept {
+    VK_nodiscard bool is_composable() const noexcept {
       return StoragePolicy::is_composable();
     }
 
-  private:
-    [[no_unique_address]] actual_mutex mutex;
-  };
 
-  /// Tag type that enables type-erasure in \ref reference_storage.
-  /// It can be used everywhere a \ref allocator_reference is used internally.
-  /// \ingroup storage
-  struct any_allocator { };
+    VK_constant bool propagate_on_container_copy_assignment = trt::propagate_on_container_copy_assignment;
+    VK_constant bool propagate_on_container_move_assignment = trt::propagate_on_container_move_assignment;
+    VK_constant bool propagate_on_container_swap            = trt::propagate_on_container_swap;
+
+    template <typename Pol> requires std::assignable_from<storage_policy&, typename Pol::allocator_type&>
+    void container_copy_assign(const allocator_storage<Pol, Mutex>& other) noexcept {
+      if constexpr ( propagate_on_container_copy_assignment ) {
+        storage_policy::operator=(other.get_allocator());
+      }
+    }
+    template <typename Pol> requires std::assignable_from<storage_policy&, typename Pol::allocator_type&&>
+    void container_move_assign(allocator_storage<Pol, Mutex>&& other) noexcept {
+      if constexpr ( propagate_on_container_move_assignment ) {
+        storage_policy::operator=(std::move(other.get_allocator()));
+      }
+    }
+    template <typename Pol> requires std::swappable_with<storage_policy&, Pol&>
+    void container_swap(allocator_storage<Pol, Mutex>& other) noexcept {
+      if constexpr ( propagate_on_container_swap ) {
+        std::ranges::swap(static_cast<storage_policy&>(*this), static_cast<Pol&>(*this));
+      }
+    }
+
+    /*VK_nodiscard allocator_storage select_on_container_copy_construction() const noexcept {
+      return allocator_storage(trt::select_on_container_copy_construction(get_allocator()));
+    }*/
+
+
+    template <typename T>
+    inline void on_new_object(T* p) noexcept {
+      trt::on_new_object(get_allocator(), p);
+    }
+    template <typename T>
+    inline void on_new_array(T* p, u64 size) noexcept {
+      trt::on_new_array(get_allocator(), p, size);
+    }
+    template <typename T>
+    inline void on_delete_object(T* p) noexcept {
+      trt::on_delete_object(get_allocator(), p);
+    }
+    template <typename T>
+    inline void on_delete_array(T* p, u64 size) noexcept {
+      trt::on_delete_array(get_allocator(), p, size);
+    }
+
+
+    inline void copy_bytes(void* to, const void* from, u64 bytes) noexcept {
+      trt::copy_bytes(get_allocator(), to, from, bytes);
+    }
+    inline void move_bytes(void* to, const void* from, u64 bytes) noexcept {
+      trt::move_bytes(get_allocator(), to, from, bytes);
+    }
+    inline void  set_bytes(void* to, int value,        u64 bytes) noexcept {
+      trt::set_bytes(get_allocator(), to, value, bytes);
+    }
+    inline void zero_bytes(void* to,                   u64 bytes) noexcept {
+      trt::zero_bytes(get_allocator(), to, bytes);
+    }
+
+  protected:
+
+    decltype(auto) get_mutex() const noexcept {
+      return const_cast<mutex_type&>(static_cast<const mutex_type&>(*this));
+    }
+  };
 
   /// A \concept{concept_storagepolicy,StoragePolicy} that stores the allocator directly.
   /// It embeds the allocator inside it, i.e. moving the storage policy will move the allocator.
@@ -317,7 +387,8 @@ namespace valkyrie {
   /// \returns A new \ref allocator_adapter object created by forwarding to the constructor.
   /// \relates allocator_adapter
   template <class RawAllocator>
-  auto make_allocator_adapter(RawAllocator &&allocator) noexcept -> allocator_adapter<std::decay_t<RawAllocator>> {
+  auto make_allocator_adapter(RawAllocator &&allocator) noexcept
+      -> allocator_adapter<std::decay_t<RawAllocator>> {
     return {std::forward<RawAllocator>(allocator)};
   }
 
@@ -450,7 +521,7 @@ namespace valkyrie {
 
       reference_storage(const RawAllocator &) noexcept {}
 
-      bool is_valid() const noexcept {
+      VK_nodiscard bool is_valid() const noexcept {
         return true;
       }
 
@@ -461,41 +532,39 @@ namespace valkyrie {
     };
 
     // reference to stateful: stores a pointer to an allocator
-    template <typename RawAllocator>
-    requires stateful_allocator_c<RawAllocator>
+    template <typename RawAllocator> requires stateful_allocator_c<RawAllocator>
     class reference_storage<RawAllocator> {
     protected:
       reference_storage() noexcept : alloc_(nullptr) {}
 
       reference_storage(RawAllocator &allocator) noexcept : alloc_(&allocator) {}
 
-      bool is_valid() const noexcept {
+      VK_nodiscard bool is_valid() const noexcept {
         return alloc_ != nullptr;
       }
 
-      RawAllocator &get_allocator() const noexcept {
+      VK_nodiscard RawAllocator& get_allocator() const noexcept {
         VK_assert(alloc_ != nullptr);
         return *alloc_;
       }
 
     private:
-      RawAllocator *alloc_;
+      RawAllocator* alloc_;
     };
 
     // reference to shared: stores RawAllocator directly
-    template <typename RawAllocator>
-    requires shared_allocator_c<RawAllocator>
+    template <typename RawAllocator> requires shared_allocator_c<RawAllocator>
     class reference_storage<RawAllocator> {
     protected:
       reference_storage() noexcept = default;
 
       reference_storage(const RawAllocator &alloc) noexcept : alloc_(alloc) {}
 
-      bool is_valid() const noexcept {
+      VK_nodiscard bool is_valid() const noexcept {
         return true;
       }
 
-      RawAllocator &get_allocator() const noexcept {
+      VK_nodiscard RawAllocator& get_allocator() const noexcept {
         return alloc_;
       }
 
@@ -559,7 +628,7 @@ namespace valkyrie {
     ~reference_storage() noexcept = default;
 
   protected:
-    bool is_composable() const noexcept {
+    VK_nodiscard bool is_composable() const noexcept {
       return composable_allocator_c<allocator_type>;
     }
   };
@@ -581,36 +650,26 @@ namespace valkyrie {
       void *allocate_node(u64 size, u64 alignment) {
         return allocate_impl(1, size, alignment);
       }
-
       void *allocate_array(u64 count, u64 size, u64 alignment) {
         return allocate_impl(count, size, alignment);
       }
-
       void deallocate_node(void *node, u64 size, u64 alignment) noexcept {
         deallocate_impl(node, 1, size, alignment);
       }
-
-      void deallocate_array(void *array, u64 count, u64 size,
-                            u64 alignment) noexcept {
+      void deallocate_array(void *array, u64 count, u64 size, u64 alignment) noexcept {
         deallocate_impl(array, count, size, alignment);
       }
 
       void *try_allocate_node(u64 size, u64 alignment) noexcept {
         return try_allocate_impl(1, size, alignment);
       }
-
-      void *try_allocate_array(u64 count, u64 size,
-                               u64 alignment) noexcept {
+      void *try_allocate_array(u64 count, u64 size, u64 alignment) noexcept {
         return try_allocate_impl(count, size, alignment);
       }
-
-      bool try_deallocate_node(void *node, u64 size,
-                               u64 alignment) noexcept {
+      bool try_deallocate_node(void *node, u64 size, u64 alignment) noexcept {
         return try_deallocate_impl(node, 1, size, alignment);
       }
-
-      bool try_deallocate_array(void *array, u64 count, u64 size,
-                                u64 alignment) noexcept {
+      bool try_deallocate_array(void *array, u64 count, u64 size, u64 alignment) noexcept {
         return try_deallocate_impl(array, count, size, alignment);
       }
 
@@ -620,17 +679,17 @@ namespace valkyrie {
       virtual void *try_allocate_impl(u64 count, u64 size, u64 alignment) noexcept             = 0;
       virtual bool try_deallocate_impl(void *ptr, u64 count, u64 size, u64 alignment) noexcept = 0;
 
-      u64 max_node_size() const {
+      VK_nodiscard u64 max_node_size() const {
         return max(query::node_size);
       }
-      u64 max_array_size() const {
+      VK_nodiscard u64 max_array_size() const {
         return max(query::array_size);
       }
-      u64 max_alignment() const {
+      VK_nodiscard u64 max_alignment() const {
         return max(query::alignment);
       }
 
-      virtual bool is_composable() const noexcept = 0;
+      VK_nodiscard virtual bool is_composable() const noexcept = 0;
 
     protected:
       enum class query {
@@ -639,7 +698,7 @@ namespace valkyrie {
         alignment
       };
 
-      virtual u64 max(query q) const = 0;
+      VK_nodiscard virtual u64 max(query q) const = 0;
     };
 
   public:
@@ -648,7 +707,7 @@ namespace valkyrie {
     /// \effects Creates it from a reference to any stateful \concept{concept_rawallocator,RawAllocator}.
     /// It will store a pointer to this allocator object.
     /// \note The user has to take care that the lifetime of the reference does not exceed the allocator lifetime.
-    template <class RawAllocator>
+    template <typename RawAllocator>
     reference_storage(RawAllocator &alloc) noexcept {
       static_assert(sizeof(basic_allocator<RawAllocator>) <= sizeof(basic_allocator<default_instantiation>),
                     "requires all instantiations to have certain maximum size");
@@ -658,9 +717,8 @@ namespace valkyrie {
     // \effects Creates it from any stateless \concept{concept_rawallocator,RawAllocator}.
     /// It will not store anything, only creates the allocator as needed.
     /// \requires The \c RawAllocator is stateless.
-    template <class RawAllocator>
-    reference_storage(
-        const RawAllocator &alloc) noexcept requires(!allocator_traits<RawAllocator>::is_stateful::value) {
+    template <stateless_allocator_c RawAllocator>
+    reference_storage(const RawAllocator &alloc) noexcept {
       static_assert(sizeof(basic_allocator<RawAllocator>) <= sizeof(basic_allocator<default_instantiation>),
                     "requires all instantiations to have certain maximum size");
       ::new (static_cast<void *>(&storage_)) basic_allocator<RawAllocator>(alloc);
@@ -681,11 +739,16 @@ namespace valkyrie {
     }
 
     reference_storage &operator=(const reference_storage &other) noexcept {
+      if ( this != &other )
+        return *this;
+
       get_allocator().~allocator_type();
       other.get_allocator().clone(&storage_);
       return *this;
     }
     /// @}
+
+
 
     /// \returns A reference to the allocator.
     /// The actual type is implementation-defined since it is the base class used in the type-erasure,
@@ -701,15 +764,15 @@ namespace valkyrie {
       get_allocator().~allocator_type();
     }
 
-    bool is_composable() const noexcept {
+    VK_nodiscard bool is_composable() const noexcept {
       return get_allocator().is_composable();
     }
 
   private:
     template <class RawAllocator>
     class basic_allocator : public base_allocator, private impl::reference_storage<RawAllocator> {
-      using traits           = allocator_traits<RawAllocator>;
-      using allocator_type_t = typename traits::allocator_type;
+      using trt           = allocator_traits<RawAllocator>;
+      using allocator_type_t = typename trt::allocator_type;
       using storage          = impl::reference_storage<RawAllocator>;
 
     public:
@@ -720,7 +783,7 @@ namespace valkyrie {
       basic_allocator(RawAllocator &alloc) noexcept : storage(alloc) {}
 
     private:
-      typename traits::allocator_type &get() const noexcept {
+      VK_nodiscard allocator_type_t& get() const noexcept {
         return storage::get_allocator();
       }
 
@@ -728,59 +791,55 @@ namespace valkyrie {
         ::new (storage) basic_allocator(get());
       }
 
-      void *allocate_impl(u64 count, u64 size,
-                          u64 alignment) override {
+      void *allocate_impl(u64 count, u64 size, u64 alignment) override {
         auto &&alloc = get();
         if (count == 1u)
-          return traits::allocate_node(alloc, size, alignment);
+          return trt::allocate_node(alloc, size, alignment);
         else
-          return traits::allocate_array(alloc, count, size, alignment);
+          return trt::allocate_array(alloc, count, size, alignment);
       }
 
-      void deallocate_impl(void *ptr, u64 count, u64 size,
-                           u64 alignment) noexcept override {
+      void deallocate_impl(void *ptr, u64 count, u64 size, u64 alignment) noexcept override {
         auto &&alloc = get();
         if (count == 1u)
-          traits::deallocate_node(alloc, ptr, size, alignment);
+          trt::deallocate_node(alloc, ptr, size, alignment);
         else
-          traits::deallocate_array(alloc, ptr, count, size, alignment);
+          trt::deallocate_array(alloc, ptr, count, size, alignment);
       }
 
       void *try_allocate_impl(u64 count, u64 size, u64 alignment) noexcept override {
-        if constexpr ( !traits::is_composable ) {
-          VK_unreachable;
-          return nullptr;
+        if constexpr ( trt::is_composable ) {
+          auto &&alloc = get();
+          if (count == 1u)
+            return trt::try_allocate_node(alloc, size, alignment);
+          return trt::try_allocate_array(alloc, count, size, alignment);
         }
-        auto &&alloc = get();
-        if (count == 1u)
-          return traits::try_allocate_node(alloc, size, alignment);
-        else
-          return traits::try_allocate_array(alloc, count, size, alignment);
+        VK_unreachable;
+        return nullptr;
       }
 
       bool try_deallocate_impl(void *ptr, u64 count, u64 size, u64 alignment) noexcept override {
-        if constexpr ( !traits::is_composable ) {
-          VK_unreachable;
-          return nullptr;
+        if constexpr ( trt::is_composable ) {
+          auto &&alloc = get();
+          if (count == 1u)
+            return trt::try_deallocate_node(alloc, ptr, size, alignment);
+          return trt::try_deallocate_array(alloc, ptr, count, size, alignment);
         }
-        auto &&alloc = get();
-        if (count == 1u)
-          return traits::try_deallocate_node(alloc, ptr, size, alignment);
-        else
-          return traits::try_deallocate_array(alloc, ptr, count, size, alignment);
+        VK_unreachable;
+        return false;
       }
 
-      bool is_composable() const noexcept override {
-        return traits::is_composable;
+      VK_nodiscard bool is_composable() const noexcept override {
+        return trt::is_composable;
       }
 
-      u64 max(query q) const override {
+      VK_nodiscard u64 max(query q) const override {
         auto &&alloc = get();
         if (q == query::node_size)
-          return traits::max_node_size(alloc);
+          return trt::max_node_size(alloc);
         else if (q == query::array_size)
-          return traits::max_array_size(alloc);
-        return traits::max_alignment(alloc);
+          return trt::max_array_size(alloc);
+        return trt::max_alignment(alloc);
       }
     };
 
@@ -816,11 +875,16 @@ namespace valkyrie {
   /// \ingroup storage
   using any_allocator_reference = allocator_storage<any_reference_storage, noop_mutex>;
 
+
+  static_assert(memory_storage_policy_c<any_reference_storage>);
+
+
+
   /// \returns A new \ref any_allocator_reference object by forwarding the allocator to the constructor.
   /// \relates any_allocator_reference
-  template <class RawAllocator>
-  auto make_any_allocator_reference(RawAllocator &&allocator) noexcept -> any_allocator_reference {
-    return {std::forward<RawAllocator>(allocator)};
+  template <typename RawAllocator> requires allocator_c<remove_cvref_t<RawAllocator>>
+  any_allocator_reference make_any_allocator_reference(RawAllocator &&allocator) noexcept {
+    return any_allocator_reference(std::forward<RawAllocator>(allocator));
   }
 }  // namespace valkyrie
 

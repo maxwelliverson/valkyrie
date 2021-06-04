@@ -7,10 +7,14 @@
 
 using namespace valkyrie;
 
+void impl::rb_node_base::set_root(const rb_tree_base* tree) noexcept {
+  parent_ = tree->null();
+  position_ = position::root;
+}
 
-void impl::rb_node_base::insert(rb_tree_base *tree) noexcept  {
 
-  rb_node_base* x = this;
+void impl::rb_tree_base::post_insert_rebalance(rb_node_base *node) noexcept {
+  rb_node_base* x = node;
   rb_node_base* y;
   rb_node_base* p;
   rb_node_base* pp;
@@ -30,13 +34,13 @@ void impl::rb_node_base::insert(rb_tree_base *tree) noexcept  {
       else {
         if (x->is_right()) {
           x = p;
-          tree->left_rotate(x);
+          left_rotate(x);
         }
         _p = x->get_parent();
         _pp = _p->get_parent();
         _p->set_black();
         _pp->set_red();
-        tree->right_rotate(_pp);
+        right_rotate(_pp);
       }
     }
     else {
@@ -50,117 +54,223 @@ void impl::rb_node_base::insert(rb_tree_base *tree) noexcept  {
       else {
         if (x->is_left()) {
           x = p;
-          tree->right_rotate(x);
+          right_rotate(x);
         }
         _p = x->get_parent();
         _pp = _p->get_parent();
         _p->set_black();
         _pp->set_red();
-        tree->left_rotate(_pp);
+        left_rotate(_pp);
       }
     }
   }
-  if ( tree->get_root()->isRed() ) {
-    ++tree->blackDepth;
-    tree->get_root()->set_black();
-  }
+  if ( get_root()->is_red() )
+    get_root()->set_black();
 }
+VK_nodiscard impl::rb_node_base* impl::rb_tree_base::delete_node(rb_node_base *node) noexcept {
 
-impl::rb_node_base * impl::rb_tree_base::left_rotate(rb_node_base *node) noexcept {
+  rb_node_base *x, *y;
 
-  auto* y = node->rightChild_;
+  if ( is_null(node->get_left_child()) ) {
+    y = node;
+    x = node->get_right_child();
+  }
+  else {
+    if ( is_null(node->get_right_child()) ) {
+      y = node;
+      x = node->get_left_child();
+    }
+    else {
+      y = get_successor(node);
+      x = y->get_left_child();
+      if ( is_null(x) )
+        x = y->get_right_child();
+    }
+  }
 
-  switch (node->position_) {
+  switch ( y->get_position() ) {
     case rb_node_base::position::root:
-      set_root(y);
+      set_root(x);
       break;
     case rb_node_base::position::left:
-      node->parent_->set_left_child(y);
+      y->get_parent()->set_left_child(x);
       break;
     case rb_node_base::position::right:
-      node->parent_->set_right_child(y);
+      y->get_parent()->set_right_child(x);
       break;
     VK_no_default;
   }
-  node->set_right_child(y->leftChild_);
-  y->set_left_child(node);
+
   return y;
 }
-impl::rb_node_base * impl::rb_tree_base::right_rotate(rb_node_base *node) noexcept {
-  auto* y = node->leftChild_;
+void impl::rb_tree_base::post_delete_rebalance(rb_node_base *node) noexcept {
 
-  switch (node->position_) {
+  rb_node_base* x = node;
+  rb_node_base* w;
+
+  while ( x->is_black() ) {
+    switch ( x->get_position() ) {
+      case rb_node_base::position::root:
+        return;
+      case rb_node_base::position::left:
+
+        w = x->get_parent()->get_right_child();
+        if ( w->is_red() ) {
+          w->set_black();
+          x->get_parent()->set_red();
+          left_rotate(x->get_parent());
+          w = x->get_parent()->get_right_child();
+        }
+        if ( w->get_right_child()->is_black() ) {
+          
+          w->set_red();
+          
+          if ( w->get_left_child()->is_black() ) {
+            x = x->get_parent();
+            break;
+          }
+          
+          w->get_left_child()->set_black();
+          right_rotate(w);
+          w = x->get_parent()->get_right_child();
+        }
+        
+        w->set_colour(x->get_parent()->get_colour());
+        x->get_parent()->set_black();
+        w->get_right_child()->set_black();
+        left_rotate(x->get_parent());
+        x = get_root();
+        break;
+
+
+      case rb_node_base::position::right:
+
+        w = x->get_parent()->get_left_child();
+        if ( w->is_red() ) {
+          w->set_black();
+          x->get_parent()->set_red();
+          right_rotate(x->get_parent());
+          w = x->get_parent()->get_left_child();
+        }
+        if ( w->get_left_child()->is_black() ) {
+
+          w->set_red();
+
+          if ( w->get_right_child()->is_black() ) {
+            x = x->get_parent();
+            break;
+          }
+
+          w->get_right_child()->set_black();
+          left_rotate(w);
+          w = x->get_parent()->get_left_child();
+        }
+
+        w->set_colour(x->get_parent()->get_colour());
+        x->get_parent()->set_black();
+        w->get_left_child()->set_black();
+        right_rotate(x->get_parent());
+        x = get_root();
+        break;
+      VK_no_default;
+    }
+  }
+  
+  x->set_black();
+}
+
+
+VK_nodiscard impl::rb_node_base* impl::rb_tree_base::get_maximum(rb_node_base* node) const noexcept {
+
+  rb_node_base* x = node;
+  rb_node_base* y = x->get_right_child();
+
+  while ( !is_null(y) ) {
+    x = y;
+    y = y->get_right_child();
+  }
+
+  return x;
+}
+VK_nodiscard impl::rb_node_base* impl::rb_tree_base::get_minimum(rb_node_base* node) const noexcept {
+
+  rb_node_base* x = node;
+  rb_node_base* y = x->get_left_child();
+
+  while ( !is_null(y) ) {
+    x = y;
+    y = y->get_left_child();
+  }
+
+  return x;
+
+}
+VK_nodiscard impl::rb_node_base* impl::rb_tree_base::get_successor(rb_node_base* node) const noexcept {
+
+  rb_node_base* x = node;
+  rb_node_base* y;
+
+  if ( !is_null(x->get_right_child()) )
+    return get_minimum(x->get_right_child());
+
+  do {
+    y = x;
+    x = x->get_parent();
+  } while (!is_null(x) && y->is_right());
+  return x;
+}
+VK_nodiscard impl::rb_node_base* impl::rb_tree_base::get_predecessor(rb_node_base* node) const noexcept {
+  rb_node_base* x = node;
+  rb_node_base* y;
+
+  if ( !is_null(x->get_left_child()) )
+    return get_maximum(x->get_left_child());
+
+  do {
+    y = x;
+    x = x->get_parent();
+  } while (!is_null(x) && y->is_left());
+  return x;
+}
+
+void impl::rb_tree_base::left_rotate(rb_node_base *node) noexcept {
+
+  rb_node_base* y = node->get_right_child();
+
+  switch (node->get_position()) {
     case rb_node_base::position::root:
       set_root(y);
       break;
     case rb_node_base::position::left:
-      node->parent_->set_left_child(y);
+      node->get_parent()->set_left_child(y);
       break;
     case rb_node_base::position::right:
-      node->parent_->set_right_child(y);
+      node->get_parent()->set_right_child(y);
       break;
-    default:
-      __assume(false);
-      VK_assert_msg(false, "Node::position contained an invalid value");
+    VK_no_default;
   }
-  node->set_left_child(y->rightChild_);
+  node->set_right_child(y->get_left_child());
+  y->set_left_child(node);
+}
+void impl::rb_tree_base::right_rotate(rb_node_base *node) noexcept {
+  auto* y = node->get_left_child();
+
+  switch (node->get_position()) {
+    case rb_node_base::position::root:
+      set_root(y);
+      break;
+    case rb_node_base::position::left:
+      node->get_parent()->set_left_child(y);
+      break;
+    case rb_node_base::position::right:
+      node->get_parent()->set_right_child(y);
+      break;
+    VK_no_default;
+  }
+  node->set_left_child(y->get_right_child());
   y->set_right_child(node);
-  return y;
 }
 
-
-/**
- * [[nodiscard]] inline Node* getMaximum(RBTreeBase* tree) const noexcept {
-
-
-        const Node* x = this;
-        const Node* y = x->getRightChild();
-
-        while ( !tree->isNull(y) ) {
-          x = y;
-          y = y->getRightChild();
-        }
-        return const_cast<Node*>(x);
-      }
-      [[nodiscard]] inline Node* getMinimum(RBTreeBase* tree) const noexcept {
-
-        const Node* x = this;
-        const Node* y = x->getLeftChild();
-
-        while ( !tree->isNull(y) ) {
-          x = y;
-          y = y->getLeftChild();
-        }
-        return const_cast<Node*>(x);
-      }
-      [[nodiscard]] inline Node* getSuccessor(RBTreeBase* tree) const noexcept {
-
-        if (const Node* rightChild = getRightChild(); !tree->isNull(rightChild) )
-          return rightChild->getMinimum();
-
-        const Node* x = this;
-        const Node* y;
-        do {
-          y = x;
-          x = x->getParent();
-        } while( !tree->isNull(x) && y->position == Position::Right);
-        return const_cast<Node*>(x);
-      }
-      [[nodiscard]] inline Node* getPredecessor(RBTreeBase* tree) const noexcept{
-
-        if (const Node* leftChild = getLeftChild(); !tree->isNull(leftChild) )
-          return leftChild->getMaximum();
-
-        const Node* x = this;
-        const Node* y;
-        do {
-          y = x;
-          x = x->getParent();
-        } while( !tree->isNull(x) && y->position == Position::Left);
-        return const_cast<Node*>(x);
-      }
- *
- * */
 
 #if 0
 template <typename T, weak_order<const T&, const T&> Order = std::compare_three_way>

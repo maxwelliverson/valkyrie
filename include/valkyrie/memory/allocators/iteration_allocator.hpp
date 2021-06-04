@@ -6,11 +6,11 @@
 #define VALKYRIE_MEMORY_ITERATION_ALLOCATOR_HPP
 
 
-#include "detail/debug_helpers.hpp"
-#include "detail/memory_stack.hpp"
-#include "default_allocator.hpp"
-#include "error.hpp"
-#include "memory_arena.hpp"
+#include "../default_allocator.hpp"
+#include "../detail/debug_helpers.hpp"
+#include "../detail/memory_stack.hpp"
+#include "../error.hpp"
+#include "../memory_arena.hpp"
 
 namespace valkyrie{
   namespace detail

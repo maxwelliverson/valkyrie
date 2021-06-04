@@ -49,7 +49,9 @@ namespace valkyrie::detail{
       }
 
     }
-
+    void* reallocate_array(void* ptr, u64 new_size, u64 old_size, u64 align) noexcept requires(requires{ &Functor::reallocate; }) {
+      return Functor::reallocate(ptr, new_size, old_size, align);
+    }
     void  deallocate_node(void* node, u64 size, u64 alignment) noexcept {
       auto actual_size = size + (debug_fence_size ? 2 * max_alignment : 0u);
 
@@ -59,7 +61,7 @@ namespace valkyrie::detail{
       this->on_deallocate(actual_size);
     }
 
-    u64 max_node_size() const noexcept {
+    VK_nodiscard u64 max_node_size() const noexcept {
       return Functor::max_node_size();
     }
   };

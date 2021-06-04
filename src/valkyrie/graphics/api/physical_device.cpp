@@ -35,12 +35,12 @@
 
 
 namespace valkyrie::graphics::api{
-  namespace Internal{
+  namespace internal{
     namespace {
-      inline bool supports(const PhysicalDeviceImpl &impl, DeviceExtensionID id) noexcept {
+      inline bool supports(const physical_device_impl &impl, DeviceExtensionID id) noexcept {
         return impl.extensions.contains(id);
       }
-      void lazyLoadQueueFamiliesDefault(PhysicalDeviceImpl &impl) noexcept {
+      void lazyLoadQueueFamiliesDefault(physical_device_impl &impl) noexcept {
         u32 queueFamilySize;
         static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
         impl.pInterface->getQueueFamilyProperties(impl.handle, &queueFamilySize, nullptr);
@@ -53,7 +53,7 @@ namespace valkyrie::graphics::api{
         for (u32 i = 0; i < queueFamilySize; ++i)
           impl.queueFamilies.emplace_back(queueFamiliesTmp[i].queueFamilyProperties);
       }
-      void lazyLoadQueueFamiliesWithCheckpoints(PhysicalDeviceImpl &impl) noexcept {
+      void lazyLoadQueueFamiliesWithCheckpoints(physical_device_impl &impl) noexcept {
         u32 queueFamilySize;
         static_vector<VkQueueFamilyCheckpointPropertiesNV, 8> checkpointPropertiesTmp;
         static_vector<VkQueueFamilyProperties2, 8> queueFamiliesTmp;
@@ -70,7 +70,7 @@ namespace valkyrie::graphics::api{
         for (u32 i = 0; i < queueFamilySize; ++i)
           impl.queueFamilies.emplace_back(queueFamiliesTmp[i].queueFamilyProperties, checkpointPropertiesTmp[i]);
       }
-      vulkan_status lazyLoadPerformanceCounters(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadPerformanceCounters(physical_device_impl &impl) noexcept {
         VkPerformanceCounterKHR *counters;
         VkPerformanceCounterDescriptionKHR *descriptions;
         i32 i = 0;
@@ -79,10 +79,10 @@ namespace valkyrie::graphics::api{
           for (; i < impl.queueFamilies.size(); ++i) {
             auto &family = impl.queueFamilies[i];
             u32 counterCount = 0;
-            VK_safe_call(make_status_code(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr)));
+            VK_safe_call(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, nullptr, nullptr));
             counters = VK_malloc(VkPerformanceCounterKHR, counterCount);
             descriptions = VK_malloc(VkPerformanceCounterDescriptionKHR, counterCount);
-            VK_safe_call(make_status_code(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions)));
+            VK_safe_call(impl.pInterface->enumerateQueueFamilyPerformanceQueryCounters(impl.handle, i, &counterCount, counters, descriptions));
             for (u32 j = 0; i < counterCount; ++j)
               family.performanceCounters.emplace_back(counters[j], descriptions[j]);
             VK_free(counters);
@@ -97,7 +97,7 @@ namespace valkyrie::graphics::api{
         }
         VK_return;
       }
-      vulkan_status lazyLoadExtensions(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadExtensions(physical_device_impl &impl) noexcept {
         VK_try {
           if (!impl.extensionsLoaded) {
             vector<VkExtensionProperties> deviceExtensions;
@@ -121,19 +121,19 @@ namespace valkyrie::graphics::api{
         }
         VK_rethrow;
       }
-      void lazyLoadFeatures(PhysicalDeviceImpl &impl) noexcept {
+      void lazyLoadFeatures(physical_device_impl &impl) noexcept {
         if (!impl.featuresLoaded) {
           impl.pInterface->getFeatures(impl.handle, &impl.availableFeatures.vulkan10);
           impl.featuresLoaded = true;
         }
       }
-      void lazyLoadProperties(PhysicalDeviceImpl &impl) noexcept {
+      void lazyLoadProperties(physical_device_impl &impl) noexcept {
         if (!impl.propertiesLoaded) {
           impl.pInterface->getProperties(impl.handle, &impl.properties.vulkan10);
           impl.propertiesLoaded = true;
         }
       }
-      vulkan_status lazyLoadQueueFamilies(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status lazyLoadQueueFamilies(physical_device_impl &impl) noexcept {
         VK_try {
           if (!impl.queueFamiliesLoaded) {
             VK_safe_call(lazyLoadExtensions(impl));
@@ -149,7 +149,7 @@ namespace valkyrie::graphics::api{
         }
         VK_rethrow;
       }
-      vulkan_status eagerLoad(PhysicalDeviceImpl &impl) noexcept {
+      vulkan_status eagerLoad(physical_device_impl &impl) noexcept {
         VK_try {
           VK_safe_call(lazyLoadExtensions(impl));
           lazyLoadFeatures(impl);
@@ -170,7 +170,7 @@ namespace valkyrie::graphics::api{
     }
   }
 
-  class physical_device::Impl : public Internal::PhysicalDeviceImpl{};
+  class physical_device::Impl : public internal::physical_device_impl{};
 
 
 

@@ -11,7 +11,7 @@
 
 namespace valkyrie{
 
-  template <typename T, typename MappedType, raw_allocator Alloc = default_allocator>
+  template <typename T, typename MappedType, allocator_c Alloc = default_allocator>
   class interval_map{
 
     struct mapped_wrapper{
@@ -46,7 +46,7 @@ namespace valkyrie{
 
   };
 
-  template <typename T, typename MappedType, raw_allocator Alloc = default_allocator>
+  template <typename T, typename MappedType, allocator_c Alloc = default_allocator>
   class overlapped_interval_map{
 
   };

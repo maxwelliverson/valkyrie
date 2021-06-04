@@ -27,7 +27,7 @@ namespace valkyrie{
   class status_enum_domain;
 
   template </*concepts::enumerator*/ typename E>
-  class bitflag;
+  class bitflags;
 
   class string_view;
 
@@ -37,6 +37,7 @@ namespace valkyrie{
 
   struct root{};
   struct variable_size{};
+  struct any_allocator{};
 
   inline namespace concepts{
 
@@ -65,9 +66,12 @@ namespace valkyrie{
 
 
 
-
     template <typename From, typename To>
-    concept convertible_to = std::convertible_to<From, To>;
+    concept static_castable_to = requires(From&& from){
+      static_cast<To>(std::forward<From>(from));
+    };
+    template <typename From, typename To>
+    concept convertible_to = static_castable_to<From, To> && std::convertible_to<From, To>;
     template <typename T, typename ...Args>
     concept constructible_from = std::constructible_from<T, Args...>;
 
@@ -108,14 +112,14 @@ namespace valkyrie{
     concept equality_comparable = equality_comparable_with<T, T>;
     template <typename T, typename U>
     concept ordered_with = equality_comparable_with<T, U> && requires(const T& t, const U& u) {
-      { t < u } -> std::convertible_to<bool>;
-      { t > u } -> std::convertible_to<bool>;
-      { t <= u } -> std::convertible_to<bool>;
-      { t <= u } -> std::convertible_to<bool>;
-      { u < t } -> std::convertible_to<bool>;
-      { u > t } -> std::convertible_to<bool>;
-      { u <= t } -> std::convertible_to<bool>;
-      { u <= t } -> std::convertible_to<bool>;
+      { t < u } -> convertible_to<bool>;
+      { t > u } -> convertible_to<bool>;
+      { t <= u } -> convertible_to<bool>;
+      { t <= u } -> convertible_to<bool>;
+      { u < t } -> convertible_to<bool>;
+      { u > t } -> convertible_to<bool>;
+      { u <= t } -> convertible_to<bool>;
+      { u <= t } -> convertible_to<bool>;
     };
     template <typename T>
     concept ordered = ordered_with<T, T>;
@@ -123,9 +127,8 @@ namespace valkyrie{
 
     template <typename O, typename T, typename U = T>
     concept weak_order = requires(O&& order, const T& t, const U& u){
-      { std::forward<O>(order)(t, u) } -> std::convertible_to<std::weak_ordering>;
+      { std::forward<O>(order)(t, u) } -> convertible_to<std::weak_ordering>;
     };
-
 
 
 
@@ -135,10 +138,12 @@ namespace valkyrie{
     concept strict_extent_type = same_as_one_of<Ext, dynamic_t, Ind> && extent_type<Ext, Ind>;
 
 
+    template <typename T>
+    concept trivial_c = std::conjunction_v<std::is_trivially_copy_constructible<T>, std::is_trivially_move_constructible<T>, std::is_trivially_destructible<T>>;
 
 
     template <typename T>
-    concept is_register_copyable = std::conjunction_v<std::is_trivially_copyable<T>, std::is_trivially_destructible<T>> && sizeof(T) <= 16;
+    concept is_register_copyable = trivial_c<T> && sizeof(T) <= 16;
   }
 
 
@@ -646,18 +651,19 @@ namespace valkyrie{
             using flag_type = typename traits::bitflag_enum<E>::flag_type;
           };
           VK_trait_case(E, 1, !requires{ typename traits::bitflag_enum<E>::invalid_specialization; }){
-            using flag_type = bitflag<E>;
+            using flag_type = bitflags<E>;
           };
           VK_trait_fallback(E){};
         };
 
 
-        using trait_list = meta::list<string_name,
-                                     string_scoped_name,
+        using trait_list = meta::list<
+                                     //string_name,
+                                     //string_scoped_name,
                                      bool_is_bitflag,
                                      bool_is_status_code,
-                                     array_values,
-                                     array_entries,
+                                     //array_values,
+                                     //array_entries,
                                      typedef_underlying_type,
                                      typedef_status_domain,
                                      typedef_flag_type>;
@@ -1184,15 +1190,15 @@ namespace valkyrie{
         struct value_size{
           VK_trait_init(2);
           VK_trait_case(T, 2, requires{ { traits::klass<T>::size } -> extent_type; }){
-            VK_constant auto size = traits::klass<T>::size;
+            VK_constant auto size              = traits::klass<T>::size;
             VK_constant bool has_variable_size = same_as<decltype(size), dynamic_t>;
           };
           VK_trait_case(T, 1, std::derived_from<T, variable_size>){
-            VK_constant auto size = dynamic_t{};
+            VK_constant auto size              = dynamic_t{};
             VK_constant bool has_variable_size = true;
           };
           VK_trait_fallback(T){
-            VK_constant u64 size               = sizeof(T);
+            VK_constant u64  size              = sizeof(T);
             VK_constant bool has_variable_size = false;
           };
         };
@@ -1272,6 +1278,7 @@ namespace valkyrie{
         using trait_list = meta::list<string_name,
                                      string_scoped_name,
                                      uuid_id,
+                                     value_size,
                                      function_object_size,
                                      integer_alignment,
                                      typedef_supertype,
@@ -1351,7 +1358,9 @@ namespace valkyrie{
         struct typedef_char_type{};
 
 
-        struct bool_is_null_terminated{};
+        struct bool_is_always_null_terminated{};
+        struct function_is_null_terminated{};
+
 
 
         // char_type*(const string&)
@@ -1360,7 +1369,7 @@ namespace valkyrie{
         struct function_length{};
 
         using trait_list = meta::set<typedef_char_type,
-                                     bool_is_null_terminated,
+                                     bool_is_always_null_terminated,
                                      function_data,
                                      function_length>;
       };
@@ -1518,6 +1527,7 @@ namespace valkyrie{
           };
           VK_trait_no_fallback;
         };
+
         struct function_allocate_array{
           VK_trait_init(2);
           VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::allocate_array(alloc, n, n, n) } -> exact_same_as<void*>; }){
@@ -1557,6 +1567,30 @@ namespace valkyrie{
             }
           };
         };
+        struct function_reallocate_array{
+          VK_trait_init(4);
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ { traits::allocator<A>::reallocate_array(alloc, ptr, n, n, n, n) } -> exact_same_as<void*>; }){
+            inline static void* reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 alignment) noexcept {
+              return traits::allocator<A>::reallocate_array(alloc, ptr, new_count, old_count, size, alignment);
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ { alloc.reallocate_array(ptr, n, n, n, n) } -> exact_same_as<void*>; }){
+            inline static void* reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 alignment) noexcept {
+              return alloc.reallocate_array(ptr, new_count, old_count, size, alignment);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static void* reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 alignment) noexcept {
+              void* new_ptr = function_allocate_array::trait<A>::allocate_array(alloc, new_count, size, alignment);
+              if ( new_ptr ) VK_likely {
+                function_copy_bytes::trait<A>::copy_bytes(alloc, new_ptr, ptr, old_count * size);
+                function_deallocate_array::trait<A>::deallocate_array(alloc, ptr, old_count, size, alignment);
+              }
+              return new_ptr;
+            }
+          };
+        };
+
         struct function_try_allocate_node{
           VK_trait_init(2);
           VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, u64 n){ { traits::allocator<A>::try_allocate_node(alloc, n, n) } noexcept -> exact_same_as<void*>; }){
@@ -1634,6 +1668,39 @@ namespace valkyrie{
           VK_trait_fallback(A){
             inline static bool try_deallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 count, u64 size, u64 align) noexcept {
               return function_try_deallocate_node::trait<A>::try_deallocate_node(alloc, ptr, count * size, align);
+            }
+          };
+        };
+        struct function_try_reallocate_array{
+          VK_trait_init(3);
+          VK_trait_case(A, 3, !bool_is_composable::trait<A>::is_composable){}; // not provided if try_allocate_node and try_deallocate_node are not both provided.
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { traits::allocator<A>::try_reallocate_array(alloc, p, n, n, n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 align) noexcept {
+              return traits::allocator<A>::try_reallocate_array(alloc, ptr, new_count, old_count, size, align);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* p, u64 n){ { alloc.try_reallocate_array(p, n, n, n, n) } noexcept -> exact_same_as<void*>; }){
+            inline static void* try_reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 align) noexcept {
+              return alloc.try_reallocate_array(ptr, new_count, old_count, size, align);
+            }
+          };
+          VK_trait_fallback(A){
+            inline static void* try_reallocate_array(allocator_type_t<A>& alloc, void* ptr, u64 new_count, u64 old_count, u64 size, u64 align) noexcept {
+              void* new_ptr = function_try_allocate_array::trait<A>::try_allocate_array(alloc, new_count, size, align);
+              if ( !new_ptr )
+                return nullptr;
+
+              // FIXME: This is a **bad** default implementation, as there is no way to
+              //        check whether or not try_deallocate_array will succeed without
+              //        actually deallocating anything. As such, a new, potentially
+              //        large and costly allocation is made, only to have to be immediately
+              //        discarded in the case of try_deallocate_array failing.
+              function_copy_bytes::trait<A>::copy_bytes(alloc, new_ptr, ptr, old_count * size);
+              if ( !function_try_deallocate_array::trait<A>::try_deallocate_array(alloc, ptr, old_count, size, align) ) {
+                function_deallocate_array::trait<A>::deallocate_array(alloc, new_ptr, new_count, size, align);
+                return nullptr;
+              }
+              return new_ptr;
             }
           };
         };
@@ -1801,90 +1868,335 @@ namespace valkyrie{
           };
         };
 
-        struct function_select_on_container_copy_construction{
-          VK_trait_init(2);
-          VK_trait_case(A, 2, requires(const allocator_type_t<A>& alloc){
+        /*struct function_select_on_container_copy_construction{
+          VK_trait_init(4);
+          VK_trait_case(A, 4, requires(const allocator_type_t<A>& alloc){
             { traits::allocator<A>::select_on_container_copy_construction(alloc) } -> same_as<allocator_type_t<A>>;
           }){
             inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
               return traits::allocator<A>::select_on_container_copy_construction(alloc);
             }
           };
-          VK_trait_case(A, 1, requires(const allocator_type_t<A>& alloc){
+          VK_trait_case(A, 3, requires(const allocator_type_t<A>& alloc){
             { alloc.select_on_container_copy_construction() } -> same_as<allocator_type_t<A>>;
           }){
             inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
               return alloc.select_on_container_copy_construction();
             }
           };
-          VK_trait_fallback(A){
+          VK_trait_case(A, 2, std::copy_constructible<allocator_type_t<A>>){
             inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
               return alloc;
             }
           };
-        };
+          VK_trait_case(A, 1, !bool_is_stateful::trait<A>::is_stateful){
+            inline static allocator_type_t<A> select_on_container_copy_construction(const allocator_type_t<A>& alloc) noexcept {
+              return {};
+            }
+          };
+          VK_trait_no_fallback;
+        };*/
 
         struct tmp{
           int a;
           float b;
         };
 
-        struct function_construct_object{
-
-
-
-
-          VK_trait_init(3);
-          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::construct_object(alloc, p, 1, -2.3); }){
-            template <typename T, typename ...Args> requires constructible_from<T, Args...>
-            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
-              traits::allocator<A>::construct_object(alloc, ptr, std::forward<Args>(args)...);
+        struct function_on_new_object{
+          VK_trait_init(6);
+          VK_trait_case(A, 6, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::on_new_object(alloc, p); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_new_object(alloc, object);
             }
           };
-          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.construct_object(p, 1, -2.3); }){
-            template <typename T, typename ...Args> requires constructible_from<T, Args...>
-            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
-              alloc.construct_object(ptr, std::forward<Args>(args)...);
+          VK_trait_case(A, 5, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_new_object(alloc, ptr, n, n); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_new_object(
+                      alloc, 
+                      static_cast<void*>(object),
+                      klass::function_object_size::trait<T>::object_size(*object), 
+                      klass::integer_alignment::trait<T>::alignment);
             }
           };
-          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.construct(p, 1, -2.3); }){
-            template <typename T, typename ...Args> requires constructible_from<T, Args...>
-            inline static void construct_object(allocator_type_t<A>& alloc, T* ptr, Args&& ...args) noexcept {
-              alloc.construct(ptr, std::forward<Args>(args)...);
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* ptr, u64 size){ traits::allocator<A>::on_new_object(alloc, ptr, size); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_new_object(
+                      alloc, 
+                      static_cast<void*>(object), 
+                      klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.on_new_object(p); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_new_object(object);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_new_object(ptr, n, n); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_new_object(
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* ptr, u64 size){ alloc.on_new_object(ptr, size); }){
+            template <typename T>
+            inline static void on_new_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_new_object(
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object));
             }
           };
           VK_trait_fallback(A){
-            template <typename T, typename ...Args> requires constructible_from<T, Args...>
-            inline static void construct_object(allocator_type_t<A>&, T* ptr, Args&& ...args) noexcept {
-              new(ptr) T{ std::forward<Args>(args)... };
+            VK_forceinline static void on_new_object(allocator_type_t<A>&, void*) noexcept { }
+          };
+        };
+        struct function_on_new_array{
+          VK_trait_init(6);
+          VK_trait_case(A, 6, requires(allocator_type_t<A>& alloc, tmp* p, u64 count){ traits::allocator<A>::on_new_array(alloc, p, count); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_new_array(alloc, object, count);
+            }
+          };
+          VK_trait_case(A, 5, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_new_array(alloc, ptr, n, n, n); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_new_array(
+                  alloc,
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_new_array(alloc, ptr, n, n); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_new_array(
+                  alloc,
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p, u64 n){ alloc.on_new_array(p, n); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_new_array(object, count);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_new_array(ptr, n, n, n); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_new_array(
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_new_array(ptr, n, n); }){
+            template <typename T>
+            inline static void on_new_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_new_array(
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void on_new_array(allocator_type_t<A>&, void*, u64) noexcept { }
+          };
+        };
+        struct function_on_delete_object{
+          VK_trait_init(6);
+          VK_trait_case(A, 6, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::on_delete_object(alloc, p); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_delete_object(alloc, object);
+            }
+          };
+          VK_trait_case(A, 5, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_delete_object(alloc, ptr, n, n); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_delete_object(
+                  alloc,
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* ptr, u64 size){ traits::allocator<A>::on_delete_object(alloc, ptr, size); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              traits::allocator<A>::on_delete_object(
+                  alloc,
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.on_delete_object(p); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_delete_object(object);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_delete_object(ptr, n, n); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_delete_object(
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* ptr, u64 size){ alloc.on_delete_object(ptr, size); }){
+            template <typename T>
+            inline static void on_delete_object(allocator_type_t<A>& alloc, T* object) noexcept {
+              alloc.on_delete_object(
+                  static_cast<void*>(object),
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void on_delete_object(allocator_type_t<A>&, void*) noexcept { }
+          };
+        };
+        struct function_on_delete_array{
+          VK_trait_init(6);
+          VK_trait_case(A, 6, requires(allocator_type_t<A>& alloc, tmp* p, u64 count){ traits::allocator<A>::on_delete_array(alloc, p, count); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_delete_array(alloc, object, count);
+            }
+          };
+          VK_trait_case(A, 5, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_delete_array(alloc, ptr, n, n, n); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_delete_array(
+                  alloc,
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 4, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ traits::allocator<A>::on_delete_array(alloc, ptr, n, n); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              traits::allocator<A>::on_delete_array(
+                  alloc,
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p, u64 n){ alloc.on_delete_array(p, n); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_delete_array(object, count);
+            }
+          };
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_delete_array(ptr, n, n, n); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_delete_array(
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object),
+                  klass::integer_alignment::trait<T>::alignment);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* ptr, u64 n){ alloc.on_delete_array(ptr, n, n); }){
+            template <typename T>
+            inline static void on_delete_array(allocator_type_t<A>& alloc, T* object, u64 count) noexcept {
+              alloc.on_delete_array(
+                  static_cast<void*>(object),
+                  count,
+                  klass::function_object_size::trait<T>::object_size(*object));
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void on_delete_array(allocator_type_t<A>&, void*, u64) noexcept { }
+          };
+        };
+        
+        
+        struct function_copy_bytes{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes){ traits::allocator<A>::copy_bytes(alloc, to, from, bytes); }){
+            inline static void copy_bytes(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes) noexcept {
+              traits::allocator<A>::copy_bytes(alloc, to, from, bytes);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes){ alloc.copy_bytes(to, from, bytes); }){
+            inline static void copy_bytes(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes) noexcept {
+              alloc.copy_bytes(to, from, bytes);
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void copy_bytes(allocator_type_t<A>&, void* to, const void* from, u64 bytes) noexcept {
+              std::memcpy(to, from, bytes);
             }
           };
         };
-        struct function_destroy_object{
-
-          VK_trait_init(3);
-          VK_trait_case(A, 3, requires(allocator_type_t<A>& alloc, tmp* p){ traits::allocator<A>::destroy_object(alloc, p); }){
-            template <typename T>
-            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
-              traits::allocator<A>::destroy_object(alloc, ptr);
+        struct function_move_bytes{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes){ traits::allocator<A>::move_bytes(alloc, to, from, bytes); }){
+            inline static void move_bytes(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes) noexcept {
+              traits::allocator<A>::move_bytes(alloc, to, from, bytes);
             }
           };
-          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.destroy_object(p); }){
-            template <typename T>
-            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
-              alloc.destroy_object(ptr);
-            }
-          };
-          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, tmp* p){ alloc.destroy(p); }){
-            template <typename T>
-            inline static void destroy_object(allocator_type_t<A>& alloc, T* ptr) noexcept {
-              alloc.destroy(ptr);
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes){ alloc.move_bytes(to, from, bytes); }){
+            inline static void move_bytes(allocator_type_t<A>& alloc, void* to, const void* from, u64 bytes) noexcept {
+              alloc.move_bytes(to, from, bytes);
             }
           };
           VK_trait_fallback(A){
-            template <typename T>
-            inline static void destroy_object(allocator_type_t<A>&, T* VK_param(nonnull) ptr) noexcept {
-              ptr->~T();
+            VK_forceinline static void move_bytes(allocator_type_t<A>&, void* to, const void* from, u64 bytes) noexcept {
+              std::memmove(to, from, bytes);
+            }
+          };
+        };
+        struct function_set_bytes{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* to, int val, u64 bytes){ traits::allocator<A>::set_bytes(alloc, to, val, bytes); }){
+            inline static void set_bytes(allocator_type_t<A>& alloc, void* to, int val, u64 bytes) noexcept {
+              traits::allocator<A>::set_bytes(alloc, to, val, bytes);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* to, int val, u64 bytes){ alloc.set_bytes(to, val, bytes); }){
+            inline static void set_bytes(allocator_type_t<A>& alloc, void* to, int val, u64 bytes) noexcept {
+              alloc.set_bytes(to, val, bytes);
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void set_bytes(allocator_type_t<A>&, void* to, int val, u64 bytes) noexcept {
+              std::memset(to, val, bytes);
+            }
+          };
+        };
+        struct function_zero_bytes{
+          VK_trait_init(2);
+          VK_trait_case(A, 2, requires(allocator_type_t<A>& alloc, void* to, u64 bytes){ traits::allocator<A>::zero_bytes(alloc, to, bytes); }){
+            inline static void zero_bytes(allocator_type_t<A>& alloc, void* to, u64 bytes) noexcept {
+              traits::allocator<A>::zero_bytes(alloc, to, bytes);
+            }
+          };
+          VK_trait_case(A, 1, requires(allocator_type_t<A>& alloc, void* to, u64 bytes){ alloc.zero_bytes(to, bytes); }){
+            inline static void zero_bytes(allocator_type_t<A>& alloc, void* to, u64 bytes) noexcept {
+              alloc.zero_bytes(to, bytes);
+            }
+          };
+          VK_trait_fallback(A){
+            VK_forceinline static void zero_bytes(allocator_type_t<A>& alloc, void* to, u64 bytes) noexcept {
+              function_set_bytes::trait<A>::set_bytes(alloc, to, 0, bytes);
             }
           };
         };
@@ -1895,14 +2207,19 @@ namespace valkyrie{
 
             function_allocate_node,
             function_deallocate_node,
+
             function_allocate_array,
             function_deallocate_array,
+            function_reallocate_array,
 
             function_try_allocate_node,
             function_try_deallocate_node,
+
             bool_is_composable,
+
             function_try_allocate_array,
             function_try_deallocate_array,
+            function_try_reallocate_array,
 
             function_max_node_size,
             function_max_array_size,
@@ -1915,10 +2232,17 @@ namespace valkyrie{
             bool_propagate_on_container_copy_assignment,
             bool_propagate_on_container_move_assignment,
             bool_propagate_on_container_swap,
-            function_select_on_container_copy_construction,
+            //function_select_on_container_copy_construction,
 
-            function_construct_object,
-            function_destroy_object>;
+            function_on_new_object,
+            function_on_new_array,
+            function_on_delete_object,
+            function_on_delete_array,
+
+            function_copy_bytes,
+            function_move_bytes,
+            function_set_bytes,
+            function_zero_bytes>;
       };
 
       // TODO: Implement container traits_v2
@@ -2058,7 +2382,7 @@ namespace valkyrie{
     template <typename T>
     concept floating_point_c = numeric_c<T> && traits::detail::numeric::bool_is_floating_point::trait<T>::is_floating_point;
     template <typename T>
-    concept allocator_c = traits::detail::satisfies_trait<T, traits::detail::allocator>;
+    concept raw_allocator_c = traits::detail::satisfies_trait<T, traits::detail::allocator>;
     template <typename T>
     concept iterator_c  = traits::detail::satisfies_trait<T, traits::detail::iterator>;
     template <typename T>
@@ -2069,11 +2393,14 @@ namespace valkyrie{
     concept hashable_c = traits::detail::satisfies_trait<T, traits::detail::hash>;
 
     template <typename T>
-    concept bitwise_movable = !requires{
+    concept class_c = traits::detail::satisfies_trait<T, traits::detail::klass>;
+
+    template <typename T>
+    concept bitwise_movable_c = !requires{
       typename traits::bitwise_movable<T>::invalid_specialization;
     };
     template <typename From, typename To>
-    concept bit_castable_to = sizeof(From) == sizeof(To) && bitwise_movable<To> && bitwise_movable<From>;
+    concept bit_castable_to = sizeof(From) == sizeof(To) && bitwise_movable_c<To> && bitwise_movable_c<From>;
   }
 
 
@@ -2087,17 +2414,19 @@ namespace valkyrie{
   using graph_traits     = traits::detail::traits_impl<G, traits::detail::graph>;
   template <numeric_c N>
   using numeric_traits   = traits::detail::traits_impl<N, traits::detail::numeric>;
-  template <allocator_c A>
+  template <raw_allocator_c A>
   using allocator_traits = traits::detail::traits_impl<A, traits::detail::allocator>;
   template <iterator_c I>
   using iterator_traits  = traits::detail::traits_impl<I, traits::detail::iterator>;
   template <string_c S>
   using string_traits    = traits::detail::traits_impl<S, traits::detail::string>;
+  template <class_c C>
+  using class_traits     = traits::detail::traits_impl<C, traits::detail::klass>;
   template <singleton_c S>
   using singleton_traits = traits::detail::traits_impl<S, traits::detail::singleton>;
-
   template <hashable_c T>
   using hashable_traits  = traits::detail::traits_impl<T, traits::detail::hash>;
+
 
 
 
@@ -2111,9 +2440,6 @@ namespace valkyrie{
       meta::false_type test_is_composable() const;
     };
   }
-
-
-
 
 
 
@@ -2139,14 +2465,20 @@ namespace valkyrie{
 
 
     template <typename A>
-    concept composable_allocator_c = allocator_c<A> && allocator_traits<A>::is_composable;
+    concept composable_allocator_c = raw_allocator_c<A> && allocator_traits<A>::is_composable;
+
+    template <typename T>
+    concept allocator_c = raw_allocator_c<T> || exact_same_as<T, any_allocator>;
 
     template <typename T>
     concept block_allocator_c = requires(T& alloc, const T& const_alloc, memory_block block){
       { alloc.allocate_block() } -> same_as<memory_block>;
       alloc.deallocate_block(block);
-      { const_alloc.next_block_size() } -> std::convertible_to<u64>;
+      { const_alloc.next_block_size() } -> convertible_to<u64>;
     };
+
+    template <typename T>
+    concept block_or_raw_allocator_c = allocator_c<T> || block_allocator_c<T>;
 
     template <typename T>
     concept stateful_allocator_c = allocator_c<T> && allocator_traits<T>::is_stateful;
@@ -2158,8 +2490,8 @@ namespace valkyrie{
     template <typename T>
     concept memory_storage_policy_c = requires(T& policy, const T& cpolicy, const impl::protected_is_composable_test<T>& tester){
       typename T::allocator_type;
-      { policy.get_allocator() } -> std::convertible_to<typename T::allocator_type&>;
-      { cpolicy.get_allocator() } -> std::convertible_to<const typename T::allocator_type&>;
+      { policy.get_allocator() } -> convertible_to<typename T::allocator_type&>;
+      { cpolicy.get_allocator() } -> convertible_to<const typename T::allocator_type&>;
       { tester.test_is_composable() } -> exact_same_as<meta::true_type>;
     };
     template <typename T>
@@ -2197,10 +2529,7 @@ namespace valkyrie{
     VK_constant auto static_size = N;
   };
 
-  template <typename T> requires(
-      std::is_trivial_v<T> || 
-      std::is_standard_layout_v<T> ||
-      std::has_unique_object_representations_v<T>)
+  template <typename T> requires trivial_c<T>
   struct traits::bitwise_movable<T>{ };
 
 

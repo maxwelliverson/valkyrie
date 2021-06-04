@@ -262,7 +262,7 @@ namespace valkyrie{
     void handle_missing_value_access(){
       if (!has_value()) {
         if (auto result = policy::try_handle(this->status_))
-          *this = basic_result(std::move(result.value()));
+          new((void*)this) basic_result(std::move(result.value()));
         else
           policy::on_access(this->status_);
       }

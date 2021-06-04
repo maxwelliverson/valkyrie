@@ -13,13 +13,13 @@
 namespace valkyrie::graphics::engine{
   
   struct EngineViewportState{
-    api::Viewport*                pViewports;                         // length: viewportCount
-    Rect2D*                 pScissors;                          // length: viewportCount
-    Rect2D*                 pExclusiveScissors;                 // length: viewportCount
-    Rect2D*                 pDiscardRectangles;                 // length: viewportCount
-    api::ShadingRatePalette*      pViewportShadingRatePalettes;       // length: viewportCount
-    Position2D<f32>*        pViewportScalingFactors;            // length: viewportCount
-    u32                           viewportCount;
+    api::Viewport*           pViewports;                         // length: viewportCount
+    Rect2D*                  pScissors;                          // length: viewportCount
+    Rect2D*                  pExclusiveScissors;                 // length: viewportCount
+    Rect2D*                  pDiscardRectangles;                 // length: viewportCount
+    api::ShadingRatePalette* pViewportShadingRatePalettes;       // length: viewportCount
+    Position2D<f32>*         pViewportScalingFactors;            // length: viewportCount
+    u32                      viewportCount;
 
 
 
@@ -27,13 +27,9 @@ namespace valkyrie::graphics::engine{
     u32                           maxShadingRatePaletteEntries;
   };
 
-
-
   struct EngineState{
     EngineViewportState viewports;
   };
-
-
 
   struct Viewports{
     EngineViewportState* pViewportState;

@@ -48,6 +48,38 @@ namespace valkyrie {
   VK_forceinline constexpr static u64 align_to(u64 size) noexcept {
     return (size + AlignOffset) & AlignMask;
   }
+
+
+  namespace impl{
+    template <typename T, typename ...U>
+    struct buffer_aligner{
+      T t;
+      buffer_aligner<U...> tail;
+      buffer_aligner() = delete;
+    };
+    template <typename T>
+    struct buffer_aligner<T>{
+      T t;
+      buffer_aligner() = delete;
+    };
+    template <typename T, typename ...U>
+    union buffer_sizer{
+      char buffer[sizeof(T)];
+      buffer_sizer<U...> tail;
+    };
+    template <typename T>
+    union buffer_sizer<T>{
+      char buffer[sizeof(T)];
+    };
+  }
+
+  template <typename T, typename ...U>
+  struct aligned_union{
+    alignas(impl::buffer_aligner<T, U...>) char buffer[sizeof(impl::buffer_sizer<T, U...>)];
+  };
+
+
+
 }  // namespace valkyrie
 
 #endif  //VALKYRIE_UTILITY_ALIGN_HPP

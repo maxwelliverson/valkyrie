@@ -13,14 +13,17 @@
 
 namespace valkyrie {
   namespace detail {
-    template<class Allocator, class Tracker>
-    auto set_tracker(int, Allocator &allocator, Tracker *tracker) noexcept
-        -> decltype(allocator.get_allocator().set_tracker(tracker)) {
-      return allocator.get_allocator().set_tracker(tracker);
+
+    template <typename Alloc,
+              typename Tracker> requires(
+        memory_tracker_c<Tracker>       &&
+        requires(Alloc& a, Tracker* t){ a.get_allocator().set_tracker(t); })
+    inline decltype(auto) set_tracker(Alloc& alloc, Tracker* tracker) noexcept {
+      return alloc.get_allocator().set_tracker(tracker);
     }
-    template<class Allocator, class Tracker>
-    void set_tracker(short, Allocator &, Tracker *) noexcept {
-    }
+    template <typename Alloc, typename Tracker>
+    inline void set_tracker(Alloc&, Tracker*) noexcept { }
+
 
     // used with deeply_tracked_allocator
     template<class Tracker, class BlockAllocator>
@@ -28,8 +31,7 @@ namespace valkyrie {
     public:
       template<typename... Args>
       deeply_tracked_block_allocator(u64 block_size, Args &&...args)
-          : BlockAllocator(block_size, std::forward<Args>(args)...), tracker_(nullptr) {
-      }
+          : BlockAllocator(block_size, std::forward<Args>(args)...), tracker_(nullptr) { }
 
       memory_block allocate_block() {
         auto block = BlockAllocator::allocate_block();
@@ -63,10 +65,8 @@ namespace valkyrie {
   /// It will only call the <tt>on_allocator_growth()</tt> and <tt>on_allocator_shrinking()</tt> tracking functions,
   /// since a \concept{concept_blockallocator,BlockAllocator} is normally used inside higher allocators only.
   /// \ingroup adapter
-  template<class Tracker, class BlockOrRawAllocator>
-  class tracked_block_allocator
-      : Tracker,
-        make_block_allocator_t<BlockOrRawAllocator> {
+  template<memory_deep_tracker_c Tracker, block_or_raw_allocator_c BlockOrRawAllocator>
+  class tracked_block_allocator : Tracker, make_block_allocator_t<BlockOrRawAllocator> {
   public:
     using allocator_type = make_block_allocator_t<BlockOrRawAllocator>;
     using tracker = Tracker;
@@ -77,16 +77,14 @@ namespace valkyrie {
     explicit tracked_block_allocator(tracker t = {}) noexcept : tracker(std::move(t)) {}
 
     tracked_block_allocator(tracker t, allocator_type &&alloc) noexcept
-        : tracker(std::move(t)), allocator_type(std::move(alloc)) {
-    }
+        : tracker(std::move(t)), allocator_type(std::move(alloc)) { }
     /// @}
 
     /// \effects Creates it in the form required by the concept.
     /// The allocator will be constructed using \c block_size and \c args.
     template<typename... Args>
     tracked_block_allocator(u64 block_size, tracker t, Args &&...args)
-        : tracker(std::move(t)), allocator_type(block_size, std::forward<Args>(args)...) {
-    }
+        : tracker(std::move(t)), allocator_type(block_size, std::forward<Args>(args)...) { }
 
     /// \effects Calls <tt>Tracker::on_allocator_growth()</tt> after forwarding to the allocator.
     /// \returns The block as the returned by the allocator.
@@ -134,8 +132,8 @@ namespace valkyrie {
   /// This allows tracking both (de-)allocations and growth with one tracker.
   /// \note Due to implementation reasons, it cannot track growth and shrinking in the constructor/destructor of the higher level allocator.
   /// \ingroup adapter
-  template<class Tracker, class BlockOrRawAllocator>
-  using deeply_tracked_block_allocator = detail::deeply_tracked_block_allocator<Tracker, make_block_allocator_t<BlockOrRawAllocator>>;
+  template<memory_deep_tracker_c Tracker, block_or_raw_allocator_c Alloc>
+  using deeply_tracked_block_allocator = detail::deeply_tracked_block_allocator<Tracker, make_block_allocator_t<Alloc>>;
 
   /// A \concept{concept_rawallocator,RawAllocator} adapter that tracks another allocator using a \concept{concept_tracker,tracker}.
   /// It wraps another \concept{concept_rawallocator,RawAllocator} and calls the tracker function before forwarding to it.
@@ -143,50 +141,49 @@ namespace valkyrie {
   /// If the \concept{concept_rawallocator,RawAllocator} uses \ref deeply_tracked_block_allocator as \concept{concept_blockallocator,BlockAllocator},
   /// it will also track growth and shrinking of the allocator.
   /// \ingroup adapter
-  template<class Tracker, class RawAllocator>
-  class tracked_allocator
-      : Tracker,
-        allocator_traits<RawAllocator>::allocator_type {
-    using traits = allocator_traits<RawAllocator>;
-    using composable_traits = composable_allocator_traits<RawAllocator>;
+  template<class Tracker, allocator_c RawAllocator>
+  class tracked_allocator : Tracker, allocator_traits<RawAllocator>::allocator_type {
+    using trt = allocator_traits<RawAllocator>;
 
   public:
     using allocator_type = typename allocator_traits<RawAllocator>::allocator_type;
     using tracker = Tracker;
 
-    using is_stateful = std::integral_constant<bool, traits::is_stateful::value || !std::is_empty<Tracker>::value>;
+    VK_constant bool is_stateful = trt::is_stateful || !std::is_empty_v<Tracker>;
+    VK_constant bool is_composable = trt::is_composable;
 
     /// @{
     /// \effects Creates it by giving it a \concept{concept_tracker,tracker} and the tracked \concept{concept_rawallocator,RawAllocator}.
     /// It will embed both objects.
     /// \note This will never call the <tt>Tracker::on_allocator_growth()</tt> function.
-    explicit tracked_allocator(tracker t = {}) noexcept
-        : tracked_allocator(std::move(t), allocator_type{}) {
-    }
+    explicit tracked_allocator(tracker t = {}) noexcept 
+        : tracked_allocator(std::move(t), allocator_type{}) { }
 
     tracked_allocator(tracker t, allocator_type &&allocator) noexcept
-        : tracker(std::move(t)), allocator_type(std::move(allocator)) {
-      detail::set_tracker(0, get_allocator(), &get_tracker());
+        : tracker(std::move(t)), 
+          allocator_type(std::move(allocator)) { 
+      detail::set_tracker(get_allocator(), &get_tracker());
     }
     /// @}
 
     /// \effects Destroys both tracker and allocator.
     /// \note This will never call the <tt>Tracker::on_allocator_shrinking()</tt> function.
     ~tracked_allocator() noexcept {
-      detail::set_tracker(0, get_allocator(), static_cast<tracker *>(nullptr));
+      detail::set_tracker(get_allocator(), static_cast<tracker *>(nullptr));
     }
 
     /// @{
     /// \effects Moving moves both the tracker and the allocator.
     tracked_allocator(tracked_allocator &&other) noexcept
-        : tracker(std::move(other)), allocator_type(std::move(other)) {
-      detail::set_tracker(0, get_allocator(), &get_tracker());
+        : tracker(std::move(other)), 
+          allocator_type(std::move(other)) {
+      detail::set_tracker(get_allocator(), &get_tracker());
     }
 
     tracked_allocator &operator=(tracked_allocator &&other) noexcept {
       tracker::operator=(std::move(other));
       allocator_type::operator=(std::move(other));
-      detail::set_tracker(0, get_allocator(), &get_tracker());
+      detail::set_tracker(get_allocator(), &get_tracker());
       return *this;
     }
     /// @}
@@ -195,7 +192,7 @@ namespace valkyrie {
     /// If a growth occurs and the allocator is deeply tracked, also calls <tt>Tracker::on_allocator_growth()</tt>.
     /// \returns The result of <tt>allocate_node()</tt>
     void *allocate_node(u64 size, u64 alignment) {
-      auto mem = traits::allocate_node(get_allocator(), size, alignment);
+      auto mem = trt::allocate_node(get_allocator(), size, alignment);
       this->on_node_allocation(mem, size, alignment);
       return mem;
     }
@@ -203,8 +200,8 @@ namespace valkyrie {
     /// \effects Calls the composable node allocation function.
     /// If allocation was successful, also calls `Tracker::on_node_allocation()`.
     /// \returns The result of `try_allocate_node()`.
-    void *try_allocate_node(u64 size, u64 alignment) noexcept {
-      auto mem = composable_traits::try_allocate_node(get_allocator(), size, alignment);
+    void *try_allocate_node(u64 size, u64 alignment) noexcept requires(is_composable) {
+      auto mem = trt::try_allocate_node(get_allocator(), size, alignment);
       if (mem)
         this->on_node_allocation(mem, size, alignment);
       return mem;
@@ -214,7 +211,7 @@ namespace valkyrie {
     /// If a growth occurs and the allocator is deeply tracked, also calls <tt>Tracker::on_allocator_growth()</tt>.
     /// \returns The result of <tt>allocate_array()</tt>
     void *allocate_array(u64 count, u64 size, u64 alignment) {
-      auto mem = traits::allocate_array(get_allocator(), count, size, alignment);
+      auto mem = trt::allocate_array(get_allocator(), count, size, alignment);
       this->on_array_allocation(mem, count, size, alignment);
       return mem;
     }
@@ -222,10 +219,8 @@ namespace valkyrie {
     /// \effects Calls the composable array allocation function.
     /// If allocation was succesful, also calls `Tracker::on_array_allocation()`.
     /// \returns The result of `try_allocate_array()`.
-    void *try_allocate_array(u64 count, u64 size,
-                             u64 alignment) noexcept {
-      auto mem =
-          composable_traits::try_allocate_array(get_allocator(), count, size, alignment);
+    void *try_allocate_array(u64 count, u64 size, u64 alignment) noexcept requires(is_composable) {
+      auto mem = trt::try_allocate_array(get_allocator(), count, size, alignment);
       if (mem)
         this->on_array_allocation(mem, count, size, alignment);
       return mem;
@@ -235,15 +230,14 @@ namespace valkyrie {
     /// If shrinking occurs and the allocator is deeply tracked, also calls <tt>Tracker::on_allocator_shrinking()</tt>.
     void deallocate_node(void *ptr, u64 size, u64 alignment) noexcept {
       this->on_node_deallocation(ptr, size, alignment);
-      traits::deallocate_node(get_allocator(), ptr, size, alignment);
+      trt::deallocate_node(get_allocator(), ptr, size, alignment);
     }
 
     /// \effects Calls the composable node deallocation function.
     /// If it was succesful, also calls `Tracker::on_node_deallocation()`.
     /// \returns The result of `try_deallocate_node()`.
-    bool try_deallocate_node(void *ptr, u64 size, u64 alignment) noexcept {
-      auto res =
-          composable_traits::try_deallocate_node(get_allocator(), ptr, size, alignment);
+    bool try_deallocate_node(void *ptr, u64 size, u64 alignment) noexcept requires(is_composable) {
+      auto res = trt::try_deallocate_node(get_allocator(), ptr, size, alignment);
       if (res)
         this->on_node_deallocation(ptr, size, alignment);
       return res;
@@ -251,18 +245,16 @@ namespace valkyrie {
 
     /// \effects Calls <tt>Tracker::on_array_deallocation()</tt> and forwards to the allocator's <tt>deallocate_array()</tt>.
     /// If shrinking occurs and the allocator is deeply tracked, also calls <tt>Tracker::on_allocator_shrinking()</tt>.
-    void deallocate_array(void *ptr, u64 count, u64 size,
-                          u64 alignment) noexcept {
+    void deallocate_array(void *ptr, u64 count, u64 size, u64 alignment) noexcept {
       this->on_array_deallocation(ptr, count, size, alignment);
-      traits::deallocate_array(get_allocator(), ptr, count, size, alignment);
+      trt::deallocate_array(get_allocator(), ptr, count, size, alignment);
     }
 
     /// \effects Calls the composable array deallocation function.
     /// If it was succesful, also calls `Tracker::on_array_deallocation()`.
     /// \returns The result of `try_deallocate_array()`.
-    bool try_deallocate_array(void *ptr, u64 count, u64 size,
-                              u64 alignment) noexcept {
-      auto res = composable_traits::try_deallocate_array(ptr, count, size, alignment);
+    bool try_deallocate_array(void *ptr, u64 count, u64 size, u64 alignment) noexcept requires(is_composable){
+      auto res = trt::try_deallocate_array(ptr, count, size, alignment);
       if (res)
         this->on_array_deallocation(ptr, count, size, alignment);
       return res;
@@ -271,15 +263,13 @@ namespace valkyrie {
     /// @{
     /// \returns The result of the corresponding function on the wrapped allocator.
     u64 max_node_size() const {
-      return traits::max_node_size(get_allocator());
+      return trt::max_node_size(get_allocator());
     }
-
     u64 max_array_size() const {
-      return traits::max_array_size(get_allocator());
+      return trt::max_array_size(get_allocator());
     }
-
     u64 max_alignment() const {
-      return traits::max_alignment(get_allocator());
+      return trt::max_alignment(get_allocator());
     }
     /// @}
 
@@ -309,48 +299,27 @@ namespace valkyrie {
   /// \effects Takes a \concept{concept_rawallocator,RawAllocator} and wraps it with a \concept{concept_tracker,tracker}.
   /// \returns A \ref tracked_allocator with the corresponding parameters forwarded to the constructor.
   /// \relates tracked_allocator
-  template<class Tracker, class RawAllocator>
-  auto make_tracked_allocator(Tracker t, RawAllocator &&alloc)
-      -> tracked_allocator<Tracker, typename std::decay<RawAllocator>::type> {
-    return tracked_allocator<Tracker, typename std::decay<RawAllocator>::type>{std::move(
-                                                                                   t),
-                                                                               std::move(
-                                                                                   alloc)};
+  template <typename Tracker, typename RawAllocator>
+  requires(memory_tracker_c<Tracker> && allocator_c<remove_cvref_t<RawAllocator>>)
+  auto make_tracked_allocator(Tracker t, RawAllocator &&alloc) {
+    return tracked_allocator<Tracker, remove_cvref_t<RawAllocator>>{std::move(t), std::move(alloc)};
   }
 
-  namespace detail {
-    template<typename T, bool Block>
-    struct is_block_or_raw_allocator_impl : std::true_type {
-    };
-
-    template<typename T>
-    struct is_block_or_raw_allocator_impl<T, false> : meta::boolean_constant<raw_allocator<T>> {
-    };
-
-    template<typename T>
-    struct is_block_or_raw_allocator
-        : is_block_or_raw_allocator_impl<T, block_allocator<T>> {
-    };
-
+  namespace impl {
     template<class RawAllocator, class BlockAllocator>
     struct rebind_block_allocator;
 
-    template<template<typename...> class RawAllocator, typename... Args,
-             class OtherBlockAllocator>
+    template<template <typename...> typename RawAllocator, typename... Args, typename OtherBlockAllocator>
     struct rebind_block_allocator<RawAllocator<Args...>, OtherBlockAllocator> {
-      using type =
-          RawAllocator<typename std::conditional<is_block_or_raw_allocator<Args>::value,
-                                                 OtherBlockAllocator, Args>::type...>;
+      using type = RawAllocator<std::conditional_t<block_or_raw_allocator_c<Args>, OtherBlockAllocator, Args>...>;
     };
 
-    template<class Tracker, class RawAllocator>
+    template<typename Tracker, typename Alloc>
     using deeply_tracked_block_allocator_for =
-        deeply_tracked_block_allocator<Tracker,
-                                               typename RawAllocator::allocator_type>;
+        deeply_tracked_block_allocator<Tracker, typename Alloc::allocator_type>;
 
-    template<class Tracker, class RawAllocator>
-    using rebound_allocator = typename rebind_block_allocator<
-        RawAllocator, deeply_tracked_block_allocator_for<Tracker, RawAllocator>>::type;
+    template<typename Tracker, typename Alloc>
+    using rebound_allocator = typename rebind_block_allocator<Alloc, deeply_tracked_block_allocator_for<Tracker, Alloc>>::type;
   }// namespace detail
 
   /// A \ref tracked_allocator that has rebound any \concept{concept_blockallocator,BlockAllocator} to the corresponding \ref deeply_tracked_block_allocator.
@@ -358,17 +327,15 @@ namespace valkyrie {
   /// It replaces each template argument of the given \concept{concept_rawallocator,RawAllocator} for which \ref is_block_allocator or \ref is_raw_allocator is \c true with a \ref deeply_tracked_block_allocator.
   /// \ingroup adapter
   template<class Tracker, class RawAllocator>
-  using deeply_tracked_allocator = tracked_allocator<Tracker, detail::rebound_allocator<Tracker, RawAllocator>>;
+  using deeply_tracked_allocator = tracked_allocator<Tracker, impl::rebound_allocator<Tracker, RawAllocator>>;
 
   /// \effects Takes a \concept{concept_rawallocator,RawAllocator} and deeply wraps it with a \concept{concept_tracker,tracker}.
   /// \returns A \ref deeply_tracked_allocator with the corresponding parameters forwarded to the constructor.
   /// \relates deeply_tracked_allocator
-  template<class RawAllocator, class Tracker, typename... Args>
-  auto make_deeply_tracked_allocator(Tracker t, Args &&...args)
-      -> deeply_tracked_allocator<Tracker, RawAllocator> {
-    return deeply_tracked_allocator<Tracker, RawAllocator>(std::move(t),
-                                                           {std::forward<Args>(
-                                                               args)...});
+  template<typename RawAllocator, typename Tracker, typename... Args>
+  requires(allocator_c<RawAllocator> && memory_deep_tracker_c<Tracker> && constructible_from<>)
+  auto make_deeply_tracked_allocator(Tracker t, Args &&...args) -> deeply_tracked_allocator<Tracker, RawAllocator> {
+    return deeply_tracked_allocator<Tracker, RawAllocator>(std::move(t), {std::forward<Args>(args)...});
   }
 }// namespace valkyrie
 

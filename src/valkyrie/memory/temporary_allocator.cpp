@@ -2,7 +2,7 @@
 // Created by maxwe on 2021-03-05.
 //
 
-#include <valkyrie/memory/temporary_allocator.hpp>
+#include <valkyrie/memory/allocators/temporary_allocator.hpp>
 #include <valkyrie/primitives.hpp>
 
 using namespace valkyrie;

@@ -38,42 +38,6 @@ namespace valkyrie::graphics::engine{
   class resource_memory{ };
 
 
-  class device_allocator;
-
-  class device_memory{
-    using handle_t = void*;
-    using native_handle_t = VK_if(VK_system_windows(void*)VK_else(int));
-  public:
-
-
-
-  private:
-    handle_t        handle_;
-    native_handle_t native_handle_;
-    atomic<u64>     ref_count_;
-  };
-
-  class device_allocation{
-  public:
-  private:
-    device_memory* memory_block_;
-    u64            size_;
-    u64            offset_;
-  };
-
-  class device_allocator{
-  public:
-    virtual ~device_allocator() = default;
-
-
-    virtual device*        do_get_device() const noexcept = 0;
-
-    virtual device_memory* do_allocate() noexcept = 0;
-    virtual device_memory* do_reallocate(device_memory* pDeviceMemory) noexcept = 0;
-    virtual void           do_deallocate(device_memory* deviceMemory) noexcept = 0;
-  };
-
-
 
   class resource{
   public:

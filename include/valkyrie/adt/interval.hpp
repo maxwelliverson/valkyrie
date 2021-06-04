@@ -297,9 +297,9 @@ namespace valkyrie{
       -> interval_projection<From, To>;
 
   
-  template <typename T, convertible_to<T> auto LowerBound = std::numeric_limits<T>::min(), typename ...Mixins>
+  template <typename T, /*convertible_to<T>*/ auto LowerBound = std::numeric_limits<T>::min(), typename ...Mixins>
   using upper_bound = interval<T, impl::interval_lower_bound<LowerBound>, impl::interval_mixin<Mixins>...>;
-  template <typename T, convertible_to<T> auto UpperBound = std::numeric_limits<T>::max(), typename ...Mixins>
+  template <typename T, /*convertible_to<T> */auto UpperBound = std::numeric_limits<T>::max(), typename ...Mixins>
   using lower_bound = interval<T, impl::interval_upper_bound<UpperBound>, impl::interval_mixin<Mixins>...>;
 
   template <auto LowerBound, auto UpperBound, typename ...Mixins>

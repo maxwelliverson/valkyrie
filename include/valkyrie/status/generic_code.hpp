@@ -264,9 +264,9 @@ namespace valkyrie{
   inline constexpr const generic_domain& generic_domain::get() noexcept {
     return detail::genericDomainInstance_;
   }
-  /*inline generic_status make_status_code(code code) noexcept {
-    return generic_status(*//*std::in_place, &generic_domain::get(), *//*code);
-  }*/
+  inline generic_status make_status_code(code code) noexcept {
+    return generic_status(std::in_place, /*&generic_domain::get(),*/ code);
+  }
 }
 
 /*

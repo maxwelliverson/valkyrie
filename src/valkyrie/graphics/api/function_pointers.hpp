@@ -5,6 +5,8 @@
 #ifndef VALKYRIE_FUNCTION_POINTERS_HPP
 #define VALKYRIE_FUNCTION_POINTERS_HPP
 
+#include <valkyrie/traits.hpp>
+
 #if VK_system_windows
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
